@@ -18,7 +18,8 @@ const Game = (() => {
   const IDM = M.id();
 
   let R = null, canvas = null, world = null, last = 0;
-  /* economia de energia: 30 FPS e resolução um pouco menor, para o celular não esquentar. Padrão: ligada no toque (aldoria_eco) */
+  /* economia de energia: ~40 FPS e resolução um pouco menor, para o celular não esquentar. Padrão: ligada no toque (aldoria_eco) */
+  const ECO_MS = 1000 / 40; let ecoLast = 0, ecoAcc = 0;
   let eco = IS_TOUCH; try { const s = localStorage.getItem('aldoria_eco'); if (s != null) eco = s === '1'; } catch (e) { }
   const obstacles = [], grid = new Map(), GC = 8, GOFF = 2048;
   const keys = {}, cam = { yaw: 0, dist: 15, x: 0, z: 0, init: false };
@@ -862,8 +863,10 @@ const Game = (() => {
     UI.float(m.x, m.hgt, m.z, crit ? d + '!' : String(d), crit ? 'crit' : 'dmg');
     if (m.hp <= 0) killMob(m);
   }
+  const CAMP_DMG0 = .7;
   function playerDmg(m, mult, skill, so) {
     let d = G.stats.atk * mult * (.9 + rnd() * .2) * 100 / (100 + m.def);
+    { const el = EL(G.player); if (el < CAMP.endLv) d *= CAMP_DMG0 + (1 - CAMP_DMG0) * Math.max(0, el - 1) / (CAMP.endLv - 1); } // campo de treino: o começo é mais duro (dano ×CAMP_DMG0 no nível 1, sobe até ×1 no nível 29)
     if (skill) d *= G.stats.skillMul;
     if (m.mark > 0) d *= 1 + m.markV;
     if (so && so.exec && m.hp < m.maxHp * so.exec) d *= 2; // golpe executor
@@ -1160,6 +1163,7 @@ const Game = (() => {
     if (!mouse.in) return null; const r = pickRay(mouse.x, mouse.y); if (!r || r.d[1] >= -1e-4) return null;
     const t = -r.o[1] / r.d[1]; return [r.o[0] + r.d[0] * t, r.o[2] + r.d[2] * t];
   }
+  const SPLASH_R = 3, SPLASH_M = .6; // habilidades de alvo único: raio (m) e fração do dano para quem está perto do alvo
   function useSkill(i) {
     const p = G.player; if (G.state !== 'play' || G.dead || p.dash) return;
     const s0 = CLASSES[p.cls].skills[i]; if (!s0) return;
@@ -1177,15 +1181,21 @@ const Game = (() => {
       return true;
     };
     const tooFar = () => { cmd = { type: 'attack', mob: m }; if (throttle('far', 1)) UI.log('Alvo fora de alcance.', 'sys'); };
+    /* dano em raio: golpe de alvo único também acerta quem está colado ao alvo (SPLASH_M do dano). s.splash = raio próprio; 0 desliga */
+    const splash = (t, mult) => {
+      const r = s.splash == null ? SPLASH_R : s.splash; if (!r || s.multi) return; let n = 0;
+      for (const mm of G.mobs) { if (mm.dead || mm === t || Math.hypot(mm.x - t.x, mm.z - t.z) > r + mm.rad * .5) continue; hitMob(mm, mult * SPLASH_M, true); n++; }
+      if (n || k === 'proj') fxDisc(t.x, t.z, .3, r, .3, col, .45);
+    };
     if (k === 'melee') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
-      face(m.x, m.z); spend(); const dd = hitMob(m, s.m, true, s); fxDisc(m.x, m.z, .3, 2.2, .3, col, .5);
+      face(m.x, m.z); spend(); const dd = hitMob(m, s.m, true, s); fxDisc(m.x, m.z, .3, 2.2, .3, col, .5); splash(m, s.m);
       if (s.leech && dd) { const v = Math.round(dd * s.leech); p.hp = Math.min(p.maxHp, p.hp + v); UI.float(p.x, 2.8, p.z, '+' + v, 'heal'); fxBurst(p.x, 1.2, p.z, [1, .25, .3], 10, 2, .15); }
     } else if (k === 'proj') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
       face(m.x, m.z); spend();
       if (s.focus && pet) pet.focus = m;
-      launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 26, col, size: .4, arrow: p.cls === 'huntress', onHit: t => { hitMob(t, s.m, true, s); if (s.slow && !t.dead) { t.slow = s.sdur; t.slowV = s.slow; } } });
+      launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 26, col, size: .4, arrow: p.cls === 'huntress', onHit: t => { hitMob(t, s.m, true, s); if (s.slow && !t.dead) { t.slow = s.sdur; t.slowV = s.slow; } splash(t, s.m); } });
       if (s.multi) { // alvos extras próximos ao alvo principal
         const ex = G.mobs.filter(mm => !mm.dead && mm !== m && Math.hypot(mm.x - m.x, mm.z - m.z) < 9 && Math.hypot(mm.x - p.x, mm.z - p.z) < s.rng + 4).sort((a, b) => Math.hypot(a.x - m.x, a.z - m.z) - Math.hypot(b.x - m.x, b.z - m.z)).slice(0, s.multi);
         ex.forEach((t2, j) => launch({ x: p.x, y: 1.6, z: p.z, tgt: t2, speed: 24 - j, col, size: .34, arrow: p.cls === 'huntress', onHit: t => hitMob(t, s.m * .8, true) }));
@@ -1967,10 +1977,10 @@ const Game = (() => {
     let back = 0; for (let i = 0; i < p.sk.length; i++) { back += skSpent(i, p.sk[i]); p.sk[i] = 0; }
     p.gold -= cost; p.sp += back; UI.log('Habilidades redistribuídas: ' + back + ' pontos devolvidos. Fale com o Mestre de Habilidades.', 'sys'); UI.refreshPanels();
   }
-  function starterKit(evo) { // modo história: arma e roupa básicas do tier atual + 10 poções de cada
+  function starterKit(evo) { // modo história: arma e roupa completa (elmo, peitoral, calça, luvas, botas) básicas do tier atual + 10 poções de cada
     const p = G.player;
     p.eq.w = buildItem('w', p.cls, 1, 0, WTYPES[p.cls][0], p.tier);
-    for (const s of ['a', 'l', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier);
+    for (const s of ['h', 'a', 'l', 'g', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier); // elmo, peitoral, calça, luvas e botas
     if (evo) { p.pots.hp = Math.max(p.pots.hp, 10); p.pots.mp = Math.max(p.pots.mp, 10); p.feed = Math.max(p.feed || 0, 5); }
     else { p.pots.hp = 10; p.pots.mp = 10; p.feed = 5; }
     if (!evo) { // personagem novo: peças de grau 0 com poder 1 (ataque 1, defesa 1) e sem extras; o poder de verdade vem dos drops
@@ -2037,7 +2047,7 @@ const Game = (() => {
   }
   function cycleQuality() { return R.setQuality(R.qi + 1); }
   const ecoOn = () => eco;
-  function toggleEco() { eco = !eco; try { localStorage.setItem('aldoria_eco', eco ? '1' : '0'); } catch (e) { } R.eco = eco; R.resize(true); UI.log(eco ? 'Economia de energia ligada (30 FPS).' : 'Economia de energia desligada.', 'sys'); }
+  function toggleEco() { eco = !eco; try { localStorage.setItem('aldoria_eco', eco ? '1' : '0'); } catch (e) { } R.eco = eco; R.resize(true); UI.log(eco ? 'Economia de energia ligada (40 FPS).' : 'Economia de energia desligada.', 'sys'); }
   function deleteSave(id) { deleteChar(id); UI.showMenu(hasSave()); }
   function toggleMute() { G.mute = !G.mute; SND.mute(G.mute); UI.log(G.mute ? 'Som desligado.' : 'Som ligado.', 'sys'); }
 
@@ -2386,7 +2396,7 @@ const Game = (() => {
   function frame(now) {
     requestAnimationFrame(frame);
     if (document.hidden) { last = now; return; }
-    if (eco && now - last < 28) return; // 30 FPS (telas de 60/120 Hz pulam quadros)
+    if (eco) { ecoAcc += now - ecoLast; ecoLast = now; if (ecoAcc < ECO_MS - 5) return; ecoAcc = Math.min(ecoAcc - ECO_MS, ECO_MS); } // ~40 FPS: o acumulador alterna quadros (60 Hz desenha 2 de cada 3; 120 Hz, 1 de cada 3)
     const rdt = Math.max(0, (now - last) / 1000), dt = Math.min(.05, rdt); last = now; G.t += dt;
     if (!eco) autoQuality(rdt);
     if (G.state === 'play') { skipPrologue(); tutAuto(); }

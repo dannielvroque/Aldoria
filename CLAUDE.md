@@ -48,7 +48,7 @@ Interface e textos do jogo em português do Brasil.
 - **Ouro** vai direto para `p.gold`; só se guarda/retira no Guarda de Carga (Banco, 120 espaços em 3 páginas).
 
 ## Contas e save
-- Várias contas no mesmo navegador (“⇄ Trocar conta”), vários personagens por conta, baú compartilhado (Guarda de Carga). Chaves `localStorage`: `aldoria_save_v1` (save antigo), `aldoria_account_v1`/`aldoria_accounts_v2` (contas), `aldoria_auto_v1` (modo automático), `aldoria_gfx` (qualidade gráfica, tecla G), `aldoria_eco` (economia de energia: 30 FPS e resolução menor; padrão ligada no toque, botão na Pausa), `aldoria_admin_v1` (administrador).
+- Várias contas no mesmo navegador (“⇄ Trocar conta”), vários personagens por conta, baú compartilhado (Guarda de Carga). Chaves `localStorage`: `aldoria_save_v1` (save antigo), `aldoria_account_v1`/`aldoria_accounts_v2` (contas), `aldoria_auto_v1` (modo automático), `aldoria_gfx` (qualidade gráfica, tecla G), `aldoria_eco` (economia de energia: ~40 FPS e resolução um pouco menor; padrão ligada no toque, botão na Pausa), `aldoria_admin_v1` (administrador).
 
 ## Interface (estilo WYD, só como mecânica genérica)
 - Inventário [I] = janela “Equipamento” (slots em volta do personagem, “+N”, mochila em grade, ouro na base); Banco abre ao lado; Ferreiro e Joalheiro abrem junto com o Equipamento.
@@ -109,6 +109,12 @@ Mais missões e masmorras, árvore de talentos, itens com efeitos especiais, aju
 - **Refino**: Ferreiro até +9 (`PLUS_MAX`, chances `CFG.enh`). **Ancient** no **Refinador** (NPC `selene`, `Game.fuseItems`): 2 peças iguais (`fuseKey`: espaço, classe, nome, fase e refino) na mochila: 2× +9 → +10 (grátis), 2× +10 → +11 (`FUSE_GOLD` = 100.000). Multiplicador `PLUS_MUL` (+9 ×1,72; +10 ×2,0; +11 ×2,4).
 - **NPCs principais** com o nome da função: Baú, Refinador, Ferreiro, Joalheiro, Armeiro, Armaduras, Mestre de Habilidades (e Cavalariço, Mercador, Ancião como antes).
 - **Vida dos monstros** (`mobStats`, `hpK`): comum ×1,5 (nível ≤3) até ×`MOB_HPK`=6 (nível 15+), elite extra ×`ELITE_HPK`=2, chefe ×`BOSS_HPK`=3; o XP do comum acompanha o fator (mesmo ritmo de subir de nível). Medido com **habilidades em uso** (`tools/teste_luta_real.py`: `TIER`, `GEAR=tier|carry`, `SK`, `HPF`, `TRIALS`): sem o fator o comum morria em 0,3–3 s; agora 5–10 s e 0–25 % da vida. Achado: logo após evoluir carregando o equipamento da fase anterior (Épico +9 nv 50) os monstros morrem em 0,2 s no nível 1 e ficam fáceis até o ~nível 15 da fase.
+
+## Combate e início de jogo (ajustes nov/2026)
+- **Dano em raio**: habilidades `melee`/`proj` de alvo único também acertam quem está a até `SPLASH_R` (3 m) do alvo, com `SPLASH_M` (60%) do dano (`splash` em `useSkill`, game.js); `s.splash` troca o raio, `0` desliga; `multi` (Corrente de Raios) não usa.
+- **Alcance**: Arcanista e Caçadora ficaram com alcance menor (ataque 9,5/10,5 m; habilidades 10–15 m) para os monstros (aggro 9 m) conseguirem reagir antes de morrer.
+- **Começo do campo**: `CAMP_DMG0` (0,7) multiplica o dano do jogador no nível 1 e sobe até 1 no nível 29 do Mortal (`playerDmg`). O kit inicial agora traz elmo e luvas (`starterKit`).
+- **Economia de energia**: ~40 FPS por acumulador (`ECO_MS`), resolução até 1,4× no toque.
 
 ## Missões no celular (toque)
 - Botão ❗ (`data-a="obj"`, aviso `.objpop`, `renderObj`/`objSync` em ui.js) mostra a etapa atual, o destino e **um** botão de ação: "Entregar" (secundária pronta), "Resgatar diários" ou "🧭 Ir até lá" (`Game.goObjective()`: anda até o NPC e abre o diálogo, vai ao lugar ou ao monstro mais próximo; chefe/elite só chega perto). Minimapa e botão "Mapa" abrem o mapa; legenda do mapa no botão `?`.
