@@ -1498,6 +1498,7 @@ const Game = (() => {
     const gest = () => initAudio();
     window.addEventListener('pointerdown', gest); window.addEventListener('keydown', gest);
     window.addEventListener('resize', () => R.resize(true));
+    window.addEventListener('orientationchange', () => { setTimeout(() => R.resize(true), 350); setTimeout(() => R.resize(true), 900); });
     window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
     window.addEventListener('beforeunload', () => { if (G.state === 'play') save(); });
     canvas.addEventListener('contextmenu', e => e.preventDefault());

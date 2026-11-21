@@ -318,6 +318,11 @@ const UI = (() => {
     WIN_BTN.forEach(k => setCls(E.btn[k], 'on', st.wins.includes(k)));
   }
   addEventListener('resize', () => { if (st.wins.length) winSync(); });
+  // girar o aparelho: o navegador móvel informa o tamanho novo com atraso; recentra as janelas e refaz o tamanho do canvas
+  let rotT = 0;
+  const rotFix = () => { clearTimeout(rotT); rotT = setTimeout(() => { st.wpos = {}; winSync(); if (st.wins.length) winSync(); window.dispatchEvent(new Event('resize')); }, 350); };
+  addEventListener('orientationchange', rotFix);
+  if (screen.orientation) screen.orientation.addEventListener('change', rotFix);
   function winFront(k) { const i = st.wins.indexOf(k); if (i < 0 || i === st.wins.length - 1) return; st.wins.splice(i, 1); st.wins.push(k); st.wins.forEach((n, j) => { E['p_' + n].style.zIndex = 14 + j; }); st.panel = st.modal || k; }
   function winDrag(k, ev) {
     if (ev.button || ev.target.closest('button') || winSide(k)) return;
