@@ -48,7 +48,7 @@ Interface e textos do jogo em português do Brasil.
 - **Ouro** vai direto para `p.gold`; só se guarda/retira no Guarda de Carga (Banco, 120 espaços em 3 páginas).
 
 ## Contas e save
-- Várias contas no mesmo navegador (“⇄ Trocar conta”), vários personagens por conta, baú compartilhado (Guarda de Carga). Chaves `localStorage`: `aldoria_save_v1` (save antigo), `aldoria_account_v1`/`aldoria_accounts_v2` (contas), `aldoria_auto_v1` (modo automático), `aldoria_gfx` (qualidade gráfica, tecla G), `aldoria_admin_v1` (administrador).
+- Várias contas no mesmo navegador (“⇄ Trocar conta”), vários personagens por conta, baú compartilhado (Guarda de Carga). Chaves `localStorage`: `aldoria_save_v1` (save antigo), `aldoria_account_v1`/`aldoria_accounts_v2` (contas), `aldoria_auto_v1` (modo automático), `aldoria_gfx` (qualidade gráfica, tecla G), `aldoria_eco` (economia de energia: 30 FPS e resolução menor; padrão ligada no toque, botão na Pausa), `aldoria_admin_v1` (administrador).
 
 ## Interface (estilo WYD, só como mecânica genérica)
 - Inventário [I] = janela “Equipamento” (slots em volta do personagem, “+N”, mochila em grade, ouro na base); Banco abre ao lado; Ferreiro e Joalheiro abrem junto com o Equipamento.
