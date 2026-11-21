@@ -478,7 +478,7 @@ class Renderer {
     this.bm = { box: mkBox(), cyl: mkCyl(8, .5, .5), cone: mkCyl(8, 0, .5), sphere: mkSphere(8, 5), pyr: mkCyl(4, 0, .7071), cyl6: mkCyl(6, .5, .5), cone6: mkCyl(6, 0, .5) };
     this.lp = M.id(); this.q = null; this.W = this.H = 0;
     this.makeShadow(4);
-    let q = 2; try { const s = localStorage.getItem('aldoria_gfx'); if (s != null && QUALITY[+s]) q = +s; } catch (e) { }
+    const coarse = matchMedia('(pointer:coarse)').matches; this.coarse = coarse; let q = coarse ? 0 : 2; try { const s = localStorage.getItem('aldoria_gfx'); if (s != null && QUALITY[+s]) q = +s; } catch (e) { }
     this.qi = q; this.q = QUALITY[q];
     if ((this.q.shadow || 4) !== this.shSize) this.makeShadow(this.q.shadow || 4);
     this.resize(true);
@@ -545,7 +545,7 @@ class Renderer {
     this.resize(true); return this.q.name;
   }
   resize(force) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2) * this.q.scale, w = Math.max(2, Math.floor(innerWidth * dpr)), h = Math.max(2, Math.floor(innerHeight * dpr));
+    const dpr = Math.min(window.devicePixelRatio || 1, this.coarse ? 1.5 : 2) * this.q.scale, w = Math.max(2, Math.floor(innerWidth * dpr)), h = Math.max(2, Math.floor(innerHeight * dpr));
     if (force || this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w; this.canvas.height = h; this.W = w; this.H = h; this.buildTargets();
     }

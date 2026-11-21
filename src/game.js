@@ -43,6 +43,7 @@ const Game = (() => {
   const mul3 = (a, k) => [a[0] * k[0], a[1] * k[1], a[2] * k[2]], sc3 = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
   function precipType() { return REG[(G.state === 'play' ? G.zone : ZONES[0]).reg].clim; }
   const mouse = { x: 0, y: 0, drag: false, lx: 0, in: false };
+  const joy = { on: false, x: 0, y: 0 }, touchT = { last: 0 };  // joystick virtual (-1..1; y>0 = frente) e instante do último toque
   let portalLock = true, tmob = null, cmd = null, pet = null, combatT = -99, saveT = 0, lastZone = null;
   const msgT = {};
   const AUTO_KEY = 'aldoria_auto_v1';
@@ -1332,6 +1333,7 @@ const Game = (() => {
     if (keys.KeyS || keys.ArrowDown) f--;
     if (keys.KeyD || keys.ArrowRight) r++;
     if (keys.KeyA || keys.ArrowLeft) r--;
+    if (joy.on) { f += joy.y; r += joy.x; }
     if (!f && !r) return null;
     const fx_ = -Math.sin(cam.yaw), fz_ = -Math.cos(cam.yaw), rx = -fz_, rz = fx_;
     const dx = fx_ * f + rx * r, dz = fz_ * f + rz * r, l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l];
@@ -1442,6 +1444,56 @@ const Game = (() => {
     for (const n of NPCS) { const d = Math.hypot(n.x - p.x, n.z - p.z); if (d < bd) { bd = d; b = n; } }
     if (b) { cmd = null; UI.openDialog(b.id); } else if (throttle('nonpc', 1)) UI.log('Nenhum NPC por perto.', 'sys');
   }
+
+  /* ---------- toque (celular/tablet): joystick, câmera por arrasto, pinça e botões de ação ---------- */
+  function initTouch() {
+    if (!(R.coarse || 'ontouchstart' in window)) return;
+    const ui = document.getElementById('ui'); ui.classList.add('touch');
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    const pts = new Map(); let pinch = 0, tap = null;
+    const act = c => {
+      if (G.state !== 'play' || UI.isBlocking() || G.dead) return;
+      if (c === 'Space') { const m = needTarget(); if (m) cmd = { type: 'attack', mob: m }; else if (throttle('notgt', 1)) UI.log('Nenhum alvo por perto.', 'sys'); }
+      else if (c === 'Tab') cycleTarget(); else if (c === 'KeyF') talkNearest(); else if (c === 'KeyZ') toggleAutoCombat(); else if (c === 'KeyX') toggleMount();
+    };
+    canvas.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch') return; touchT.last = performance.now(); mouse.in = false; e.preventDefault();
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), mv: 0 });
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); tap = null; } else tap = e.pointerId;
+    });
+    canvas.addEventListener('pointermove', e => {
+      const p = pts.get(e.pointerId); if (!p) return; touchT.last = performance.now();
+      const dx = e.clientX - p.x; p.x = e.clientX; p.y = e.clientY; p.mv = Math.max(p.mv, Math.hypot(e.clientX - p.x0, e.clientY - p.y0));
+      if (pts.size >= 2) { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch) cam.dist = clamp(cam.dist - (d - pinch) * .04, 7, 26); pinch = d; }
+      else if (p.mv > 12) cam.yaw -= dx * .008;
+    });
+    const end = e => {
+      const p = pts.get(e.pointerId); if (!p) return; pts.delete(e.pointerId); touchT.last = performance.now(); if (pts.size < 2) pinch = 0;
+      if (tap === e.pointerId && p.mv <= 12 && performance.now() - p.t0 < 350 && e.type === 'pointerup') { mouse.x = e.clientX; mouse.y = e.clientY; onClick(e.clientX, e.clientY); }
+      if (tap === e.pointerId) tap = null;
+    };
+    canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+    // joystick virtual
+    const base = ui.querySelector('.joy'), knob = base.querySelector('i'); let jid = null;
+    const jset = e => {
+      const r = base.getBoundingClientRect(), rad = r.width / 2; let dx = e.clientX - (r.left + rad), dy = e.clientY - (r.top + rad);
+      const d = Math.hypot(dx, dy), m = Math.min(d, rad); if (d > 0) { dx = dx / d * m; dy = dy / d * m; }
+      knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      joy.on = m / rad > .15; joy.x = dx / rad; joy.y = -dy / rad; if (joy.on) cmd = null;
+    };
+    base.addEventListener('pointerdown', e => { jid = e.pointerId; base.setPointerCapture(jid); jset(e); e.preventDefault(); });
+    base.addEventListener('pointermove', e => { if (e.pointerId === jid) jset(e); });
+    const jend = e => { if (e.pointerId !== jid) return; jid = null; joy.on = false; joy.x = joy.y = 0; knob.style.transform = ''; };
+    base.addEventListener('pointerup', jend); base.addEventListener('pointercancel', jend);
+    ui.querySelectorAll('.tact').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); act(b.dataset.k); }));
+    // tela cheia + paisagem (quando o navegador permitir)
+    const fs = ui.querySelector('.tfs');
+    if (fs) fs.addEventListener('click', () => {
+      const d = document.documentElement;
+      try { if (document.fullscreenElement) document.exitFullscreen(); else { (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } } catch (e) { /* sem suporte */ }
+    });
+    window.addEventListener('blur', () => { joy.on = false; joy.x = joy.y = 0; });
+  }
   function initInput() {
     const gest = () => initAudio();
     window.addEventListener('pointerdown', gest); window.addEventListener('keydown', gest);
@@ -1450,6 +1502,7 @@ const Game = (() => {
     window.addEventListener('beforeunload', () => { if (G.state === 'play') save(); });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     canvas.addEventListener('mousedown', e => {
+      if (performance.now() - touchT.last < 800) return; // toque já tratado; ignora o mouse sintético
       mouse.x = e.clientX; mouse.y = e.clientY;
       if (e.button === 2) { mouse.drag = true; mouse.lx = e.clientX; e.preventDefault(); }
       else if (e.button === 0) onClick(e.clientX, e.clientY);
@@ -1460,6 +1513,7 @@ const Game = (() => {
       if (mouse.drag) { cam.yaw -= (e.clientX - mouse.lx) * .006; mouse.lx = e.clientX; }
     });
     canvas.addEventListener('wheel', e => { cam.dist = clamp(cam.dist + Math.sign(e.deltaY) * 1.2, 7, 26); e.preventDefault(); }, { passive: false });
+    initTouch();
     window.addEventListener('keyup', e => { keys[e.code] = false; });
     window.addEventListener('keydown', e => {
       if (G.state !== 'play') return;
