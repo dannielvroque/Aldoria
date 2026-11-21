@@ -199,7 +199,7 @@ const UI = (() => {
       <div class="menu-crest">⚜</div>
       <h1>Aldoria</h1><div class="sub">Uma saga de ação nas terras esquecidas</div>
       <div class="menu-act"></div>
-      <div class="keys"><span><kbd>Clique esq.</kbd> mover / atacar</span><span><kbd>Clique dir.</kbd> girar câmera</span><span><kbd>Roda</kbd> zoom</span><span><kbd>1–5</kbd> habilidades</span><span><kbd>6</kbd><kbd>7</kbd> poções</span><span><kbd>I</kbd><kbd>C</kbd><kbd>V</kbd><kbd>M</kbd><kbd>B</kbd> janelas (várias, arrastáveis)</span><span><kbd>X</kbd> montaria</span><span><kbd>F</kbd> falar</span></div>
+      <div class="keys">${IS_TOUCH ? '<span>Toque no chão ou use o joystick para andar · botões à direita: atacar, falar, montar</span><span>Arraste para girar a câmera · pinça: zoom</span>' : '<span><kbd>Clique esq.</kbd> mover / atacar</span><span><kbd>Clique dir.</kbd> girar câmera</span><span><kbd>Roda</kbd> zoom</span><span><kbd>1–5</kbd> habilidades</span><span><kbd>6</kbd><kbd>7</kbd> poções</span><span><kbd>I</kbd><kbd>C</kbd><kbd>V</kbd><kbd>M</kbd><kbd>B</kbd> janelas (várias, arrastáveis)</span><span><kbd>X</kbd> montaria</span><span><kbd>F</kbd> falar</span>'}</div>
     </div>`;
     E.menuAct = E.menu.querySelector('.menu-act');
   }
@@ -399,7 +399,7 @@ const UI = (() => {
       g = `<div class="bag mats">${g}</div><div class="dim pad">Pedras de adicional caem de monstros. Leve-as ao Joalheiro.</div>`;
     }
     const tabs = `<div class="itabs"><button class="${tab === 'bag' ? 'on' : ''}" data-a="itab" data-k="bag">Mochila <small>${p.inv.length}/${BAG}</small></button><button class="${tab === 'mat' ? 'on' : ''}" data-a="itab" data-k="mat">Materiais</button></div>`;
-    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : 'Clique ou arraste para equipar · botão direito: opções.';
+    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para pegá-lo e toque no boneco para equipar.');
     setBody(E.b_inv, `<div class="eqw">${l}${tabs}${g}<div class="foot-note">${hint}</div><div class="igold"><span>🪙</span><b>${fmt(p.gold)}</b><small>ouro</small></div></div>`);
     { const cv = E.b_inv.querySelector('canvas.pv'); if (cv && Game.portrait) { if (st.pvYaw == null) st.pvYaw = .6; Game.portrait(cv, st.pvYaw); } }
   }
@@ -422,7 +422,7 @@ const UI = (() => {
       h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${A.d}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
     }
     h += `</div><button class="btn ghost mini" data-a="attr-reset" title="Devolve todos os pontos">↺ Redistribuir (💰 ${fmt(50 * Math.round(ELV()))})</button>`;
-    h += `<div class="dim pad">Habilidades: tecla <kbd>V</kbd></div>`;
+    h += `<div class="dim pad">${TX('Habilidades: tecla <kbd>V</kbd>', 'Habilidades: fale com o Mestre de Habilidades')}</div>`;
     setBody(E.b_char, h);
   }
 
@@ -444,8 +444,8 @@ const UI = (() => {
     const q = (typeof Game !== 'undefined' && Game._dbg && Game._dbg.R) ? Game._dbg.R.q.name : '';
     let h = '<div class="pause-b">';
     h += '<button class="btn primary" data-a="close">▶ Continuar jogando</button>';
-    h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b> <small>[G]</small></button>`;
-    h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'} <small>[N]</small></button>`;
+    h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b>${TX(' <small>[G]</small>', '')}</button>`;
+    h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'}${TX(' <small>[N]</small>', '')}</button>`;
     { const V = Game.getVol ? Game.getVol() : {}; h += '<div class="mixer">' + [['master', '🔊 Geral'], ['sfx', '⚔ Efeitos'], ['amb', '🌿 Ambiente'], ['music', '🎵 Música']].map(([k, n]) => `<label><span>${n}</span><input type="range" min="0" max="100" value="${Math.round((V[k] == null ? 1 : V[k]) * 100)}" data-vol="${k}"></label>`).join('') + '</div>'; }
     h += '<button class="btn" data-a="tomenu">🏠 Salvar e voltar ao menu inicial</button></div>';
     h += '<div class="au-intro">O progresso é salvo automaticamente a cada poucos segundos e ao voltar ao menu.</div>';

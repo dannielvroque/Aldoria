@@ -1,5 +1,7 @@
 'use strict';
 /* ===== Dados do jogo (100% originais) ===== */
+/* aparelho de toque (mesmo critério de initTouch em game.js): textos não citam teclas nem mouse. TX(teclado, toque) escolhe o texto */
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window, TX = (k, t) => IS_TOUCH ? t : k;
 /* escala do mundo: tudo além da vila (raio 15) fica WS vezes mais longe. SCR leva um raio "antigo" para o mundo novo; UNS faz o inverso */
 /* WS 4.25 = mapa 2,5x maior que a versão 1.7. DENS: objetos espalhados (árvores, capim) — um pouco menos densos por m² que antes,
    o mundo é desenhado em blocos (world.js + engine.js) e só os blocos à vista vão para a GPU. MOB_K: quantos monstros a mais por zona */
