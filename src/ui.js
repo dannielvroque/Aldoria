@@ -118,16 +118,16 @@ const UI = (() => {
   <div class="tr">
     <div class="mm"${TX('', ' data-a="p-map" title="Abrir o mapa"')}><canvas width="${MM}" height="${MM}"></canvas></div>
     <div class="zone"></div>
+    <div class="fabrow"><button data-a="obj" class="tobj" title="O que fazer agora">❗</button><button data-a="fab" class="fab" title="Menu">☰</button></div>
     <div class="btns">
       <button data-a="p-inv" title="Inventário [I]">🎒</button>
       <button data-a="p-quest" title="Missões [Q]">📜</button>
       <button data-a="p-char" title="Personagem [C]">👤</button>
       <button data-a="p-lv" title="Níveis e regiões [B]">📊</button>
       <button data-a="p-look" title="Montarias [H]">🐎</button>
-      <button data-a="obj" class="tobj" title="O que fazer agora">❗</button>
       <button data-a="p-auto" title="Automático [T]">🤖</button>
       <button data-a="mute" title="Som [N]">🔊</button>
-      <button data-a="pause" title="Menu / Pausa [Esc]">☰</button>
+      <button data-a="pause" title="Menu / Pausa [Esc]">${TX('☰', '⏸')}</button>
     </div>
     <div class="qt glass off"><div class="qt-h">Missão</div><div class="qt-n"></div><div class="qt-p"></div></div>
   </div>
@@ -159,7 +159,7 @@ const UI = (() => {
 <div class="panel off" id="p-auto"><div class="ph"><h2>🤖 Automático</h2><kbd>T</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel lv off" id="p-lv"><div class="ph"><h2>📊 Níveis e Regiões</h2><kbd>B</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel tree off" id="p-tree"><div class="ph"><h2>🌳 Árvore de Habilidades</h2><kbd>V</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
-<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button><button data-a="maplg" class="maplg" title="Legenda">?</button></div></div><div class="map-side"></div></div></div></div>
+<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button><button data-a="maplg" class="maplg" title="Legenda">?</button></div><div class="map-gps off"></div></div><div class="map-side"></div></div></div></div>
 <div class="panel dlg off" id="p-dlg"><div class="ph"><div class="npc-ic"></div><div class="npc-id"><h2></h2><small></small></div><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div><div class="pf-foot"><button class="btn" data-a="close">Despedir-se</button></div></div>
 <div class="death off"><div class="death-in"><h1>Você caiu</h1><p>Suas forças se esvaem... mas Aldoria ainda precisa de você.</p><button class="btn primary" data-a="respawn">Voltar à vila</button></div></div>
 <div class="menu off"></div>
@@ -172,7 +172,7 @@ const UI = (() => {
     E.hp = q('.pf .bar.hp i'); E.hpT = q('.pf .bar.hp span'); E.mp = q('.pf .bar.mp i'); E.mpT = q('.pf .bar.mp span'); E.xp = q('.pf .bar.xp i'); E.evbar = q('.evbar'); E.evtoast = q('.evtoast'); E.hud = q('.hud');
     E.tfName = q('.tf-name'); E.tfIc = q('.tf-ic'); E.tfLv = q('.tf-lv'); E.tfHp = q('.tf .bar i'); E.tfHpT = q('.tf .bar span');
     E.zone = q('.zone'); E.qt = q('.qt'); E.qtN = q('.qt-n'); E.qtP = q('.qt-p'); E.mute = q('[data-a=mute]');
-    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]'), obj: q('.btns [data-a=obj]') }; E.objPop = q('.objpop'); E.mm = q('.mm');
+    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]'), obj: q('.fabrow [data-a=obj]') }; E.objPop = q('.objpop'); E.mm = q('.mm'); E.fab = q('.fab'); E.btns = q('.btns'); E.fabrow = q('.fabrow');
     E.badge = q('.auto-badge'); E.qa = q('.qarrow'); E.qaAr = q('.qa-ar'); E.qaD = q('.qa-d');
     E.npcIc = q('.npc-ic'); E.npcN = q('.npc-id h2'); E.npcR = q('.npc-id small');
     ctx = q('.mm canvas').getContext('2d');
@@ -192,7 +192,7 @@ const UI = (() => {
     E.slots.forEach(s => { s.$cdv = s.querySelector('.cdv'); s.$cdt = s.querySelector('.cdt'); s.$mpc = s.querySelector('.mpc'); s.$ic = s.querySelector('.ic'); s.$qty = s.querySelector('.qty'); });
 
     buildMenu();
-    [E.sb, q('.btns'), E.mm, E.objPop, E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    [E.sb, E.btns, E.fabrow, E.mm, E.objPop, E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
     WIN_KEYS.forEach(k => { E['p_' + k].addEventListener('pointerdown', () => winFront(k), true); E['p_' + k].querySelector('.ph').addEventListener('pointerdown', ev => winDrag(k, ev)); });
   }
 
@@ -401,7 +401,7 @@ const UI = (() => {
       g = `<div class="bag mats">${g}</div><div class="dim pad">Pedras de adicional caem de monstros. Leve-as ao Joalheiro.</div>`;
     }
     const tabs = `<div class="itabs"><button class="${tab === 'bag' ? 'on' : ''}" data-a="itab" data-k="bag">Mochila <small>${p.inv.length}/${BAG}</small></button><button class="${tab === 'mat' ? 'on' : ''}" data-a="itab" data-k="mat">Materiais</button></div>`;
-    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para pegá-lo e toque no boneco para equipar.');
+    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para ver os atributos e escolher: equipar, guardar, vender ou mover.');
     setBody(E.b_inv, `<div class="eqw">${l}${tabs}${g}<div class="foot-note">${hint}</div><div class="igold"><span>🪙</span><b>${fmt(p.gold)}</b><small>ouro</small></div></div>`);
     { const cv = E.b_inv.querySelector('canvas.pv'); if (cv && Game.portrait) { if (st.pvYaw == null) st.pvYaw = .6; Game.portrait(cv, st.pvYaw); } }
   }
@@ -447,7 +447,7 @@ const UI = (() => {
     let h = '<div class="pause-b">';
     h += '<button class="btn primary" data-a="close">▶ Continuar jogando</button>';
     h += TX('', '<button class="btn" data-a="p-auto">🤖 Configurar automático</button>');
-    h += TX('', `<button class="btn" data-a="eco">🔋 Economia de energia: <b>${Game.ecoOn() ? 'Ligada' : 'Desligada'}</b><i style="display:block;font:11px var(--sans);color:var(--mut)">30 FPS e menos calor; desligue para 60 FPS</i></button>`);
+    h += TX('', `<button class="btn" data-a="eco">🔋 Economia de energia: <b>${Game.ecoOn() ? 'Ligada' : 'Desligada'}</b><i style="display:block;font:11px var(--sans);color:var(--mut)">40 FPS e menos calor; desligue para 60 FPS</i></button>`);
     h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b>${TX(' <small>[G]</small>', '')}</button>`;
     h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'}${TX(' <small>[N]</small>', '')}</button>`;
     { const V = Game.getVol ? Game.getVol() : {}; h += '<div class="mixer">' + [['master', '🔊 Geral'], ['sfx', '⚔ Efeitos'], ['amb', '🌿 Ambiente'], ['music', '🎵 Música']].map(([k, n]) => `<label><span>${n}</span><input type="range" min="0" max="100" value="${Math.round((V[k] == null ? 1 : V[k]) * 100)}" data-vol="${k}"></label>`).join('') + '</div>'; }
@@ -589,6 +589,7 @@ const UI = (() => {
   const zlv = z => ZLV[z.id] || (z.lv ? 'Nv ' + DLV(z.lv[0]) + '–' + DLV(z.lv[1]) : '');
   const REG_LV = { aldoria: 'Níveis 1–50 (treino, campos, floresta e ruínas)', desert: 'Níveis 26–40', snow: 'Níveis 37–50', volcano: 'Níveis 48–60' };
   function objectivePos(G) {
+    if (G.gps) return [G.gps.x, G.gps.z, G.gps.n]; // o destino do GPS (escolha do jogador) vale mais que o objetivo da história
     const s = G.main && MAIN[G.main.i];
     if (!s || ELV() < s.lvl) { // sem passo da história: missão ativa (monstro mais próximo da zona dela)
       const q = QUESTS.find(q => G.quests[q.id] && G.quests[q.id].state === 'active' && q.zone); if (!q) return null;
@@ -606,6 +607,8 @@ const UI = (() => {
     const p = G.player; ms.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
     return [ms[0].x, ms[0].z, s.item || ms[0].name];
   }
+  /* celular: botões da direita ficam recolhidos no botão ☰ e se abrem como um balão; escolher uma opção (ou tocar fora) recolhe de novo */
+  function fabSync() { setCls(E.btns, 'open', !!st.fabOpen); setCls(E.fab, 'on', !!st.fabOpen); setText(E.fab, st.fabOpen ? '✕' : '☰'); }
   function mapToggle() { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
   /* celular: botão ❗ "o que fazer agora". Mostra a etapa da história, o destino (já marcado no minimapa) e atalhos para o mapa e as missões */
   const objKey = G => G.main ? G.main.i + ':' + G.main.prog : '';
@@ -620,7 +623,8 @@ const UI = (() => {
     const rq = QUESTS.filter(q => G.quests[q.id] && G.quests[q.id].state === 'ready'), rd = G.daily ? G.daily.list.filter(d => d.done && !d.claimed).length : 0;
     let btns = rq.map(q => `<button class="btn primary" data-a="qturn" data-id="${q.id}">✅ Entregar: ${esc(q.n)}</button>`).join('');
     if (rd) btns += `<button class="btn primary" data-a="dailyall">🎁 Resgatar ${rd} diário(s)</button>`;
-    if (s && ELV() >= s.lvl && s.k !== 'do') btns += `<button class="btn ${btns ? '' : 'primary'}" data-a="go">🧭 Ir até lá</button>`;
+    if (G.gps || (s && ELV() >= s.lvl && s.k !== 'do')) btns += `<button class="btn ${btns ? '' : 'primary'}" data-a="go">🧭 ${G.gps ? 'Seguir o GPS' : 'Ir até lá'}</button>`;
+    if (G.gps) btns += '<button class="btn" data-a="gpscancel">✕ Cancelar GPS</button>';
     h += `<div class="op-b col">${btns}</div><div class="op-b"><button class="btn" data-a="p-map">🗺️ Mapa</button><button class="btn" data-a="p-quest">📜 Missões</button></div>`;
     if (E.objPop._h !== h) { E.objPop._h = h; E.objPop.innerHTML = h; }
   }
@@ -743,6 +747,24 @@ const UI = (() => {
     cv.addEventListener('mousedown', e => { drag = [e.clientX, e.clientY]; });
     window.addEventListener('mouseup', () => { drag = null; });
     window.addEventListener('mousemove', e => { if (!drag || !st.mapK) return; const s = sc(); st.mapC = [st.mapC[0] - (e.clientX - drag[0]) * s / st.mapK, st.mapC[1] - (e.clientY - drag[1]) * s / st.mapK]; drag = [e.clientX, e.clientY]; st.mapView = 'free'; mapClamp(); mapReq(); });
+    /* toque: um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca o destino do GPS */
+    const pts = new Map(); let tap = null, pinch = 0;
+    cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) { } pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 1) tap = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false }; else { tap = null; const [a, b] = [...pts.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+    cv.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'touch' || !pts.has(e.pointerId) || !st.mapK) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); const s = sc();
+      if (pts.size === 1) { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true; if (!tap || tap.moved) { st.mapC = [st.mapC[0] - (e.clientX - prev[0]) * s / st.mapK, st.mapC[1] - (e.clientY - prev[1]) * s / st.mapK]; st.mapView = 'free'; mapClamp(); mapReq(); } }
+      else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), r = cv.getBoundingClientRect(); if (pinch > 0) { mapZoom(d / pinch, ((a[0] + b[0]) / 2 - r.left) * s, ((a[1] + b[1]) / 2 - r.top) * s); mapReq(); } pinch = d; }
+    });
+    const up = e => { if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return; pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; if (tap && !tap.moved && pts.size === 0 && performance.now() - tap.t < 500) mapTap(tap.x, tap.y); if (!pts.size) tap = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => { pts.delete(e.pointerId); pinch = 0; tap = null; });
+  }
+  function mapTap(cx, cy) { const w = mapToWorld(cx, cy); if (!w) return; st.mapPin = w; mapGpsSync(); mapReq(); }
+  const fmDist = d => d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m';
+  function mapGpsSync() { // barra do mapa: confirma o destino tocado, ou mostra o GPS ativo
+    const el = E.p_map && E.p_map.querySelector('.map-gps'); if (!el || !G.player) return; const pin = st.mapPin, g = G.gps, p = G.player; let h = '';
+    if (pin) h = `<span>📍 ${fmDist(Math.hypot(pin[0] - p.x, pin[1] - p.z))}${coastD(pin[0], pin[1]) < 2 ? ' · água: vou até a margem' : ''}</span><button class="btn primary" data-a="gpsgo">Ir até aqui</button><button class="btn" data-a="gpsx">✕</button>`;
+    else if (g) h = `<span>🧭 ${esc(g.n)} · ${fmDist(Math.hypot(g.x - p.x, g.z - p.z))}</span><button class="btn" data-a="gpscancel">Cancelar GPS</button>`;
+    if (el._h !== h) { el._h = h; el.innerHTML = h; } setVis(el, !!h);
   }
   /* ponto do mundo sob (clientX, clientY) no mapa M aberto, ou null (usado pelo teleporte do painel do administrador) */
   function mapToWorld(cx, cy) {
@@ -771,6 +793,7 @@ const UI = (() => {
       c.beginPath(); c.arc(0, 0, 8, 0, 7); c.fillStyle = '#ffd84a'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#3a2508'; c.stroke(); c.fillStyle = '#3a2508'; c.fillRect(-1.3, -5, 2.6, 6); c.fillRect(-1.3, 2.4, 2.6, 2.4); c.restore(); },
     me(c, x, y, u, a) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 15, 0, 7); c.fillStyle = 'rgba(79,209,255,.22)'; c.fill(); c.rotate(-(a || 0) + Math.PI);
       c.beginPath(); c.moveTo(0, -13); c.lineTo(8.5, 9); c.lineTo(0, 4); c.lineTo(-8.5, 9); c.closePath(); c.fillStyle = '#4fd1ff'; c.fill(); c.lineWidth = 2.2; c.strokeStyle = '#fff'; c.stroke(); c.restore(); },
+    pin(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u * 1.2, u * 1.2); c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-11, -14, -9, -26, 0, -26); c.bezierCurveTo(9, -26, 11, -14, 0, 0); c.fillStyle = '#e53935'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#fff'; c.stroke(); c.beginPath(); c.arc(0, -17, 3.6, 0, 7); c.fillStyle = '#fff'; c.fill(); c.restore(); },
     mob(c, x, y, u, el) { c.beginPath(); c.arc(x, y, (el ? 3.6 : 2.6) * u, 0, 7); c.fillStyle = el ? '#ffcf4a' : '#ff5a4a'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(30,10,5,.85)'; c.stroke(); },
     road(c, x, y, u) { c.lineCap = 'round'; c.beginPath(); c.moveTo(x - 9 * u, y + 3 * u); c.quadraticCurveTo(x, y - 5 * u, x + 9 * u, y + 1 * u); c.lineWidth = 5 * u; c.strokeStyle = 'rgba(70,44,18,.75)'; c.stroke(); c.lineWidth = 3 * u; c.strokeStyle = '#e3c890'; c.stroke(); },
   };
@@ -871,9 +894,12 @@ const UI = (() => {
     const ob = objectivePos(G), pu = 1 + .12 * Math.sin(performance.now() / 200);
     if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); occ.push([x - 15 * ue, y - 15 * ue, x + 15 * ue, y + 15 * ue]); L.push({ x, y, r: 16, t: ob[2], pr: 100, fs: 13, font: '700 # system-ui, sans-serif', col: '#ffe066', bg: 1, edge: 'rgba(255,216,74,.6)' }); }
     if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); occ.push([x - 14 * ue, y - 14 * ue, x + 14 * ue, y + 14 * ue]); }
+    if (G.gps) { const rt = [[p.x, p.z]].concat(G.gps.wp.slice(G.gps.i)); c.save(); c.setLineDash([7 * u, 6 * u]); c.lineWidth = 3 * u; c.lineJoin = 'round'; c.strokeStyle = 'rgba(79,209,255,.95)'; c.beginPath(); rt.forEach((q, i) => { const [x, y] = toS(q[0], q[1]); if (i) c.lineTo(x, y); else c.moveTo(x, y); }); c.stroke(); c.restore(); }
     for (const [k, x, y, a] of ic) MI[k](c, x, y, ue, a);
     placeLabels(c, L, occ, Wc, Hc, u * (IS_TOUCH ? .85 : 1));
     if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); MI.obj(c, x, y, ue, pu); }
+    if (st.mapPin) { const [x, y] = toS(st.mapPin[0], st.mapPin[1]); MI.pin(c, x, y, ue); }
+    mapGpsSync();
     if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); MI.me(c, x, y, ue, p.rot); }
     else { // jogador fora da vista: seta na borda apontando para ele
       const [x, y] = toS(p.x, p.z), a = Math.atan2(y - Hc / 2, x - Wc / 2), m = 18 * u, ex = Math.max(m, Math.min(Wc - m, Wc / 2 + Math.cos(a) * Wc)), ey = Math.max(m, Math.min(Hc - m, Hc / 2 + Math.sin(a) * Hc));
@@ -969,7 +995,7 @@ const UI = (() => {
       h += `<h3>${id === 'weapon' ? 'Armas' : 'Roupas e armaduras'} <small>💰 ${fmt(p.gold)} · comuns, sem refino</small></h3><div class="shop">`;
       for (const { it, price } of list) {
         const e = p.eq[it.slot], d = cmpDelta(it, e);
-        h += `<div class="shop-r"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b>${esc(itemName(it))}</b><small>${SLOTS[it.slot]} · ${istr(it)}${d == null ? ' · <i class="ar new">●</i> espaço vazio' : d > 0 ? ' · <i class="ar up">▲ melhor</i>' : ''}</small></div><button class="btn" data-a="buyitem" data-s="${it.slot}" data-w="${it.wt || ''}" data-g="${it.grade}"${p.gold < price ? ' disabled' : ''}>Comprar<small>💰 ${fmt(price)}</small></button></div>`;
+        h += `<div class="shop-r"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b>${esc(itemName(it))}</b><small>${SLOTS[it.slot]} · ${istr(it)}${d == null ? ' · <i class="ar new">●</i> espaço vazio' : d > 0 ? ' · <i class="ar up">▲ melhor</i>' : d < 0 ? ' · <i class="ar dn">▼ pior</i>' : ''}</small></div><button class="btn" data-a="buyitem" data-s="${it.slot}" data-w="${it.wt || ''}" data-g="${it.grade}"${p.gold < price ? ' disabled' : ''}>Comprar<small>💰 ${fmt(price)}</small></button></div>`;
       }
       h += '</div><div class="dim pad">O estoque acompanha o seu nível: grau atual e o anterior.</div>';
     } else if (id === 'stable') {
@@ -1002,7 +1028,8 @@ const UI = (() => {
       if (!p.inv.length) h += '<div class="dim pad">Sua mochila está vazia.</div>';
       const ic = SLOT_IC(p.cls);
       p.inv.forEach(it => {
-        h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
+        const d = cmpDelta(it, p.eq[it.slot]), cm = d == null ? '<i class="ar new">●</i> espaço vazio' : d > 0 ? '<i class="ar up">▲ melhor que o equipado</i>' : d < 0 ? '<i class="ar dn">▼ pior que o equipado</i>' : '<i class="ar eq">＝ igual ao equipado</i>';
+        h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}<br>${cm}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
       });
       h += '</div>';
     } else if (nid === 'selene') { // Refinador: fundir peças iguais em Ancient
@@ -1057,6 +1084,7 @@ const UI = (() => {
     if (typeof G === 'undefined' || !G.player || !st.panel) return;
     const on = k => st.wins.includes(k);
     if (on('inv') || (st.modal === 'dlg' && st.side)) renderInv(G);
+    if (st.card) cardRender();
     if (on('char')) renderChar(G);
     if (on('quest')) renderQuest(G);
     if (on('map')) renderMap(G);
@@ -1071,6 +1099,7 @@ const UI = (() => {
   /* ---------- ações (cliques delegados) ---------- */
   function act(a, d) {
     let r;
+    if (a.startsWith('card-')) { cardAct(a, d); return; }
     switch (a) {
       case 'close': if (d && d._k) winClose(d._k); else closeAll(); return;
       case 'p-inv': togglePanel('inv'); return;
@@ -1083,7 +1112,11 @@ const UI = (() => {
       case 'qturn': Game.turnInQuest(d.id); refreshPanels(); return;
       case 'dailyall': if (G.daily) G.daily.list.forEach((x, k) => { if (x.done && !x.claimed) Game.claimDaily(k); }); refreshPanels(); return;
       case 'maplg': st.mapLeg = !st.mapLeg; renderMap(G); return;
+      case 'gpsgo': { const pin = st.mapPin; if (pin) { const v = VILLAGES.find(q => Math.hypot(q.cx - pin[0], q.cz - pin[1]) < 40); st.mapPin = null; if (Game.gpsGo(pin[0], pin[1], v ? v.n : 'Destino')) winClose('map'); else renderMap(G); } return; }
+      case 'gpsx': st.mapPin = null; renderMap(G); return;
+      case 'gpscancel': Game.gpsCancel(); st.mapPin = null; renderMap(G); objSync(G); return;
       case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
+      case 'fab': st.fabOpen = !st.fabOpen; fabSync(); return;
       case 'p-lv': togglePanel('lv'); return;
       case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
       case 'pause': showPanel('pause'); return;
@@ -1207,6 +1240,56 @@ const UI = (() => {
     m.style.left = Math.min(c.x, (W || innerWidth) - w - 6) + 'px'; m.style.top = Math.min(c.y, (H || innerHeight) - hh - 6) + 'px';
   }
   function cmClose() { st.cm = null; cmRender(); }
+  /* celular: tocar num item (mochila, baú ou equipado) abre um cartão com todos os atributos, a comparação com o que está equipado,
+     o valor de venda e as ações. No lugar do clique que "pega" o item e do botão direito. */
+  function cardItem(c) {
+    if (c.zone === 'bank') { const A = Game.account(), it = A && A.bank.items.find(x => x.id === c.id); return it ? { it, eq: null } : null; }
+    return Game.findItem(c.id);
+  }
+  function cardClose() { st.card = null; cardRender(); }
+  function cardRender() {
+    let m = root.querySelector('.itcard'); const c = st.card;
+    if (c && !st.wins.includes('inv') && !(st.modal === 'dlg' && st.side)) st.card = null;
+    const f = st.card && cardItem(st.card);
+    if (!f) { st.card = null; if (m) m.remove(); return; }
+    if (!m) { m = document.createElement('div'); m.className = 'itcard glass'; root.appendChild(m); shield(m); }
+    const p = G.player, it = f.it, inBank = c.zone === 'bank', lines = itemTip(it, f.eq ? null : p.eq[it.slot], !!f.eq).split('\n').slice(0, -1); // a última linha é dica de mouse
+    let h = `<div class="ic-h"><b style="color:${rcol(it)}">${esc(lines[0])}</b><button class="x" data-a="card-x" title="Fechar">✕</button></div><ul>`;
+    for (const l of lines.slice(1)) h += `<li class="${/não pode/.test(l) ? 'bad' : /\(\+/.test(l) ? 'up' : /\(-/.test(l) ? 'dn' : /^Valor/.test(l) ? 'val' : ''}">${esc(l)}</li>`;
+    h += '</ul>';
+    if (c.ask) h += `<div class="ic-q">Excluir para sempre?</div><div class="ic-b"><button class="btn bad" data-a="card-yes">Sim</button><button class="btn" data-a="card-no">Não</button></div>`;
+    else {
+      let b = '';
+      if (f.eq) b += `<button class="btn primary" data-a="card-un" data-s="${f.eq}">Desequipar</button>`;
+      else if (inBank) b += `<button class="btn primary" data-a="card-take">Retirar do baú</button>`;
+      else {
+        b += `<button class="btn primary" data-a="card-eq"${noUse(it) ? ' disabled' : ''}>Equipar</button>`;
+        if (st.side === 'bank') b += `<button class="btn" data-a="card-put">Guardar no baú</button>`;
+        if (shopNear()) b += `<button class="btn" data-a="card-sell">Vender 💰 ${fmt(itemValue(it))}</button>`;
+      }
+      if (!f.eq) b += `<button class="btn" data-a="card-mv">Mover</button>`;
+      if (!f.eq && !inBank) b += `<button class="btn bad" data-a="card-del">Excluir</button>`;
+      h += `<div class="ic-b">${b}</div>`;
+    }
+    if (m._h !== h) { m._h = h; m.innerHTML = h; } // só remonta se mudou (senão o botão some entre o toque e o clique)
+  }
+  function cardAct(a, d) {
+    const c = st.card; if (!c && a !== 'card-x') return; let r = null;
+    switch (a) {
+      case 'card-x': cardClose(); return;
+      case 'card-del': c.ask = true; cardRender(); return;
+      case 'card-no': c.ask = false; cardRender(); return;
+      case 'card-yes': r = Game.deleteItem(c.id); break;
+      case 'card-un': r = Game.unequip(d.s); break;
+      case 'card-eq': r = Game.equip(c.id); break;
+      case 'card-put': r = Game.bankPut(c.id); break;
+      case 'card-take': r = Game.bankTake(c.id); break;
+      case 'card-sell': r = Game.sellItem(c.id); break;
+      case 'card-mv': st.carry = { id: c.id, from: c.zone === 'eq' ? 'bag' : c.zone }; cardClose(); carryRender(); refreshPanels(); toast('Toque num espaço vazio ou em outro item para soltar.'); return;
+    }
+    if (r && r.ok === false && r.msg) toast(r.msg);
+    cardClose(); refreshPanels();
+  }
 
   /* ---------- log, flutuantes, toast, banner ---------- */
   const floats = { free: [], used: [] };
@@ -1451,6 +1534,7 @@ const UI = (() => {
        Shift+clique faz a ação rápida de antes (equipar/guardar/retirar); Esc ou botão direito cancela. Com Ferreiro/Joalheiro abertos o clique só escolhe o item. */
     root.addEventListener('click', ev => {
       const T = ev.target; if (!T.closest) return; const cell = T.closest('.bi[data-zone]'), eqb = T.closest('.eqbox'), c = st.carry;
+      if (IS_TOUCH && !c && st.side !== 'smith' && st.side !== 'jewel') { const ie = T.closest('.bi.it[data-id], .es.has[data-id]'); if (ie) { ev.stopPropagation(); ev.preventDefault(); st.card = { id: +ie.dataset.id, zone: ie.dataset.zone || 'eq', ask: false }; cardRender(); return; } }
       if (c) {
         const it = carryItem();
         if (cell && it) { ev.stopPropagation(); ev.preventDefault(); st.carry = null; carryRender(); if (cell.dataset.zone === c.from && +cell.dataset.slot === it.pos) refreshPanels(); else Game.itemMove(c.from, c.id, cell.dataset.zone, +cell.dataset.slot); return; }
@@ -1462,6 +1546,7 @@ const UI = (() => {
     window.addEventListener('mousemove', ev => { if (st.carry) { const g = root.querySelector('.carry-ghost'); if (g) { g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px'; } } });
     root.addEventListener('click', ev => {
       const t = ev.target.closest('[data-a]');
+      if (st.fabOpen && t && t.dataset.a !== 'fab') { st.fabOpen = false; fabSync(); } // escolheu uma opção do menu: recolhe
       if (st.objOpen && t && t.dataset.a !== 'obj') { st.objOpen = false; objSync(G); } // qualquer outro botão da interface fecha o aviso de objetivo
       if (!t || t.disabled || !root.contains(t)) return;
       { const pn = t.closest('.panel'); if (pn && t.dataset.a === 'close') t.dataset._k = pn.id.slice(2); }
@@ -1497,7 +1582,7 @@ const UI = (() => {
     root.addEventListener('mousedown', ev => { if (st.cm && !ev.target.closest('.ctxm')) cmClose(); }, true);
     root.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('button, .btn, .bi, .es') && Game.sound) Game.sound('click', { force: true }); }, true);
     root.addEventListener('input', ev => { const t = ev.target; if (t.dataset && t.dataset.vol) { Game.setVol(t.dataset.vol, t.value / 100); return; } if (!t.dataset || !t.dataset.ci) return; if (t.dataset.ci === 'cr') Game.createSet('hcx', t.value); else Game.setLook('hcx', t.value); });
-    addEventListener('pointerdown', () => { if (st.objOpen) { st.objOpen = false; objSync(G); } }); // toque no jogo (fora da interface) fecha o aviso de objetivo
+    addEventListener('pointerdown', () => { if (st.objOpen) { st.objOpen = false; objSync(G); } if (st.fabOpen) { st.fabOpen = false; fabSync(); } }); // toque no jogo (fora da interface) fecha o aviso de objetivo
     addEventListener('keydown', ev => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey || st.menu) return;
       const k = ev.key.toLowerCase();

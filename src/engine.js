@@ -545,7 +545,7 @@ class Renderer {
     this.resize(true); return this.q.name;
   }
   resize(force) {
-    const dpr = Math.min(window.devicePixelRatio || 1, this.coarse ? (this.eco ? 1.25 : 1.5) : 2) * this.q.scale, w = Math.max(2, Math.floor(innerWidth * dpr)), h = Math.max(2, Math.floor(innerHeight * dpr));
+    const dpr = Math.min(window.devicePixelRatio || 1, this.coarse ? (this.eco ? 1.4 : 1.5) : 2) * this.q.scale, w = Math.max(2, Math.floor(innerWidth * dpr)), h = Math.max(2, Math.floor(innerHeight * dpr));
     if (force || this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w; this.canvas.height = h; this.W = w; this.H = h; this.buildTargets();
     }

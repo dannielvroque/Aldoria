@@ -18,7 +18,8 @@ const Game = (() => {
   const IDM = M.id();
 
   let R = null, canvas = null, world = null, last = 0;
-  /* economia de energia: 30 FPS e resolução um pouco menor, para o celular não esquentar. Padrão: ligada no toque (aldoria_eco) */
+  /* economia de energia: ~40 FPS e resolução um pouco menor, para o celular não esquentar. Padrão: ligada no toque (aldoria_eco) */
+  const ECO_MS = 1000 / 40; let ecoLast = 0, ecoAcc = 0;
   let eco = IS_TOUCH; try { const s = localStorage.getItem('aldoria_eco'); if (s != null) eco = s === '1'; } catch (e) { }
   const obstacles = [], grid = new Map(), GC = 8, GOFF = 2048;
   const keys = {}, cam = { yaw: 0, dist: 15, x: 0, z: 0, init: false };
@@ -507,8 +508,55 @@ const Game = (() => {
     if (!stepOpen(s) || s.k !== 'explore') return;
     const p = G.player; if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) { UI.toast('Descoberto: ' + s.place); stepDone(); }
   }
+  /* ---------- GPS: toque no mapa marca um destino; o personagem anda sozinho por uma rota pela terra ---------- */
+  function gpsRoute(x0, z0, x1, z1) { // A* (8 vizinhos) numa grade de 20 m que só passa por terra; devolve pontos [x, z] suavizados, ou null
+    const S = 20, nx = Math.ceil((WB.x1 - WB.x0) / S), nz = Math.ceil((WB.z1 - WB.z0) / S), N = nx * nz;
+    const ci = x => Math.max(0, Math.min(nx - 1, Math.floor((x - WB.x0) / S))), cj = z => Math.max(0, Math.min(nz - 1, Math.floor((z - WB.z0) / S)));
+    const cx = i => WB.x0 + (i + .5) * S, cz = j => WB.z0 + (j + .5) * S, si = ci(x0), sj = cj(z0), ti = ci(x1), tj = cj(z1), s0 = sj * nx + si, t0 = tj * nx + ti;
+    const ok = (i, j) => (j * nx + i === t0) || coastD(cx(i), cz(j)) > 6, g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+    const open = [[Math.hypot(ti - si, tj - sj) * S, s0]]; g[s0] = 0; let found = false;
+    while (open.length) {
+      let b = 0; for (let q = 1; q < open.length; q++) if (open[q][0] < open[b][0]) b = q;
+      const [, cur] = open[b]; open[b] = open[open.length - 1]; open.pop(); if (done[cur]) continue; done[cur] = 1;
+      if (cur === t0) { found = true; break; }
+      const ci0 = cur % nx, cj0 = (cur / nx) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue; const i = ci0 + di, j = cj0 + dj; if (i < 0 || j < 0 || i >= nx || j >= nz || !ok(i, j)) continue;
+        if (di && dj && !(ok(ci0 + di, cj0) && ok(ci0, cj0 + dj))) continue; // diagonal não corta quina de água
+        const id = j * nx + i, ng = g[cur] + (di && dj ? 1.414 : 1) * S; if (ng < g[id]) { g[id] = ng; from[id] = cur; open.push([ng + Math.hypot(i - ti, j - tj) * S, id]); }
+      }
+    }
+    if (!found) return null;
+    const pts = []; for (let c = t0; c >= 0; c = from[c]) { pts.push([cx(c % nx), cz((c / nx) | 0)]); if (c === s0) break; } pts.reverse(); pts[pts.length - 1] = [x1, z1];
+    const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 8); for (let k = 1; k < n; k++) if (coastD(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n) < 4) return false; return true; };
+    const out = []; let a = [x0, z0], k = 0; // puxa o fio: do ponto atual, vai ao ponto mais longe que ainda se alcança em linha reta
+    while (k < pts.length) { let far = k; for (let q = pts.length - 1; q > k; q--) if (clear(a, pts[q])) { far = q; break; } out.push(pts[far]); a = pts[far]; k = far + 1; }
+    return out;
+  }
+  function gpsGo(x, z, name) {
+    const p = G.player; if (!p || G.dead) return false; const q = { x, z }; landClamp(q);
+    const r = gpsRoute(p.x, p.z, q.x, q.z); if (!r) { UI.toast('Não há caminho por terra até lá.'); return false; }
+    G.gps = { x: q.x, z: q.z, n: name || 'Destino', wp: r, i: 0, walk: true, chk: { t: G.t, x: p.x, z: p.z }, rb: 0 }; cmd = null; tmob = null;
+    UI.log('GPS: indo para ' + G.gps.n + ' (' + Math.round(Math.hypot(q.x - p.x, q.z - p.z)) + ' m).', 'sys'); return true;
+  }
+  function gpsCancel() { if (!G.gps) return; if (cmd && cmd.gps) cmd = null; G.gps = null; UI.log('GPS cancelado.', 'sys'); }
+  function gpsResume() { const g = G.gps; return !!g && gpsGo(g.x, g.z, g.n); }
+  function gpsTick(kd) { // a cada quadro: segue o próximo ponto da rota; o controle manual só pausa (o marcador continua)
+    const g = G.gps, p = G.player; if (!g || !p || G.dead) return;
+    if (kd || (cmd && !cmd.gps)) { g.walk = false; return; }
+    if (Math.hypot(g.x - p.x, g.z - p.z) < 4) { G.gps = null; if (cmd && cmd.gps) cmd = null; UI.toast('📍 Você chegou ao destino!'); sfx('quest'); return; }
+    if (!g.walk) return;
+    if (G.t - g.chk.t > 4) { // parado há 4 s: recalcula a rota (até 3 vezes) e, se continuar preso, desiste
+      if (Math.hypot(p.x - g.chk.x, p.z - g.chk.z) < 2) { if (++g.rb > 3) { G.gps = null; cmd = null; UI.toast('GPS parou: algo bloqueia o caminho.'); return; } const r = gpsRoute(p.x, p.z, g.x, g.z); if (r) { g.wp = r; g.i = 0; cmd = null; } }
+      g.chk = { t: G.t, x: p.x, z: p.z };
+    }
+    if (cmd) return;
+    while (g.i < g.wp.length - 1 && Math.hypot(g.wp[g.i][0] - p.x, g.wp[g.i][1] - p.z) < 6) g.i++;
+    const w = g.wp[g.i]; cmd = { type: 'move', x: w[0], z: w[1], gps: true };
+  }
   /* um toque: vai até o objetivo da história (NPC, lugar, ou o monstro/chefe mais próximo do passo). Devolve false se não há para onde ir */
   function goObjective() {
+    if (G.gps) return gpsResume();
     const s = G.main && curStep(), p = G.player; if (!s || !stepOpen(s) || G.dead) return false;
     if (s.k === 'talk') { const n = NPCS.find(x => x.id === s.npc); if (!n) return false; cmd = { type: 'npc', npc: n }; return true; }
     if (s.k === 'explore') { cmd = { type: 'move', x: s.x, z: s.z }; return true; }
@@ -862,8 +910,10 @@ const Game = (() => {
     UI.float(m.x, m.hgt, m.z, crit ? d + '!' : String(d), crit ? 'crit' : 'dmg');
     if (m.hp <= 0) killMob(m);
   }
+  const CAMP_DMG0 = .7;
   function playerDmg(m, mult, skill, so) {
     let d = G.stats.atk * mult * (.9 + rnd() * .2) * 100 / (100 + m.def);
+    { const el = EL(G.player); if (el < CAMP.endLv) d *= CAMP_DMG0 + (1 - CAMP_DMG0) * Math.max(0, el - 1) / (CAMP.endLv - 1); } // campo de treino: o começo é mais duro (dano ×CAMP_DMG0 no nível 1, sobe até ×1 no nível 29)
     if (skill) d *= G.stats.skillMul;
     if (m.mark > 0) d *= 1 + m.markV;
     if (so && so.exec && m.hp < m.maxHp * so.exec) d *= 2; // golpe executor
@@ -1160,6 +1210,7 @@ const Game = (() => {
     if (!mouse.in) return null; const r = pickRay(mouse.x, mouse.y); if (!r || r.d[1] >= -1e-4) return null;
     const t = -r.o[1] / r.d[1]; return [r.o[0] + r.d[0] * t, r.o[2] + r.d[2] * t];
   }
+  const SPLASH_R = 3, SPLASH_M = .6; // habilidades de alvo único: raio (m) e fração do dano para quem está perto do alvo
   function useSkill(i) {
     const p = G.player; if (G.state !== 'play' || G.dead || p.dash) return;
     const s0 = CLASSES[p.cls].skills[i]; if (!s0) return;
@@ -1177,15 +1228,21 @@ const Game = (() => {
       return true;
     };
     const tooFar = () => { cmd = { type: 'attack', mob: m }; if (throttle('far', 1)) UI.log('Alvo fora de alcance.', 'sys'); };
+    /* dano em raio: golpe de alvo único também acerta quem está colado ao alvo (SPLASH_M do dano). s.splash = raio próprio; 0 desliga */
+    const splash = (t, mult) => {
+      const r = s.splash == null ? SPLASH_R : s.splash; if (!r || s.multi) return; let n = 0;
+      for (const mm of G.mobs) { if (mm.dead || mm === t || Math.hypot(mm.x - t.x, mm.z - t.z) > r + mm.rad * .5) continue; hitMob(mm, mult * SPLASH_M, true); n++; }
+      if (n || k === 'proj') fxDisc(t.x, t.z, .3, r, .3, col, .45);
+    };
     if (k === 'melee') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
-      face(m.x, m.z); spend(); const dd = hitMob(m, s.m, true, s); fxDisc(m.x, m.z, .3, 2.2, .3, col, .5);
+      face(m.x, m.z); spend(); const dd = hitMob(m, s.m, true, s); fxDisc(m.x, m.z, .3, 2.2, .3, col, .5); splash(m, s.m);
       if (s.leech && dd) { const v = Math.round(dd * s.leech); p.hp = Math.min(p.maxHp, p.hp + v); UI.float(p.x, 2.8, p.z, '+' + v, 'heal'); fxBurst(p.x, 1.2, p.z, [1, .25, .3], 10, 2, .15); }
     } else if (k === 'proj') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
       face(m.x, m.z); spend();
       if (s.focus && pet) pet.focus = m;
-      launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 26, col, size: .4, arrow: p.cls === 'huntress', onHit: t => { hitMob(t, s.m, true, s); if (s.slow && !t.dead) { t.slow = s.sdur; t.slowV = s.slow; } } });
+      launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 26, col, size: .4, arrow: p.cls === 'huntress', onHit: t => { hitMob(t, s.m, true, s); if (s.slow && !t.dead) { t.slow = s.sdur; t.slowV = s.slow; } splash(t, s.m); } });
       if (s.multi) { // alvos extras próximos ao alvo principal
         const ex = G.mobs.filter(mm => !mm.dead && mm !== m && Math.hypot(mm.x - m.x, mm.z - m.z) < 9 && Math.hypot(mm.x - p.x, mm.z - p.z) < s.rng + 4).sort((a, b) => Math.hypot(a.x - m.x, a.z - m.z) - Math.hypot(b.x - m.x, b.z - m.z)).slice(0, s.multi);
         ex.forEach((t2, j) => launch({ x: p.x, y: 1.6, z: p.z, tgt: t2, speed: 24 - j, col, size: .34, arrow: p.cls === 'huntress', onHit: t => hitMob(t, s.m * .8, true) }));
@@ -1394,7 +1451,7 @@ const Game = (() => {
       }
       return;
     }
-    const spd = G.stats.spd * (p.mount ? 1 + mountSpd(p.mount) : 1) * (TST.spd ? 3 : 1), kd = keyDir();
+    const spd = G.stats.spd * (p.mount ? 1 + mountSpd(p.mount) : 1) * (TST.spd ? 3 : 1), kd = keyDir(); gpsTick(kd);
     const go = (tx, tz, speed, steer) => {
       const ftx = tx, ftz = tz;
       let routed = false; // rota da vila já desvia de tudo: sem desvio local, que oscila em ruas estreitas
@@ -1921,6 +1978,7 @@ const Game = (() => {
     return true;
   }
   function startPlay() {
+    G.gps = null;
     wx.t = Math.min(wx.t, 60); G.state = 'play'; G.dead = false; G.wasSafe = false; portalLock = true; loadAuto(); autoHome = null; autoPause = 0; autoOut.hp = autoOut.mp = false; populate(); cam.init = false; lastZone = null; combatT = -99;
     UI.hideMenu(); UI.hideDeath(); UI.closeAll();
     evTick('load'); // mostra a faixa e o aviso "Evento ativo" se já houver evento rodando
@@ -1967,10 +2025,10 @@ const Game = (() => {
     let back = 0; for (let i = 0; i < p.sk.length; i++) { back += skSpent(i, p.sk[i]); p.sk[i] = 0; }
     p.gold -= cost; p.sp += back; UI.log('Habilidades redistribuídas: ' + back + ' pontos devolvidos. Fale com o Mestre de Habilidades.', 'sys'); UI.refreshPanels();
   }
-  function starterKit(evo) { // modo história: arma e roupa básicas do tier atual + 10 poções de cada
+  function starterKit(evo) { // modo história: arma e roupa completa (elmo, peitoral, calça, luvas, botas) básicas do tier atual + 10 poções de cada
     const p = G.player;
     p.eq.w = buildItem('w', p.cls, 1, 0, WTYPES[p.cls][0], p.tier);
-    for (const s of ['a', 'l', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier);
+    for (const s of ['h', 'a', 'l', 'g', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier); // elmo, peitoral, calça, luvas e botas
     if (evo) { p.pots.hp = Math.max(p.pots.hp, 10); p.pots.mp = Math.max(p.pots.mp, 10); p.feed = Math.max(p.feed || 0, 5); }
     else { p.pots.hp = 10; p.pots.mp = 10; p.feed = 5; }
     if (!evo) { // personagem novo: peças de grau 0 com poder 1 (ataque 1, defesa 1) e sem extras; o poder de verdade vem dos drops
@@ -2037,7 +2095,7 @@ const Game = (() => {
   }
   function cycleQuality() { return R.setQuality(R.qi + 1); }
   const ecoOn = () => eco;
-  function toggleEco() { eco = !eco; try { localStorage.setItem('aldoria_eco', eco ? '1' : '0'); } catch (e) { } R.eco = eco; R.resize(true); UI.log(eco ? 'Economia de energia ligada (30 FPS).' : 'Economia de energia desligada.', 'sys'); }
+  function toggleEco() { eco = !eco; try { localStorage.setItem('aldoria_eco', eco ? '1' : '0'); } catch (e) { } R.eco = eco; R.resize(true); UI.log(eco ? 'Economia de energia ligada (40 FPS).' : 'Economia de energia desligada.', 'sys'); }
   function deleteSave(id) { deleteChar(id); UI.showMenu(hasSave()); }
   function toggleMute() { G.mute = !G.mute; SND.mute(G.mute); UI.log(G.mute ? 'Som desligado.' : 'Som ligado.', 'sys'); }
 
@@ -2386,7 +2444,7 @@ const Game = (() => {
   function frame(now) {
     requestAnimationFrame(frame);
     if (document.hidden) { last = now; return; }
-    if (eco && now - last < 28) return; // 30 FPS (telas de 60/120 Hz pulam quadros)
+    if (eco) { ecoAcc += now - ecoLast; ecoLast = now; if (ecoAcc < ECO_MS - 5) return; ecoAcc = Math.min(ecoAcc - ECO_MS, ECO_MS); } // ~40 FPS: o acumulador alterna quadros (60 Hz desenha 2 de cada 3; 120 Hz, 1 de cada 3)
     const rdt = Math.max(0, (now - last) / 1000), dt = Math.min(.05, rdt); last = now; G.t += dt;
     if (!eco) autoQuality(rdt);
     if (G.state === 'play') { skipPrologue(); tutAuto(); }
@@ -2426,7 +2484,7 @@ const Game = (() => {
   });
   return {
     boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, gpsGo, gpsCancel, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();
