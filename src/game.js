@@ -1505,7 +1505,15 @@ const Game = (() => {
     try { const old = localStorage.getItem(SAVE_KEY); if (old) { const s = JSON.parse(old); if (s && CLASSES[s.cls]) { if (!ACC) { ACC = { name: 'Jogador', chars: [], bank: { items: [], gold: 0 } }; ACCS.list.push(ACC); ACCS.cur = ACC.name; } ACC.chars.push({ id: 'c' + Date.now().toString(36), data: s }); } localStorage.removeItem(SAVE_KEY); accWrite(); } } catch (e) { /* ignore */ }
     return ACC;
   }
-  function accWrite() { try { if (ACCS) localStorage.setItem(ACCS_KEY, JSON.stringify(ACCS)); } catch (e) { /* ignore */ } }
+  let saveFail = false;
+  function accWrite() {
+    try { if (ACCS) localStorage.setItem(ACCS_KEY, JSON.stringify(ACCS)); saveFail = false; }
+    catch (e) {
+      if (saveFail) return; saveFail = true;
+      const msg = 'Não foi possível gravar o progresso (armazenamento cheio ou bloqueado). Exporte o save no painel de administrador para não perder dados.';
+      try { UI.toast('⚠ Falha ao salvar'); UI.log(msg, 'quest'); } catch (e2) { /* UI ainda não pronta */ }
+    }
+  }
   function account() { if (!ACC) accLoad(); return ACC ? { name: ACC.name, chars: ACC.chars.map(c => ({ id: c.id, name: c.data.name, cls: c.data.cls, lvl: c.data.lvl, tier: c.data.tier | 0, look: c.data.look, ch: c.data.main ? c.data.main.chaps.filter(k => k !== 'c0').length : 0 })), bank: ACC.bank } : null; }
   function accounts() { accsLoad(); return ACCS.list.map(a => ({ name: a.name, chars: a.chars.length, cur: !!(ACC && a === ACC) })); }
   /* entra na conta com esse nome; se não existir, cria uma nova (nunca renomeia a atual) */
