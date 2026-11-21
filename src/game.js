@@ -441,6 +441,13 @@ const Game = (() => {
   /* eventos do tutorial (etapas 'do' da história): ev = 'move' | 'open:<janela>' | 'learn' | 'skill' | 'potion' */
   function mainEv(ev) { const s = G.main && curStep(); if (!s || !stepOpen(s) || s.k !== 'do' || s.ev !== ev) return; G.main.prog++; if (G.main.prog >= stepGoal(s)) stepDone(); }
   const stepOpen = s => s && EL(G.player) >= s.lvl;
+  /* quem passou do nível do campo (29) sem terminar o prólogo (ex.: subiu caçando, ou o save é antigo) não precisa voltar lá: pula para a história de Aldoria */
+  function skipPrologue() {
+    const s = G.main && G.player && curStep(); if (!s || s.ch !== 'c0' || EL(G.player) < CAMP.endLv) return;
+    const i = MAIN.findIndex(q => q.ch !== 'c0'); if (i < 0) return;
+    G.main.i = i; G.main.prog = 0; G.main.mx = null; if (!G.main.chaps.includes('c0')) G.main.chaps.push('c0');
+    UI.log('O treinamento ficou para trás: sua história continua em Aldoria.', 'quest'); UI.refreshPanels();
+  }
   function stepDone() {
     const s = curStep(); if (!s) return;
     const p = G.player, r = stepReward(s);
@@ -2350,6 +2357,7 @@ const Game = (() => {
     if (eco && now - last < 28) return; // 30 FPS (telas de 60/120 Hz pulam quadros)
     const rdt = Math.max(0, (now - last) / 1000), dt = Math.min(.05, rdt); last = now; G.t += dt;
     if (!eco) autoQuality(rdt);
+    if (G.state === 'play') skipPrologue();
     if (G.state === 'play' && !UI.paused()) update(dt);
     updateCamera(dt); updateTime(dt); render(); weatherAudio();
     if (G.state === 'play') UI.update(G);
