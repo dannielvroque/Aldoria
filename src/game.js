@@ -439,20 +439,39 @@ const Game = (() => {
   const curStep = () => MAIN[G.main.i] || null;
   const chapN = () => G.main.chaps.filter(k => k !== 'c0').length; // capítulos da história (o prólogo do campo de treino não conta)
   /* eventos do tutorial (etapas 'do' da história): ev = 'move' | 'open:<janela>' | 'learn' | 'skill' | 'potion' */
-  function mainEv(ev) { const s = G.main && curStep(); if (!s || !stepOpen(s) || s.k !== 'do' || s.ev !== ev) return; G.main.prog++; if (G.main.prog >= stepGoal(s)) stepDone(); }
+  function mainEv(ev) {
+    if (!G.main) return; (G.main.tut || (G.main.tut = {}))[ev] = 1; // o tutorial lembra o que o jogador já fez, mesmo fora da ordem (tutAuto fecha as etapas)
+    const s = curStep(); if (!s || !stepOpen(s) || s.k !== 'do' || s.ev !== ev) return; G.main.prog++; if (G.main.prog >= stepGoal(s)) stepDone();
+  }
+  /* prólogo por estado: cada etapa se completa sozinha se a condição já vale (aprendeu habilidade, abriu o equipamento, matou o bastante...),
+     então não trava quem fez as coisas fora da ordem. Roda a cada quadro enquanto a etapa atual é do prólogo. */
+  function tutAuto() {
+    for (let n = 0; n < 12; n++) {
+      const s = G.main && G.player && curStep(); if (!s || s.ch !== 'c0' || !stepOpen(s)) return;
+      const t = G.main.tut || (G.main.tut = {}), p = G.player, kills = G.rec ? G.rec.kill : 0, learned = p.sk.some(v => v > 0);
+      if (!t.move) { if (!G.main.mx) G.main.mx = [p.x, p.z]; else if (Math.hypot(p.x - G.main.mx[0], p.z - G.main.mx[1]) >= 12) t.move = 1; }
+      const first = s === MAIN.find(q => q.ch === 'c0');
+      const ok = s.k === 'do' ? (s.ev === 'learn' ? learned : !!t[s.ev])
+        : s.k === 'kill' ? kills >= (s.mobs[0] === 'gremlin' ? 3 : 7)
+        : s.k === 'talk' ? (s.npc === 'camp_trainer' ? learned : first && (learned || kills > 0))
+        : false;
+      if (!ok) return;
+      stepDone(true);
+    }
+  }
   const stepOpen = s => s && EL(G.player) >= s.lvl;
   /* quem passou do nível do campo (29) sem terminar o prólogo (ex.: subiu caçando, ou o save é antigo) não precisa voltar lá: pula para a história de Aldoria */
   function skipPrologue() {
-    const s = G.main && G.player && curStep(); if (!s || s.ch !== 'c0' || EL(G.player) < CAMP.endLv) return;
+    const s = G.main && G.player && curStep(); if (!s || s.ch !== 'c0' || (EL(G.player) < CAMP.endLv && !G.player.tier)) return;
     const i = MAIN.findIndex(q => q.ch !== 'c0'); if (i < 0) return;
     G.main.i = i; G.main.prog = 0; G.main.mx = null; if (!G.main.chaps.includes('c0')) G.main.chaps.push('c0');
     UI.log('O treinamento ficou para trás: sua história continua em Aldoria.', 'quest'); UI.refreshPanels();
   }
-  function stepDone() {
+  function stepDone(quiet) { // quiet: etapa fechada automaticamente (tutAuto), sem som nem aviso de cada uma
     const s = curStep(); if (!s) return;
     const p = G.player, r = stepReward(s);
-    p.gold += r.gold; track('gold', r.gold); track('quest', 1);
-    UI.log('História: ' + stepTitle(s) + ' concluída (+' + fmt(r.xp) + ' XP, +' + fmt(r.gold) + ' ouro).', 'quest'); sfx('quest');
+    p.gold += r.gold; track('gold', r.gold); if (!quiet) track('quest', 1);
+    UI.log('História: ' + stepTitle(s) + ' concluída (+' + fmt(r.xp) + ' XP, +' + fmt(r.gold) + ' ouro).', 'quest'); if (!quiet) sfx('quest');
     gainXp(r.xp);
     const nx = MAIN[s.i + 1];
     if (!nx || nx.ch !== s.ch) { // fim de capítulo
@@ -463,7 +482,7 @@ const Game = (() => {
       UI.toast('✦ ' + c.n.split('—')[0].trim() + ' concluído!'); UI.log('Capítulo concluído: ' + c.n + '. Recompensa: ' + fmt(c.rew.gold) + ' ouro e ' + itemName(it) + ' (' + RARITY[it.rar].n + ').', 'lvl');
       fxPillar(p.x, p.z, 1.4, [1, .85, .4], 1.6); fxRing(p.x, 1, p.z, .5, 8, 1, [1, .85, .4], .9, 2);
       track('chap', 0);
-    } else UI.toast('História: próxima etapa');
+    } else if (!quiet) UI.toast('História: próxima etapa');
     G.main.i++; G.main.prog = 0; G.main.mx = null;
     const n2 = curStep();
     if (n2 && !stepOpen(n2)) UI.log('Próxima etapa da história no nível ' + dispLv(n2.lvl, p.tier) + '.', 'quest');
@@ -2357,7 +2376,7 @@ const Game = (() => {
     if (eco && now - last < 28) return; // 30 FPS (telas de 60/120 Hz pulam quadros)
     const rdt = Math.max(0, (now - last) / 1000), dt = Math.min(.05, rdt); last = now; G.t += dt;
     if (!eco) autoQuality(rdt);
-    if (G.state === 'play') skipPrologue();
+    if (G.state === 'play') { skipPrologue(); tutAuto(); }
     if (G.state === 'play' && !UI.paused()) update(dt);
     updateCamera(dt); updateTime(dt); render(); weatherAudio();
     if (G.state === 'play') UI.update(G);

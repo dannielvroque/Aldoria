@@ -159,7 +159,7 @@ const UI = (() => {
 <div class="panel off" id="p-auto"><div class="ph"><h2>🤖 Automático</h2><kbd>T</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel lv off" id="p-lv"><div class="ph"><h2>📊 Níveis e Regiões</h2><kbd>B</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel tree off" id="p-tree"><div class="ph"><h2>🌳 Árvore de Habilidades</h2><kbd>V</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
-<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button></div></div><div class="map-side"></div></div></div></div>
+<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button><button data-a="maplg" class="maplg" title="Legenda">?</button></div></div><div class="map-side"></div></div></div></div>
 <div class="panel dlg off" id="p-dlg"><div class="ph"><div class="npc-ic"></div><div class="npc-id"><h2></h2><small></small></div><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div><div class="pf-foot"><button class="btn" data-a="close">Despedir-se</button></div></div>
 <div class="death off"><div class="death-in"><h1>Você caiu</h1><p>Suas forças se esvaem... mas Aldoria ainda precisa de você.</p><button class="btn primary" data-a="respawn">Voltar à vila</button></div></div>
 <div class="menu off"></div>
@@ -839,17 +839,17 @@ const UI = (() => {
       if (w !== cv.width || h !== cv.height) { if (st.mapK) st.mapK *= w / cv.width; cv.width = w; cv.height = h; }
     }
     mapEvents(cv); if (!st.mapK) mapViewSet(st.mapView || 'world'); mapClamp();
-    const Wc = cv.width, Hc = cv.height, K = st.mapK, C0 = st.mapC, view = st.mapView, zoom = K / MAP_FIT(), u = rc.width > 10 ? Wc / rc.width : 1, tg = terrGrid();
+    const Wc = cv.width, Hc = cv.height, K = st.mapK, C0 = st.mapC, view = st.mapView, zoom = K / MAP_FIT(), u = rc.width > 10 ? Wc / rc.width : 1, ue = u * (IS_TOUCH ? .62 : 1), showLg = !IS_TOUCH || !!st.mapLeg, tg = terrGrid(); // ue: ícones menores no celular
     const toS = (x, z) => [Wc / 2 + (x - C0[0]) * K, Hc / 2 + (z - C0[1]) * K];
     const inView = (x, z, m) => { const q = toS(x, z), e = (m || 40) * u; return q[0] > -e && q[1] > -e && q[0] < Wc + e && q[1] < Hc + e; };
     c.drawImage(mapBase(cv, Wc, Hc, K, C0, u), 0, 0);
     const occ = [], L = [], ic = [];
     // legenda (canto inferior esquerdo) e área dos botões de zoom (canto superior direito) não recebem rótulos
     const lgR = 17 * u, lgW = 122 * u, lgP = 8 * u, lgRows = Math.ceil(MAP_LEG.length / 2), lgBox = [8 * u, Hc - 8 * u - lgRows * lgR - lgP * 2 - 14 * u, 8 * u + lgW * 2 + lgP * 2, Hc - 8 * u];
-    occ.push(lgBox, [Wc - 52 * u, 0, Wc, 132 * u]);
+    occ.push([Wc - 52 * u, 0, Wc, 132 * u]); if (showLg) occ.push(lgBox);
     // monstros só de perto (de longe viram ruído; a zona e a faixa de nível já dizem o que há ali)
-    if (zoom >= 6) for (const m of G.mobs) { if (m.dead || m.boss || !inView(m.x, m.z, 4) || Math.hypot(m.x - p.x, m.z - p.z) > 140) continue; const [x, y] = toS(m.x, m.z); MI.mob(c, x, y, u, m.elite || m.champ); }
-    const add = (kind, x, z, r, lab, arg) => { if (!inView(x, z)) return; const [sx, sy] = toS(x, z); ic.push([kind, sx, sy, arg]); occ.push([sx - r * u, sy - r * u, sx + r * u, sy + r * u]); if (lab) L.push(Object.assign({ x: sx, y: sy, r }, lab)); };
+    if (zoom >= 6) for (const m of G.mobs) { if (m.dead || m.boss || !inView(m.x, m.z, 4) || Math.hypot(m.x - p.x, m.z - p.z) > 140) continue; const [x, y] = toS(m.x, m.z); MI.mob(c, x, y, ue, m.elite || m.champ); }
+    const add = (kind, x, z, r, lab, arg) => { if (!inView(x, z)) return; const [sx, sy] = toS(x, z); ic.push([kind, sx, sy, arg]); occ.push([sx - r * ue, sy - r * ue, sx + r * ue, sy + r * ue]); if (lab) L.push(Object.assign({ x: sx, y: sy, r }, lab)); };
     const POI = '600 # system-ui, sans-serif', SERIF = '700 # Georgia, serif';
     for (const l of LANDMARKS) { if (/Lagoa/.test(l.n)) add('lake', l.x, l.z, 7, { t: l.n, pr: 45, fs: 12, font: POI, col: '#cfeeff', bg: 1 }); else add('mark', l.x, l.z, 5, { t: l.n, pr: 40, fs: 12, font: POI, col: '#f1e2bd', bg: 1 }); }
     for (const s of SITES) { const lair = s.k === 'lair'; add(lair ? 'lair' : 'dungeon', s.x, s.z, 10, { t: s.n, pr: lair ? 66 : 70, fs: 12.5, font: POI, col: lair ? '#ffe7a0' : '#c4f3ff', bg: 1 }); }
@@ -865,21 +865,21 @@ const UI = (() => {
       for (const [id, x, z, pr] of pts) { if (!inView(x, z, 0) || (zoom >= 3 && inTownSq(x, z, 12))) continue; const [sx, sy] = toS(x, z), zn = ZN[id]; L.push({ x: sx, y: sy, t: zn.name, sub: zlv(zn), pr, fs: 15, font: '600 italic # Georgia, serif', col: '#fff6e0' }); } }
     // objetivo e jogador por cima de tudo
     const ob = objectivePos(G), pu = 1 + .12 * Math.sin(performance.now() / 200);
-    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); occ.push([x - 15 * u, y - 15 * u, x + 15 * u, y + 15 * u]); L.push({ x, y, r: 16, t: ob[2], pr: 100, fs: 13, font: '700 # system-ui, sans-serif', col: '#ffe066', bg: 1, edge: 'rgba(255,216,74,.6)' }); }
-    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); occ.push([x - 14 * u, y - 14 * u, x + 14 * u, y + 14 * u]); }
-    for (const [k, x, y, a] of ic) MI[k](c, x, y, u, a);
-    placeLabels(c, L, occ, Wc, Hc, u);
-    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); MI.obj(c, x, y, u, pu); }
-    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); MI.me(c, x, y, u, p.rot); }
+    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); occ.push([x - 15 * ue, y - 15 * ue, x + 15 * ue, y + 15 * ue]); L.push({ x, y, r: 16, t: ob[2], pr: 100, fs: 13, font: '700 # system-ui, sans-serif', col: '#ffe066', bg: 1, edge: 'rgba(255,216,74,.6)' }); }
+    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); occ.push([x - 14 * ue, y - 14 * ue, x + 14 * ue, y + 14 * ue]); }
+    for (const [k, x, y, a] of ic) MI[k](c, x, y, ue, a);
+    placeLabels(c, L, occ, Wc, Hc, u * (IS_TOUCH ? .85 : 1));
+    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); MI.obj(c, x, y, ue, pu); }
+    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); MI.me(c, x, y, ue, p.rot); }
     else { // jogador fora da vista: seta na borda apontando para ele
       const [x, y] = toS(p.x, p.z), a = Math.atan2(y - Hc / 2, x - Wc / 2), m = 18 * u, ex = Math.max(m, Math.min(Wc - m, Wc / 2 + Math.cos(a) * Wc)), ey = Math.max(m, Math.min(Hc - m, Hc / 2 + Math.sin(a) * Hc));
       c.save(); c.translate(ex, ey); c.rotate(a); c.beginPath(); c.moveTo(11 * u, 0); c.lineTo(-6 * u, 7 * u); c.lineTo(-6 * u, -7 * u); c.closePath(); c.fillStyle = '#4fd1ff'; c.fill(); c.lineWidth = 2 * u; c.strokeStyle = '#fff'; c.stroke(); c.restore(); }
-    // legenda
-    rrect(c, lgBox[0], lgBox[1], lgBox[2] - lgBox[0], lgBox[3] - lgBox[1], 7 * u); c.fillStyle = 'rgba(16,12,22,.82)'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(255,226,160,.3)'; c.stroke();
+    // legenda (no celular só quando o botão ? está ligado)
+    if (showLg) { rrect(c, lgBox[0], lgBox[1], lgBox[2] - lgBox[0], lgBox[3] - lgBox[1], 7 * u); c.fillStyle = 'rgba(16,12,22,.82)'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(255,226,160,.3)'; c.stroke();
     c.font = '700 ' + (10 * u) + 'px system-ui, sans-serif'; c.fillStyle = '#e9c97a'; c.textAlign = 'left'; c.fillText('LEGENDA', lgBox[0] + lgP, lgBox[1] + lgP + 8 * u);
     MAP_LEG.forEach(([k, n], i) => { const col = i % 2, row = i >> 1, x = lgBox[0] + lgP + col * lgW, y = lgBox[1] + lgP + 14 * u + row * lgR + lgR / 2;
       c.save(); c.translate(x + 9 * u, y); c.scale(.62, .62); c.translate(-(x + 9 * u), -y); MI[k](c, x + 9 * u, y, u, k === 'me' ? Math.PI : undefined); c.restore();
-      c.font = '600 ' + (11.5 * u) + 'px system-ui, sans-serif'; c.fillStyle = '#efe4cc'; c.textBaseline = 'middle'; c.fillText(n, x + 22 * u, y); c.textBaseline = 'alphabetic'; });
+      c.font = '600 ' + (11.5 * u) + 'px system-ui, sans-serif'; c.fillStyle = '#efe4cc'; c.textBaseline = 'middle'; c.fillText(n, x + 22 * u, y); c.textBaseline = 'alphabetic'; }); }
     // escala + dica
     { let m = 10; for (const s of [10, 20, 50, 100, 200, 500]) if (s * K <= 120 * u) m = s; const bw = m * K, x1 = Wc - 12 * u, x0 = x1 - bw, y = Hc - 14 * u;
       rrect(c, x0 - 10 * u, y - 30 * u, bw + 20 * u, 40 * u, 6 * u); c.fillStyle = 'rgba(16,12,22,.72)'; c.fill();
@@ -1075,6 +1075,7 @@ const UI = (() => {
       case 'p-auto': togglePanel('auto'); return;
       case 'p-look': togglePanel('look'); return;
       case 'p-map': mapToggle(); return;
+      case 'maplg': st.mapLeg = !st.mapLeg; renderMap(G); return;
       case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
       case 'p-lv': togglePanel('lv'); return;
       case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
