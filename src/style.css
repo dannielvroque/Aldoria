@@ -628,3 +628,22 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 #ui.touch .btns { position: absolute; top: 0; right: 120px; flex-direction: row; gap: 5px; width: max-content; }
 #ui.touch .tfs { left: calc(218px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); transform: none; width: 34px; height: 34px; }
 #ui.touch .tacts { bottom: 66px; }
+
+/* ---------- toque: janelas sempre dentro da tela, retrato e rotação ---------- */
+#ui.touch .panel, #ui.touch #p-inv, #ui.touch #p-char, #ui.touch #p-quest, #ui.touch #p-dlg, #ui.touch #p-auto, #ui.touch #p-lv, #ui.touch .panel.map, #ui.touch .panel.tree, #ui.touch #p-dlg:has(.bank) { max-width: calc(100% - 12px); max-height: calc(100% - 12px); }
+#ui.touch .panel { display: flex; flex-direction: column; } #ui.touch .panel.off { display: none; }
+#ui.touch .pb { -webkit-overflow-scrolling: touch; overflow-y: auto; min-height: 0; touch-action: pan-y; }
+#ui.touch .panel .x { min-width: 36px; min-height: 36px; }
+@media (orientation: portrait) {
+  #ui.touch .pf { width: 210px; }
+  #ui.touch .btns { top: 150px; right: 0; flex-wrap: nowrap; gap: 4px; }
+  #ui.touch .btns button { min-width: 36px; min-height: 36px; padding: 0; }
+  #ui.touch .tfs { left: auto; right: calc(124px + env(safe-area-inset-right)); top: calc(6px + env(safe-area-inset-top)); }
+  #ui.touch .tf { top: calc(112px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); width: 200px; transform: none; }
+  #ui.touch .sb { left: 6px; right: 6px; bottom: calc(8px + env(safe-area-inset-bottom)); justify-content: center; flex-wrap: wrap; row-gap: 6px; --s: 38px; }
+  #ui.touch .joy { bottom: calc(130px + env(safe-area-inset-bottom)); }
+  #ui.touch .tacts { bottom: calc(130px + env(safe-area-inset-bottom)); }
+  #ui.touch .qarrow { display: none; }
+}
+#ui.touch .panel.win { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; animation: none; }
+#ui.touch .panel.win .ph { cursor: default; }
