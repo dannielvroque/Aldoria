@@ -136,6 +136,15 @@ const UI = (() => {
   <div class="qarrow off"><svg class="qa-ar" viewBox="-20 -20 40 40" width="44" height="44"><path d="M17 0L-9 -13L-3 0L-9 13Z"/></svg><b class="qa-d"></b></div>
   <div class="labels"></div>
   <div class="floats"></div>
+  <div class="joy"><i></i></div>
+  <div class="tacts">
+    <button class="tact big" data-k="Space" title="Atacar">⚔️</button>
+    <button class="tact" data-k="Tab" title="Trocar alvo">🎯</button>
+    <button class="tact" data-k="KeyF" title="Falar">💬</button>
+    <button class="tact" data-k="KeyZ" title="Automático">🤖</button>
+    <button class="tact" data-k="KeyX" title="Montar">🐎</button>
+  </div>
+  <button class="tfs" title="Tela cheia">⛶</button>
 </div>
 <div class="toast"></div>
 <div class="evtoast"><b></b><small></small></div>
@@ -181,7 +190,7 @@ const UI = (() => {
     E.slots.forEach(s => { s.$cdv = s.querySelector('.cdv'); s.$cdt = s.querySelector('.cdt'); s.$mpc = s.querySelector('.mpc'); s.$ic = s.querySelector('.ic'); s.$qty = s.querySelector('.qty'); });
 
     buildMenu();
-    [E.sb, q('.btns'), E.badge, E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    [E.sb, q('.btns'), E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
     WIN_KEYS.forEach(k => { E['p_' + k].addEventListener('pointerdown', () => winFront(k), true); E['p_' + k].querySelector('.ph').addEventListener('pointerdown', ev => winDrag(k, ev)); });
   }
 

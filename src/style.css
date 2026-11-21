@@ -593,3 +593,38 @@ em.pl { position: absolute; top: 2px; right: 4px; font: 700 11px var(--sans); fo
 .lv-r small { display: block; font-size: 11px; color: var(--mut); }
 .lv-r small.mobs { color: #b9b2a0; }
 .lv-n { flex: none; min-width: 64px; font: 700 13px var(--serif); color: var(--gold); }
+
+/* ---------- toque (celular/tablet) ---------- */
+html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; touch-action: none; }
+#gl { touch-action: none; }
+#ui .joy, #ui .tacts, #ui .tfs { display: none; }
+#ui.touch .joy { display: block; position: absolute; left: calc(24px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom)); width: 130px; height: 130px; border-radius: 50%; pointer-events: auto; touch-action: none; background: radial-gradient(circle, rgba(255, 255, 255, .06), rgba(255, 255, 255, .13)); border: 2px solid rgba(217, 180, 90, .5); }
+#ui.touch .joy i { position: absolute; left: 41px; top: 41px; width: 48px; height: 48px; border-radius: 50%; background: rgba(217, 180, 90, .55); border: 2px solid rgba(255, 230, 160, .8); }
+#ui.touch .tacts { display: flex; position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(86px + env(safe-area-inset-bottom)); flex-direction: row-reverse; align-items: flex-end; gap: 8px; flex-wrap: wrap; width: 150px; pointer-events: none; }
+#ui.touch .tact { pointer-events: auto; touch-action: none; width: 46px; height: 46px; border-radius: 50%; font-size: 20px; border: 1.5px solid var(--gold-d); background: rgba(14, 12, 22, .72); color: #fff; padding: 0; }
+#ui.touch .tact.big { width: 68px; height: 68px; font-size: 30px; }
+#ui.touch .tact:active { background: rgba(217, 180, 90, .45); }
+#ui.touch .tfs { display: block; position: absolute; left: 50%; top: 6px; transform: translateX(-50%); pointer-events: auto; width: 34px; height: 28px; border-radius: 8px; border: 1px solid var(--gold-d); background: rgba(14, 12, 22, .6); color: #fff; font-size: 16px; padding: 0; }
+#ui.touch { --s: 40px; --fs: 12px; }
+#ui.touch .sb { left: auto; right: calc(10px + env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); transform: none; gap: 6px; }
+#ui.touch .sbt, #ui.touch .slot .key { display: none; }
+#ui.touch .sb .slot:hover { transform: none; }
+#ui.touch .log, #ui.touch .qt { display: none; }
+#ui.touch .pf { width: 200px; padding: 5px 7px; top: calc(6px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); } #ui.touch .pf-ic { width: 36px; height: 36px; font-size: 20px; }
+#ui.touch .tr { top: calc(6px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); width: 112px; }
+#ui.touch .mm { width: 96px; height: 96px; } #ui.touch .mm canvas { width: 90px; height: 90px; }
+#ui.touch .btns button { min-width: 34px; min-height: 34px; }
+@media (max-height: 520px) {
+  #ui.touch .joy { width: 110px; height: 110px; bottom: 14px; } #ui.touch .joy i { left: 31px; top: 31px; }
+  #ui.touch .tacts { bottom: 62px; width: 140px; }
+  #ui.touch .tact.big { width: 58px; height: 58px; }
+  #ui.touch .tf { top: calc(6px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 200px; }
+  #ui.touch .panel { max-height: calc(100% - 12px); overflow: auto; }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  #ui.touch .sb { right: 6px; left: 6px; justify-content: center; flex-wrap: wrap; } #ui.touch { --s: 36px; }
+  #ui.touch .tacts { bottom: 112px; }
+}
+#ui.touch .btns { position: absolute; top: 0; right: 120px; flex-direction: row; gap: 5px; width: max-content; }
+#ui.touch .tfs { left: calc(218px + env(safe-area-inset-left)); top: calc(6px + env(safe-area-inset-top)); transform: none; width: 34px; height: 34px; }
+#ui.touch .tacts { bottom: 66px; }
