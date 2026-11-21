@@ -25,17 +25,17 @@ const CHAPTERS = [
 ];
 const MAIN = [
   // ---- Prólogo (Campo de Treinamento, nível 1 a 29): tutorial. Etapas 'do' contam um evento do jogo (ver mainEv em game.js) ----
-  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'O Instrutor do campo', t: 'Fale com o Instrutor Brann, na clareira do campo (clique nele ou aperte F perto dele).',
+  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'O Instrutor do campo', t: TX('Fale com o Instrutor Brann, na clareira do campo (clique nele ou aperte F perto dele).', 'Fale com o Instrutor Brann, na clareira do campo (toque nele ou no botão 💬 perto dele).'),
     say: 'Bem-vindo ao Campo de Treinamento! Esta ilha é cercada por um lago: aqui os novatos aprendem sem perigo de verdade. Vou ensinar o básico; depois é com você. Primeiro, ande um pouco.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'move', nm: 'Ande pelo campo', t: 'Clique no chão para andar (a roda do mouse dá zoom; segurar o botão direito gira a câmera). Afaste-se uns 12 passos.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['gremlin'], n: 3, t: 'Clique num Gremlin (ou aperte Espaço) para atacar. Derrote 3 Gremlins.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'open:inv', nm: 'Abra o Equipamento', t: 'Aperte I para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores. Dá para abrir C, V, M e B juntos e arrastar as janelas pelo título.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'move', nm: 'Ande pelo campo', t: TX('Clique no chão para andar (a roda do mouse dá zoom; segurar o botão direito gira a câmera). Afaste-se uns 12 passos.', 'Toque no chão ou use o joystick para andar (arraste a tela para girar a câmera e use a pinça para o zoom). Afaste-se uns 12 passos.') },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['gremlin'], n: 3, t: TX('Clique num Gremlin (ou aperte Espaço) para atacar. Derrote 3 Gremlins.', 'Toque num Gremlin (ou no botão ⚔️) para atacar. Derrote 3 Gremlins.') },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'open:inv', nm: 'Abra o Equipamento', t: TX('Aperte I para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores. Dá para abrir C, V, M e B juntos e arrastar as janelas pelo título.', 'Toque em 🎒 (canto superior direito) para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores.') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'camp_trainer', n: 'O Mestre de Habilidades', t: 'Fale com o Mestre de Habilidades, ao lado do instrutor.',
-    say: 'Cada nível dá pontos de habilidade. Escolha uma habilidade aqui e gaste seus pontos nela: ela vai para a barra de atalhos (teclas 1 a 5, 8 e 9).' },
+    say: 'Cada nível dá pontos de habilidade. Escolha uma habilidade aqui e gaste seus pontos nela: ela vai para a barra de atalhos' + TX(' (teclas 1 a 5, 8 e 9).', ' (toque no ícone para usar).') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'learn', nm: 'Aprenda uma habilidade', t: 'No diálogo do Mestre de Habilidades, aprenda uma habilidade.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'skill', nm: 'Use a habilidade', t: 'Use a habilidade da barra de atalhos (tecla 1, 2...) num monstro.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'skill', nm: 'Use a habilidade', t: TX('Use a habilidade da barra de atalhos (tecla 1, 2...) num monstro.', 'Toque no ícone da habilidade na barra de atalhos com um monstro como alvo.') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['lizard'], n: 4, t: 'Minilagartos são mais rápidos. Derrote 4 deles: deixam poções e pedras de refino.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'potion', nm: 'Use uma poção', t: 'Aperte 6 para usar uma Poção de Vida (7 é a de Mana). Elas curam 40% do máximo.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'potion', nm: 'Use uma poção', t: TX('Aperte 6 para usar uma Poção de Vida (7 é a de Mana). Elas curam 40% do máximo.', 'Toque na poção de vida ❤️ (a de mana é a 💙). Elas curam 40% do máximo.') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'Formatura', t: 'Volte ao Instrutor Brann.',
     say: 'Você já sabe o essencial. Continue caçando gremlins e lagartos até o nível 29: com ele, atravesse a ponte, vá até Aldoria e fale com o Capitão Roderic. Se quiser sair antes, o portão está aberto, mas as cidades só têm missões a partir do 29.' },
   // ---- Capítulo I (1–10) ----

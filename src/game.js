@@ -624,7 +624,7 @@ const Game = (() => {
   function useMountItem(i) {
     const p = G.player, id = p.mbox && p.mbox[i]; if (!id || !MOUNTS[id]) return;
     p.mbox.splice(i, 1);
-    if (!p.mounts.includes(id)) { p.mounts.push(id); mountRec(id); if (!p.lastMount) p.lastMount = id; recalc(); sfx('level'); UI.toast(MOUNTS[id].n + ' adicionada à coleção!'); UI.log('Nova montaria: ' + MOUNTS[id].n + '! Veja em Montarias [H].', 'loot'); }
+    if (!p.mounts.includes(id)) { p.mounts.push(id); mountRec(id); if (!p.lastMount) p.lastMount = id; recalc(); sfx('level'); UI.toast(MOUNTS[id].n + ' adicionada à coleção!'); UI.log('Nova montaria: ' + MOUNTS[id].n + '! Veja em Montarias' + TX(' [H]', '') + '.', 'loot'); }
     else { const r = mountRec(id); mountXp(r.lv < MOUNT_MAXLV ? mountXpNeed(r.lv) - r.xp : 0, id); UI.log(MOUNTS[id].n + ' repetida: sua montaria ganhou experiência.', 'loot'); }
     save(); UI.refreshPanels();
   }
@@ -637,7 +637,7 @@ const Game = (() => {
     p.mbox = p.mbox || []; if (p.mbox.length >= 20) return;
     const had = p.mounts.includes(id); p.mbox.push(id); useMountItem(p.mbox.length - 1); // entra na coleção na hora (sem passo extra na mochila)
     UI.float(m.x, (m.hgt || 2) + 1.9, m.z, MOUNTS[id].ic + ' Montaria: ' + MOUNTS[id].n, 'xp'); UI.toast('Montaria encontrada: ' + MOUNTS[id].n + '!');
-    UI.log('★ Montaria ' + (had ? 'repetida: ela ganhou um nível de experiência. ' : 'nova! ') + 'Abra Montarias [H]: Equipar dá o bônus, X monta, e ela evolui com XP (lute montado ou cavalgue).', 'lvl');
+    UI.log('★ Montaria ' + (had ? 'repetida: ela ganhou um nível de experiência. ' : 'nova! ') + 'Abra Montarias' + TX(' [H]', ' (🐎)') + ': Equipar dá o bônus, ' + TX('X', 'o botão 🐎') + ' monta, e ela evolui com XP (lute montado ou cavalgue).', 'lvl');
   }
   function restMount() {
     const p = G.player, mx = mstMax(), cost = 30; if ((p.mst == null ? mx : p.mst) >= mx) return { ok: false, msg: 'Sua montaria já está descansada.' };
@@ -648,7 +648,7 @@ const Game = (() => {
     const p = G.player, m = MOUNTS[id]; if (!m || p.mounts.includes(id)) return;
     if (EL(p) < m.lvl) { UI.log('Requer nível ' + dispLv(m.lvl, p.tier) + '.', 'sys'); return; }
     if (p.gold < m.price) { UI.log('Ouro insuficiente.', 'sys'); return; }
-    p.gold -= m.price; p.mounts.push(id); if (!p.lastMount) { p.lastMount = id; recalc(); } sfx('coin'); UI.log('Você adquiriu: ' + m.n + '! Equipada! Pressione X para montar.', 'loot'); UI.toast(m.n + ' adquirido!'); save(); UI.refreshPanels();
+    p.gold -= m.price; p.mounts.push(id); if (!p.lastMount) { p.lastMount = id; recalc(); } sfx('coin'); UI.log('Você adquiriu: ' + m.n + '! Equipada! ' + TX('Pressione X', 'Toque no botão 🐎') + ' para montar.', 'loot'); UI.toast(m.n + ' adquirido!'); save(); UI.refreshPanels();
   }
   function dismount(quiet) { const p = G.player; if (!p || !p.mount) return; p.mount = null; recalc(); if (!quiet) UI.toast('Você desmontou'); }
   function equipMount(id) {
@@ -1940,7 +1940,7 @@ const Game = (() => {
   function newGame(cls, look, name) {
     if (!CLASSES[cls]) return; initAudio(); if (!ACC) accLoad(); if (!ACC) createAccount('Jogador'); G.charId = 'c' + Date.now().toString(36);
     { let mx = ITEM_UID; for (const it of ACC.bank.items) if (it.id >= mx) mx = it.id + 1; ITEM_UID = mx; } newPlayer(cls, look ? fixLook(Object.assign({}, look)) : look, name); starterKit(); G.player.x = CAMP.sx; G.player.z = CAMP.sz; startPlay();
-    UI.log('Bem-vindo a Aldoria, ' + G.player.name + '! Você está no Campo de Treinamento: fale com o Instrutor Brann (clique nele ou aperte F). Você começa sem habilidades: gaste os ' + SK_PTS_LEVEL + ' pontos com o Mestre de Habilidades, ao lado dele.', 'sys'); save();
+    UI.log('Bem-vindo a Aldoria, ' + G.player.name + '! Você está no Campo de Treinamento: fale com o Instrutor Brann (' + TX('clique nele ou aperte F', 'toque nele ou no botão 💬') + '). Você começa sem habilidades: gaste os ' + SK_PTS_LEVEL + ' pontos com o Mestre de Habilidades, ao lado dele.', 'sys'); save();
   }
   /* ---------- criação de personagem ---------- */
   const NAMES_M = ['Aldric', 'Bram', 'Cassian', 'Dorian', 'Evander', 'Fenris', 'Gareth', 'Hadrian', 'Ivor', 'Joren', 'Kael', 'Lucan', 'Magnus', 'Orin', 'Rowan', 'Soren', 'Tarik', 'Varian'];

@@ -645,5 +645,19 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
   #ui.touch .tacts { bottom: calc(130px + env(safe-area-inset-bottom)); }
   #ui.touch .qarrow { display: none; }
 }
+/* toque: sem dicas de teclado; nomes e nível numa linha só; pausa em largura útil */
+#ui.touch .ph kbd, #ui.touch .btn small { display: none; }
+#ui.touch .pf-top { flex-wrap: nowrap; white-space: nowrap; gap: 4px; }
+#ui.touch .pf-name, #ui.touch .tf-name { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#ui.touch .pf-tier { display: none; } #ui.touch .pf-lv, #ui.touch .tf-lv { white-space: nowrap; flex: none; }
+#ui.touch .tf-top { font-size: 13px; gap: 6px; }
+#ui.touch .zone { width: max-content; max-width: 150px; align-self: flex-end; font-size: 11px; line-height: 1.2; text-align: right; }
+#ui.touch #p-pause { width: min(340px, calc(100% - 24px)); }
+#ui.touch #p-pause .btn { white-space: normal; }
+@media (orientation: portrait) {
+  #ui.touch .pf { width: 198px; }
+  #ui.touch .tf { top: calc(104px + env(safe-area-inset-top)); width: 192px; }
+  #ui.touch .btns { position: static; display: grid; grid-template-columns: repeat(4, 36px); gap: 4px; width: auto; }
+}
 #ui.touch .panel.win { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; animation: none; }
 #ui.touch .panel.win .ph { cursor: default; }
