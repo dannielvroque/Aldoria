@@ -118,16 +118,16 @@ const UI = (() => {
   <div class="tr">
     <div class="mm"${TX('', ' data-a="p-map" title="Abrir o mapa"')}><canvas width="${MM}" height="${MM}"></canvas></div>
     <div class="zone"></div>
+    <div class="fabrow"><button data-a="obj" class="tobj" title="O que fazer agora">❗</button><button data-a="fab" class="fab" title="Menu">☰</button></div>
     <div class="btns">
       <button data-a="p-inv" title="Inventário [I]">🎒</button>
       <button data-a="p-quest" title="Missões [Q]">📜</button>
       <button data-a="p-char" title="Personagem [C]">👤</button>
       <button data-a="p-lv" title="Níveis e regiões [B]">📊</button>
       <button data-a="p-look" title="Montarias [H]">🐎</button>
-      <button data-a="obj" class="tobj" title="O que fazer agora">❗</button>
       <button data-a="p-auto" title="Automático [T]">🤖</button>
       <button data-a="mute" title="Som [N]">🔊</button>
-      <button data-a="pause" title="Menu / Pausa [Esc]">☰</button>
+      <button data-a="pause" title="Menu / Pausa [Esc]">${TX('☰', '⏸')}</button>
     </div>
     <div class="qt glass off"><div class="qt-h">Missão</div><div class="qt-n"></div><div class="qt-p"></div></div>
   </div>
@@ -172,7 +172,7 @@ const UI = (() => {
     E.hp = q('.pf .bar.hp i'); E.hpT = q('.pf .bar.hp span'); E.mp = q('.pf .bar.mp i'); E.mpT = q('.pf .bar.mp span'); E.xp = q('.pf .bar.xp i'); E.evbar = q('.evbar'); E.evtoast = q('.evtoast'); E.hud = q('.hud');
     E.tfName = q('.tf-name'); E.tfIc = q('.tf-ic'); E.tfLv = q('.tf-lv'); E.tfHp = q('.tf .bar i'); E.tfHpT = q('.tf .bar span');
     E.zone = q('.zone'); E.qt = q('.qt'); E.qtN = q('.qt-n'); E.qtP = q('.qt-p'); E.mute = q('[data-a=mute]');
-    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]'), obj: q('.btns [data-a=obj]') }; E.objPop = q('.objpop'); E.mm = q('.mm');
+    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]'), obj: q('.fabrow [data-a=obj]') }; E.objPop = q('.objpop'); E.mm = q('.mm'); E.fab = q('.fab'); E.btns = q('.btns'); E.fabrow = q('.fabrow');
     E.badge = q('.auto-badge'); E.qa = q('.qarrow'); E.qaAr = q('.qa-ar'); E.qaD = q('.qa-d');
     E.npcIc = q('.npc-ic'); E.npcN = q('.npc-id h2'); E.npcR = q('.npc-id small');
     ctx = q('.mm canvas').getContext('2d');
@@ -192,7 +192,7 @@ const UI = (() => {
     E.slots.forEach(s => { s.$cdv = s.querySelector('.cdv'); s.$cdt = s.querySelector('.cdt'); s.$mpc = s.querySelector('.mpc'); s.$ic = s.querySelector('.ic'); s.$qty = s.querySelector('.qty'); });
 
     buildMenu();
-    [E.sb, q('.btns'), E.mm, E.objPop, E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    [E.sb, E.btns, E.fabrow, E.mm, E.objPop, E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
     WIN_KEYS.forEach(k => { E['p_' + k].addEventListener('pointerdown', () => winFront(k), true); E['p_' + k].querySelector('.ph').addEventListener('pointerdown', ev => winDrag(k, ev)); });
   }
 
@@ -401,7 +401,7 @@ const UI = (() => {
       g = `<div class="bag mats">${g}</div><div class="dim pad">Pedras de adicional caem de monstros. Leve-as ao Joalheiro.</div>`;
     }
     const tabs = `<div class="itabs"><button class="${tab === 'bag' ? 'on' : ''}" data-a="itab" data-k="bag">Mochila <small>${p.inv.length}/${BAG}</small></button><button class="${tab === 'mat' ? 'on' : ''}" data-a="itab" data-k="mat">Materiais</button></div>`;
-    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para pegá-lo e toque no boneco para equipar.');
+    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para ver os atributos e escolher: equipar, guardar, vender ou mover.');
     setBody(E.b_inv, `<div class="eqw">${l}${tabs}${g}<div class="foot-note">${hint}</div><div class="igold"><span>🪙</span><b>${fmt(p.gold)}</b><small>ouro</small></div></div>`);
     { const cv = E.b_inv.querySelector('canvas.pv'); if (cv && Game.portrait) { if (st.pvYaw == null) st.pvYaw = .6; Game.portrait(cv, st.pvYaw); } }
   }
@@ -606,6 +606,8 @@ const UI = (() => {
     const p = G.player; ms.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
     return [ms[0].x, ms[0].z, s.item || ms[0].name];
   }
+  /* celular: botões da direita ficam recolhidos no botão ☰ e se abrem como um balão; escolher uma opção (ou tocar fora) recolhe de novo */
+  function fabSync() { setCls(E.btns, 'open', !!st.fabOpen); setCls(E.fab, 'on', !!st.fabOpen); setText(E.fab, st.fabOpen ? '✕' : '☰'); }
   function mapToggle() { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
   /* celular: botão ❗ "o que fazer agora". Mostra a etapa da história, o destino (já marcado no minimapa) e atalhos para o mapa e as missões */
   const objKey = G => G.main ? G.main.i + ':' + G.main.prog : '';
@@ -1057,6 +1059,7 @@ const UI = (() => {
     if (typeof G === 'undefined' || !G.player || !st.panel) return;
     const on = k => st.wins.includes(k);
     if (on('inv') || (st.modal === 'dlg' && st.side)) renderInv(G);
+    if (st.card) cardRender();
     if (on('char')) renderChar(G);
     if (on('quest')) renderQuest(G);
     if (on('map')) renderMap(G);
@@ -1071,6 +1074,7 @@ const UI = (() => {
   /* ---------- ações (cliques delegados) ---------- */
   function act(a, d) {
     let r;
+    if (a.startsWith('card-')) { cardAct(a, d); return; }
     switch (a) {
       case 'close': if (d && d._k) winClose(d._k); else closeAll(); return;
       case 'p-inv': togglePanel('inv'); return;
@@ -1084,6 +1088,7 @@ const UI = (() => {
       case 'dailyall': if (G.daily) G.daily.list.forEach((x, k) => { if (x.done && !x.claimed) Game.claimDaily(k); }); refreshPanels(); return;
       case 'maplg': st.mapLeg = !st.mapLeg; renderMap(G); return;
       case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
+      case 'fab': st.fabOpen = !st.fabOpen; fabSync(); return;
       case 'p-lv': togglePanel('lv'); return;
       case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
       case 'pause': showPanel('pause'); return;
@@ -1207,6 +1212,56 @@ const UI = (() => {
     m.style.left = Math.min(c.x, (W || innerWidth) - w - 6) + 'px'; m.style.top = Math.min(c.y, (H || innerHeight) - hh - 6) + 'px';
   }
   function cmClose() { st.cm = null; cmRender(); }
+  /* celular: tocar num item (mochila, baú ou equipado) abre um cartão com todos os atributos, a comparação com o que está equipado,
+     o valor de venda e as ações. No lugar do clique que "pega" o item e do botão direito. */
+  function cardItem(c) {
+    if (c.zone === 'bank') { const A = Game.account(), it = A && A.bank.items.find(x => x.id === c.id); return it ? { it, eq: null } : null; }
+    return Game.findItem(c.id);
+  }
+  function cardClose() { st.card = null; cardRender(); }
+  function cardRender() {
+    let m = root.querySelector('.itcard'); const c = st.card;
+    if (c && !st.wins.includes('inv') && !(st.modal === 'dlg' && st.side)) st.card = null;
+    const f = st.card && cardItem(st.card);
+    if (!f) { st.card = null; if (m) m.remove(); return; }
+    if (!m) { m = document.createElement('div'); m.className = 'itcard glass'; root.appendChild(m); shield(m); }
+    const p = G.player, it = f.it, inBank = c.zone === 'bank', lines = itemTip(it, f.eq ? null : p.eq[it.slot], !!f.eq).split('\n').slice(0, -1); // a última linha é dica de mouse
+    let h = `<div class="ic-h"><b style="color:${rcol(it)}">${esc(lines[0])}</b><button class="x" data-a="card-x" title="Fechar">✕</button></div><ul>`;
+    for (const l of lines.slice(1)) h += `<li class="${/não pode/.test(l) ? 'bad' : /\(\+/.test(l) ? 'up' : /\(-/.test(l) ? 'dn' : /^Valor/.test(l) ? 'val' : ''}">${esc(l)}</li>`;
+    h += '</ul>';
+    if (c.ask) h += `<div class="ic-q">Excluir para sempre?</div><div class="ic-b"><button class="btn bad" data-a="card-yes">Sim</button><button class="btn" data-a="card-no">Não</button></div>`;
+    else {
+      let b = '';
+      if (f.eq) b += `<button class="btn primary" data-a="card-un" data-s="${f.eq}">Desequipar</button>`;
+      else if (inBank) b += `<button class="btn primary" data-a="card-take">Retirar do baú</button>`;
+      else {
+        b += `<button class="btn primary" data-a="card-eq"${noUse(it) ? ' disabled' : ''}>Equipar</button>`;
+        if (st.side === 'bank') b += `<button class="btn" data-a="card-put">Guardar no baú</button>`;
+        if (shopNear()) b += `<button class="btn" data-a="card-sell">Vender 💰 ${fmt(itemValue(it))}</button>`;
+      }
+      if (!f.eq) b += `<button class="btn" data-a="card-mv">Mover</button>`;
+      if (!f.eq && !inBank) b += `<button class="btn bad" data-a="card-del">Excluir</button>`;
+      h += `<div class="ic-b">${b}</div>`;
+    }
+    if (m._h !== h) { m._h = h; m.innerHTML = h; } // só remonta se mudou (senão o botão some entre o toque e o clique)
+  }
+  function cardAct(a, d) {
+    const c = st.card; if (!c && a !== 'card-x') return; let r = null;
+    switch (a) {
+      case 'card-x': cardClose(); return;
+      case 'card-del': c.ask = true; cardRender(); return;
+      case 'card-no': c.ask = false; cardRender(); return;
+      case 'card-yes': r = Game.deleteItem(c.id); break;
+      case 'card-un': r = Game.unequip(d.s); break;
+      case 'card-eq': r = Game.equip(c.id); break;
+      case 'card-put': r = Game.bankPut(c.id); break;
+      case 'card-take': r = Game.bankTake(c.id); break;
+      case 'card-sell': r = Game.sellItem(c.id); break;
+      case 'card-mv': st.carry = { id: c.id, from: c.zone === 'eq' ? 'bag' : c.zone }; cardClose(); carryRender(); refreshPanels(); toast('Toque num espaço vazio ou em outro item para soltar.'); return;
+    }
+    if (r && r.ok === false && r.msg) toast(r.msg);
+    cardClose(); refreshPanels();
+  }
 
   /* ---------- log, flutuantes, toast, banner ---------- */
   const floats = { free: [], used: [] };
@@ -1451,6 +1506,7 @@ const UI = (() => {
        Shift+clique faz a ação rápida de antes (equipar/guardar/retirar); Esc ou botão direito cancela. Com Ferreiro/Joalheiro abertos o clique só escolhe o item. */
     root.addEventListener('click', ev => {
       const T = ev.target; if (!T.closest) return; const cell = T.closest('.bi[data-zone]'), eqb = T.closest('.eqbox'), c = st.carry;
+      if (IS_TOUCH && !c && st.side !== 'smith' && st.side !== 'jewel') { const ie = T.closest('.bi.it[data-id], .es.has[data-id]'); if (ie) { ev.stopPropagation(); ev.preventDefault(); st.card = { id: +ie.dataset.id, zone: ie.dataset.zone || 'eq', ask: false }; cardRender(); return; } }
       if (c) {
         const it = carryItem();
         if (cell && it) { ev.stopPropagation(); ev.preventDefault(); st.carry = null; carryRender(); if (cell.dataset.zone === c.from && +cell.dataset.slot === it.pos) refreshPanels(); else Game.itemMove(c.from, c.id, cell.dataset.zone, +cell.dataset.slot); return; }
@@ -1462,6 +1518,7 @@ const UI = (() => {
     window.addEventListener('mousemove', ev => { if (st.carry) { const g = root.querySelector('.carry-ghost'); if (g) { g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px'; } } });
     root.addEventListener('click', ev => {
       const t = ev.target.closest('[data-a]');
+      if (st.fabOpen && t && t.dataset.a !== 'fab') { st.fabOpen = false; fabSync(); } // escolheu uma opção do menu: recolhe
       if (st.objOpen && t && t.dataset.a !== 'obj') { st.objOpen = false; objSync(G); } // qualquer outro botão da interface fecha o aviso de objetivo
       if (!t || t.disabled || !root.contains(t)) return;
       { const pn = t.closest('.panel'); if (pn && t.dataset.a === 'close') t.dataset._k = pn.id.slice(2); }
@@ -1497,7 +1554,7 @@ const UI = (() => {
     root.addEventListener('mousedown', ev => { if (st.cm && !ev.target.closest('.ctxm')) cmClose(); }, true);
     root.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('button, .btn, .bi, .es') && Game.sound) Game.sound('click', { force: true }); }, true);
     root.addEventListener('input', ev => { const t = ev.target; if (t.dataset && t.dataset.vol) { Game.setVol(t.dataset.vol, t.value / 100); return; } if (!t.dataset || !t.dataset.ci) return; if (t.dataset.ci === 'cr') Game.createSet('hcx', t.value); else Game.setLook('hcx', t.value); });
-    addEventListener('pointerdown', () => { if (st.objOpen) { st.objOpen = false; objSync(G); } }); // toque no jogo (fora da interface) fecha o aviso de objetivo
+    addEventListener('pointerdown', () => { if (st.objOpen) { st.objOpen = false; objSync(G); } if (st.fabOpen) { st.fabOpen = false; fabSync(); } }); // toque no jogo (fora da interface) fecha o aviso de objetivo
     addEventListener('keydown', ev => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey || st.menu) return;
       const k = ev.key.toLowerCase();

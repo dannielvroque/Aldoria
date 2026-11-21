@@ -685,3 +685,38 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 }
 #ui.touch .panel.win { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; animation: none; }
 #ui.touch .panel.win .ph { cursor: default; }
+
+/* ---------- toque: HUD compacto, menu recolhível (☰) e avisos que cabem na tela ---------- */
+#ui .fabrow { display: none; }
+#ui.touch .fabrow { display: flex; gap: 6px; align-self: flex-end; pointer-events: auto; }
+#ui.touch .fabrow button { width: 38px; height: 38px; border-radius: 50%; font-size: 18px; line-height: 1; padding: 0; border: 1.5px solid var(--gold); background: rgba(14, 12, 22, .8); color: #fff; }
+#ui.touch .fabrow .fab.on { background: rgba(100, 78, 30, .92); }
+#ui.touch .btns { display: none; }
+#ui.touch .btns.open { display: grid; position: absolute; top: calc(100% + 6px); right: 0; left: auto; width: max-content; grid-template-columns: repeat(4, 38px); gap: 6px; padding: 8px; border-radius: 18px; background: rgba(14, 12, 22, .9); border: 1px solid var(--gold-d); z-index: 12; transform-origin: top right; animation: fabpop .16s ease-out; }
+#ui.touch .btns.open button { width: 38px; height: 38px; min-width: 0; min-height: 0; }
+@keyframes fabpop { from { transform: scale(.2); opacity: 0; } }
+#ui.touch .pf { width: 158px; padding: 4px 6px; gap: 6px; }
+#ui.touch .pf-ic { width: 28px; height: 28px; font-size: 16px; border-width: 1.5px; }
+#ui.touch .pf-main { gap: 2px; }
+#ui.touch .pf .bar { height: 12px; } #ui.touch .pf .bar span { font-size: 9px; } #ui.touch .pf .bar.xp { height: 4px; }
+#ui.touch .pf-name { font-size: 11.5px; } #ui.touch .pf-lv { font-size: 11px; } #ui.touch .pf-gold { font-size: 10px; line-height: 1; }
+#ui.touch .tf { width: 158px; padding: 4px 6px 5px; }
+#ui.touch .tf-top { font-size: 11.5px; margin-bottom: 2px; gap: 4px; } #ui.touch .tf-lv { font-size: 10px; } #ui.touch .tf-ic { width: 20px; height: 20px; }
+#ui.touch .tf .bar { height: 11px; } #ui.touch .tf .bar span { font-size: 8.5px; }
+@media (orientation: portrait) { #ui.touch .tf { top: calc(76px + env(safe-area-inset-top)); } }
+#ui.touch .tfs { left: calc(172px + env(safe-area-inset-left)); right: auto; top: calc(6px + env(safe-area-inset-top)); }
+#ui.touch .toast { white-space: normal; text-align: center; width: max-content; max-width: calc(100% - 24px); padding: 6px 12px; font-size: 14px; top: calc(31% + env(safe-area-inset-top)); }
+#ui.touch .evtoast { min-width: 0; width: calc(100% - 24px); max-width: 340px; padding: 8px 14px; top: calc(16% + env(safe-area-inset-top)); }
+#ui.touch .evtoast b { font-size: 17px; overflow-wrap: anywhere; } #ui.touch .evtoast small { font-size: 12px; overflow-wrap: anywhere; }
+#ui.touch .banner { top: 40%; }
+#ui.touch .banner b { font-size: 34px; letter-spacing: .04em; } #ui.touch .banner small { font-size: 11px; letter-spacing: .2em; }
+#ui.touch .evbar { top: auto; bottom: calc(52px + env(safe-area-inset-bottom)); max-width: calc(100% - 16px); } #ui.touch .evbar .ev { font-size: 11px; padding: 2px 8px; }
+
+/* ---------- toque: cartão do item (atributos e ações ao tocar num item) ---------- */
+.itcard { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(300px, calc(100% - 24px)); max-height: 72%; overflow: auto; z-index: 50; padding: 10px 12px; pointer-events: auto; font-size: 13px; line-height: 1.35; border-color: var(--gold); }
+.itcard .ic-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; } .itcard .ic-h b { font: 700 14px var(--serif); }
+.itcard .ic-h .x { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--gold-d); background: rgba(255, 255, 255, .06); color: #fff; padding: 0; }
+.itcard ul { list-style: none; margin: 6px 0; padding: 0; } .itcard li { padding: 1px 0; color: #e6dcc4; }
+.itcard li.up { color: #8be08b; } .itcard li.dn { color: #ff9a8a; } .itcard li.bad { color: #ff7a6a; } .itcard li.val { color: #e8d28a; margin-top: 3px; }
+.itcard .ic-b { display: flex; flex-wrap: wrap; gap: 6px; } .itcard .ic-b .btn { flex: 1 1 calc(50% - 6px); padding: 8px 6px; font-size: 13px; } .itcard .ic-b .btn.primary { flex-basis: 100%; }
+.itcard .ic-q { color: #ffcf8a; margin: 6px 0; } .itcard .bad { color: #ff8a80; }
