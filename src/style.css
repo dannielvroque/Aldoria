@@ -665,6 +665,7 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 #ui.touch .objpop p { margin: 4px 0; } #ui.touch .objpop ul { margin: 4px 0; padding-left: 16px; } #ui.touch .objpop small { color: var(--mut); }
 #ui.touch .objpop .where { color: #ffe27a; }
 #ui.touch .objpop .op-b { display: flex; gap: 8px; margin-top: 8px; } #ui.touch .objpop .op-b .btn { flex: 1; padding: 8px 6px; font-size: 13px; }
+#ui.touch .objpop .op-b.col { flex-direction: column; } #ui.touch .objpop .op-b.col:empty { display: none; }
 #ui.touch { --s: 34px; }
 #ui.touch .sb { --s: 34px; gap: 5px; } #ui.touch .sbg { gap: 4px; }
 #ui.touch .slot .qty, #ui.touch .slot .mpc { font-size: 10px; } #ui.touch .slot .lk { font-size: 12px; }
