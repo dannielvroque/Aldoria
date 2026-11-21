@@ -447,6 +447,7 @@ const UI = (() => {
     let h = '<div class="pause-b">';
     h += '<button class="btn primary" data-a="close">▶ Continuar jogando</button>';
     h += TX('', '<button class="btn" data-a="p-auto">🤖 Configurar automático</button>');
+    h += TX('', `<button class="btn" data-a="eco">🔋 Economia de energia: <b>${Game.ecoOn() ? 'Ligada' : 'Desligada'}</b><i style="display:block;font:11px var(--sans);color:var(--mut)">30 FPS e menos calor; desligue para 60 FPS</i></button>`);
     h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b>${TX(' <small>[G]</small>', '')}</button>`;
     h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'}${TX(' <small>[N]</small>', '')}</button>`;
     { const V = Game.getVol ? Game.getVol() : {}; h += '<div class="mixer">' + [['master', '🔊 Geral'], ['sfx', '⚔ Efeitos'], ['amb', '🌿 Ambiente'], ['music', '🎵 Música']].map(([k, n]) => `<label><span>${n}</span><input type="range" min="0" max="100" value="${Math.round((V[k] == null ? 1 : V[k]) * 100)}" data-vol="${k}"></label>`).join('') + '</div>'; }
@@ -1079,6 +1080,7 @@ const UI = (() => {
       case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
       case 'pause': showPanel('pause'); return;
       case 'gfx': Game.cycleQuality(); refreshPanels(); return;
+      case 'eco': Game.toggleEco(); refreshPanels(); return;
       case 'tomenu': Game.toMenu(); return;
       case 'look': Game.setLook(d.k, +d.v); return;
       case 'mount': Game.toggleMount(d.id); return;

@@ -18,6 +18,8 @@ const Game = (() => {
   const IDM = M.id();
 
   let R = null, canvas = null, world = null, last = 0;
+  /* economia de energia: 30 FPS e resolução um pouco menor, para o celular não esquentar. Padrão: ligada no toque (aldoria_eco) */
+  let eco = IS_TOUCH; try { const s = localStorage.getItem('aldoria_eco'); if (s != null) eco = s === '1'; } catch (e) { }
   const obstacles = [], grid = new Map(), GC = 8, GOFF = 2048;
   const keys = {}, cam = { yaw: 0, dist: 15, x: 0, z: 0, init: false };
   const camPos = [0, 20, 20], fogCur = ZONES[0].fog.slice();
@@ -1995,6 +1997,8 @@ const Game = (() => {
     save(); // grava conversões e presentes recebidos no load
   }
   function cycleQuality() { return R.setQuality(R.qi + 1); }
+  const ecoOn = () => eco;
+  function toggleEco() { eco = !eco; try { localStorage.setItem('aldoria_eco', eco ? '1' : '0'); } catch (e) { } R.eco = eco; R.resize(true); UI.log(eco ? 'Economia de energia ligada (30 FPS).' : 'Economia de energia desligada.', 'sys'); }
   function deleteSave(id) { deleteChar(id); UI.showMenu(hasSave()); }
   function toggleMute() { G.mute = !G.mute; SND.mute(G.mute); UI.log(G.mute ? 'Som desligado.' : 'Som ligado.', 'sys'); }
 
@@ -2343,8 +2347,9 @@ const Game = (() => {
   function frame(now) {
     requestAnimationFrame(frame);
     if (document.hidden) { last = now; return; }
+    if (eco && now - last < 28) return; // 30 FPS (telas de 60/120 Hz pulam quadros)
     const rdt = Math.max(0, (now - last) / 1000), dt = Math.min(.05, rdt); last = now; G.t += dt;
-    autoQuality(rdt);
+    if (!eco) autoQuality(rdt);
     if (G.state === 'play' && !UI.paused()) update(dt);
     updateCamera(dt); updateTime(dt); render(); weatherAudio();
     if (G.state === 'play') UI.update(G);
@@ -2355,6 +2360,7 @@ const Game = (() => {
       document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;background:#111;font:20px sans-serif;text-align:center;padding:20px">Seu navegador não suporta WebGL2, necessário para Aldoria.<br>' + e.message + '</div>');
       return;
     }
+    R.eco = eco; R.resize(true);
     registerExtraMeshes(R); registerOrganicMeshes(R); // meshes_extra.js: primitivas extras e malhas orgânicas, antes de modelos e mundo
     loadSkins(R);
     world = buildWorld(R, obstacles);
@@ -2380,7 +2386,7 @@ const Game = (() => {
   });
   return {
     boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();
