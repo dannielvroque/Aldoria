@@ -8,7 +8,7 @@ Interface e textos do jogo em português do Brasil.
 - Ordem de concatenação (um único escopo global, sem módulos nem bundler): `engine.js, data.js, meshes_extra.js, [assets_data.js se existir], skin.js, models.js, art.js, story.js, world.js, ui.js, game.js, admin.js`. `style.css` e `index.html` entram pelo template.
 - Depois de qualquer mudança: rodar o build, abrir no navegador, conferir o console (não pode haver erros nem requisições de rede).
 - Publicar na web para teste: `python tools/deploy_s3.py <bucket> [id-cloudfront]` (build + envio como `index.html` + invalidação; exige AWS CLI configurado; `--dry-run` só mostra os comandos). Os saves ficam no `localStorage` de cada origem.
-- Hospedagem AWS (S3 privado + CloudFront + role OIDC do GitHub) em `infra/aldoria-site.yml`; passo a passo em `infra/README.md`. `.github/workflows/deploy.yml` publica a cada push na `main` (usa variáveis `AWS_ROLE_ARN`, `AWS_REGION`, `S3_BUCKET`, `CF_DISTRIBUTION_ID`).
+- Hospedagem AWS (S3 privado + CloudFront + role OIDC do GitHub) em Terraform em `infra/*.tf`; passo a passo em `infra/README.md`. `.github/workflows/deploy.yml` publica a cada push na `main` (usa variáveis `AWS_ROLE_ARN`, `AWS_REGION`, `S3_BUCKET`, `CF_DISTRIBUTION_ID`).
 - Os scripts de teste Playwright antigos (`test_*.py`) não estão mais no repositório; teste abrindo o jogo e usando o modo teste do administrador (abaixo).
 - Pasta oficial do projeto: `C:\Users\danni\iCloudDrive\projetos\Aldoria` (GitHub: dannielvroque/Aldoria, branch `main`).
 

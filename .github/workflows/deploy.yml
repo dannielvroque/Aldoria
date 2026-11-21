@@ -1,8 +1,8 @@
 name: Deploy
 
 # Publica dist/aldoria.html no S3 + CloudFront a cada push na main (ou manualmente).
-# Configure em Settings > Secrets and variables > Actions > Variables:
-#   AWS_ROLE_ARN, AWS_REGION, S3_BUCKET, CF_DISTRIBUTION_ID  (valores nas saídas do stack, ver infra/README.md)
+# Variáveis em Settings > Secrets and variables > Actions > Variables: AWS_ROLE_ARN, AWS_REGION, S3_BUCKET, CF_DISTRIBUTION_ID
+# (valores em `terraform output`, ver infra/README.md)
 
 on:
   push:
