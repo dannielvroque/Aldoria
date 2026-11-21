@@ -3,7 +3,7 @@
 const G = {
   state: 'menu', t: 0, tod: 9, weather: 'clear', mute: false, vp: M.id(), player: null,
   stats: { atk: 10, def: 5, crit: .05, spd: 5.4, maxHp: 100, maxMp: 50, setBonus: false },
-  quests: {}, target: null, zone: ZONES[0], mobs: [], npcs: NPCS, labels: [], dead: false,
+  quests: {}, encSpot: null, target: null, zone: ZONES[0], mobs: [], npcs: NPCS, labels: [], dead: false,
   // modo automático (ver CONTRACT.md)
   auto: { attack: false, skills: false, hp: false, mp: false, hpPct: 50, mpPct: 30 }, autoOut: { hp: false, mp: false }, autoPaused: false,
 };
@@ -28,9 +28,11 @@ const Game = (() => {
     forest: { sun: [.78, .92, .78], ambT: [.32, .46, .44], ambB: [.2, .24, .18], top: [.22, .34, .42], exp: .85 },
     ruins: { sun: [.9, .76, 1], ambT: [.38, .34, .52], ambB: [.24, .2, .28], top: [.2, .16, .34], exp: .88 },
   };
+  const lightZ = (id, from) => { LIGHT[id] = LIGHT[from]; };
   LIGHT.oasis = LIGHT.dunes = { sun: [1, .88, .66], ambT: [.6, .54, .44], ambB: [.42, .32, .2], top: [.36, .5, .8], exp: .78 };
   LIGHT.frostv = LIGHT.tundra = { sun: [.9, .95, 1], ambT: [.55, .62, .76], ambB: [.4, .42, .5], top: [.34, .5, .86], exp: .78 };
   LIGHT.forge = LIGHT.ashlands = { sun: [1, .62, .4], ambT: [.46, .26, .2], ambB: [.3, .14, .1], top: [.22, .1, .1], exp: .95 };
+  lightZ('camp', 'field'); lightZ('pedraluz', 'town'); lightZ('zahar', 'oasis'); lightZ('cinzeiro', 'forge'); lightZ('frostmar', 'frostv'); // cidades novas: luz da vizinha
   const lightCur = JSON.parse(JSON.stringify(LIGHT.town));
   /* ---------- dia / noite / clima ---------- */
   const DAY_SECONDS = 600; // um dia inteiro em 10 minutos reais
@@ -46,43 +48,51 @@ const Game = (() => {
   const AUTO_KEY = 'aldoria_auto_v1';
   let autoAcc = 0, autoPause = 0, autoHome = null;
   const items = [], fx = [], projs = [], delayed = [];
-  const sfxT = {};
-  let AC = null, master = null;
+  const SND = createSoundEngine(); // audio.js: mixer, efeitos, vozes, passos, ambiente e música sintetizados
 
   const MSPD = { slime: 2, boar: 3.6, wolfm: 3.8, spider: 3.6, goblin: 3.2, ent: 2.2, skel: 3, golemm: 2, wraith: 3.4, guardian: 3, colossus: 2.8, rat: 4.2, bandit: 3.4, orc: 3, necro: 2.6, banshee: 3.2, fireelem: 3, waterelem: 3, minotaur: 3.4, alphawolf: 4.4, queenspider: 3.8, orcwar: 3, phoenix: 4, hydra: 2.6, lich: 2.8, demon: 3.2, scorpion: 3.6, jackal: 4.2, mummy: 2.6, sandgolem: 2.2, yeti: 2.8, frostwolf: 4.2, frostwraith: 3.4, icegolem: 2.2, lavaslime: 2.4, imp: 4, hellhound: 4.4, magmagolem: 2.2, scorpqueen: 3.4, yetiking: 3, ignar: 2.8 };
   const HGT = { slime: 1.3, boar: 1.4, wolfm: 1.3, spider: 1.4, goblin: 2.2, ent: 3.6, skel: 2.2, golemm: 3.2, wraith: 2.4, guardian: 3.9, colossus: 3.6, rat: .9, bandit: 2.2, orc: 2.6, necro: 2.5, banshee: 2.6, fireelem: 3, waterelem: 2.8, minotaur: 3.3, alphawolf: 1.6, queenspider: 1.8, orcwar: 3, phoenix: 2.6, hydra: 3.4, lich: 2.8, demon: 3.8, scorpion: 1.6, jackal: 1.3, mummy: 2.6, sandgolem: 3.2, yeti: 3.5, frostwolf: 1.3, frostwraith: 2.4, icegolem: 3.2, lavaslime: 1.3, imp: 2.2, hellhound: 1.4, magmagolem: 3.2, scorpqueen: 2.4, yetiking: 4, ignar: 2.8 };
+  Object.assign(MSPD, { gremlin: 3.3, lizard: 3.4, bear: 3.2, fox: 4.6, cobra: 3.4, salamander: 3, gargoyle: 3 }); Object.assign(HGT, { gremlin: 1.5, lizard: .8, bear: 1.9, fox: .95, cobra: 1.9, salamander: 1.1, gargoyle: 3.5 });
   for (const k in MOB_ALIAS) { MSPD[k] = MSPD[k] || MSPD[MOB_ALIAS[k]]; HGT[k] = HGT[k] || HGT[MOB_ALIAS[k]]; }
   const throttle = (k, s) => { if (msgT[k] && G.t - msgT[k] < s) return false; msgT[k] = G.t; return true; };
 
-  /* ---------- áudio ---------- */
-  function initAudio() {
-    if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
-    try {
-      AC = new (window.AudioContext || window.webkitAudioContext)();
-      master = AC.createGain(); master.gain.value = .22; master.connect(AC.destination);
-      if (AC.state === 'suspended') AC.resume();
-    } catch (e) { AC = null; }
+  /* ---------- áudio (motor em audio.js) ---------- */
+  const initAudio = () => SND.init();
+  const SFX_AL = { hit: 'hit_flesh', skill: null };
+  function sfx(n, o) { if (G.mute) return false; if (n === 'skill') n = 'skill_' + (G.player ? G.player.cls : 'vanguard'); return SND.play(SFX_AL[n] || n, o); }
+  /* material do alvo (som do acerto) e voz do monstro por família */
+  const MAT = { skel: 'bone', mummy: 'bone', pharaoh: 'bone', lich: 'ghost', golemm: 'stone', colossus: 'stone', sandgolem: 'stone', gargoyle: 'stone', magmagolem: 'stone', icegolem: 'ice', waterelem: 'slime', frostwraith: 'ghost', wraith: 'ghost', banshee: 'ghost', necro: 'ghost', fireelem: 'fire', phoenix: 'fire', ignar: 'fire', slime: 'slime', lavaslime: 'slime', spider: 'insect', queenspider: 'insect', scorpion: 'insect', scorpqueen: 'insect', ent: 'wood', ancientent: 'wood', guardian: 'wood', yeti: 'ice', yetiking: 'ice', frostwyrm: 'ice' };
+  const MV = { slime: ['blub', 1], lavaslime: ['blub', .8], waterelem: ['blub', .7], boar: ['growl', 1.1], boarelite: ['growl', 1], bear: ['growl', .7], polarbear: ['growl', .65], orc: ['growl', .85], orcwar: ['growl', .7], minotaur: ['roar', 1], goblin: ['squeak', .8], bandit: ['growl', 1.2], wolfm: ['howl', 1], shadowwolf: ['howl', .85], alphawolf: ['howl', .75], frostwolf: ['howl', .9], jackal: ['howl', 1.3], fox: ['squeak', .9], hellhound: ['growl', .8], rat: ['squeak', 1.2],
+    cobra: ['hiss', 1], hydra: ['hiss', .6], frostwyrm: ['roar', .8], spider: ['chitter', 1], queenspider: ['chitter', .8], scorpion: ['chitter', .9], scorpqueen: ['chitter', .7], imp: ['screech', 1.3], phoenix: ['screech', .8], pharaoh: ['moan', .6], skel: ['clank', 1.3], mummy: ['moan', .8], wraith: ['moan', 1], frostwraith: ['moan', 1.1], banshee: ['screech', .8], necro: ['moan', .9], lich: ['moan', .6],
+    golemm: ['clank', .8], icegolem: ['clank', .8], sandgolem: ['clank', .75], magmagolem: ['clank', .65], gargoyle: ['clank', .9], colossus: ['clank', .55], fireelem: ['crackle', 1], ent: ['moan', .5], ancientent: ['moan', .4], guardian: ['roar', .7], yeti: ['roar', .9], yetiking: ['roar', .7], ignar: ['roar', .6], demon: ['roar', .7], banditking: ['growl', .9] };
+  function mobVoice(m, kind) {
+    if (G.mute || (kind !== 'die' && G.t - (m.vT || 0) < 2.8)) return; m.vT = G.t;
+    const v = MV[m.id] || MV[MOB_ALIAS[m.id]] || ['growl', 1], sz = Math.max(.6, Math.min(1.5, 1 / Math.sqrt(m.sc || 1)));
+    sfx(kind === 'die' ? 'mob_die' : m.boss && kind === 'aggro' ? 'boss_roar' : 'mob_' + v[0], { x: m.x, z: m.z, p: v[1] * sz, v: m.boss ? 1.3 : 1, force: true });
   }
-  function tone(f0, f1, dur, type, vol, delay) {
-    if (!AC || G.mute) return;
-    try {
-      const t = AC.currentTime + (delay || 0), o = AC.createOscillator(), g = AC.createGain();
-      o.type = type; o.frequency.setValueAtTime(f0, t);
-      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
-      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
-      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .03);
-    } catch (e) { /* ignore */ }
+  const swingOf = wt => ({ sword: 'swing_sword', axe: 'swing_axe', daggers: 'swing_daggers', staff: 'swing_staff', scepter: 'swing_staff', totem: 'swing_staff', wand: 'swing_magic', orb: 'swing_magic', tome: 'swing_magic', bow: 'swing_bow', longbow: 'swing_bow', compbow: 'swing_bow', crossbow: 'swing_crossbow' })[wt] || 'swing_sword';
+  const SURF = { field: 'grass', forest: 'grass', ruins: 'stone', dunes: 'sand', tundra: 'snow', ashlands: 'ash', town: 'stone' };
+  let audPreview = null; // prévia de ambiente/música pelo painel do administrador
+  let audEnvT = 0, stepAcc = 0, lastX = null, lastZ = null, wingT = 0;
+  function audioEnv() {
+    if (audPreview && G.t < audPreview.until) return audPreview.env; audPreview = null;
+    if (G.state !== 'play' || !G.player) return { zone: 'field', town: true, tod: 12, rain: 0, storm: 0, coast: 0, fight: 0, boss: 0 };
+    const p = G.player; let fight = 0, boss = 0;
+    for (const m of G.mobs) { if (m.dead || m.state !== 'chase') continue; const d = Math.hypot(m.x - p.x, m.z - p.z); if (d < 26) fight++; if (m.boss && d < 45) boss = 1; }
+    return { zone: G.zone.id, town: inSafe(p.x, p.z), tod: G.tod, rain: precipType() === 'rain' ? wx.level : 0, storm: wx.id === 'storm' ? 1 : 0, coast: Math.max(0, Math.min(1, 1 - coastD(p.x, p.z) / 70)), fight: Math.min(1, fight / 4), boss };
   }
-  const SFX = {
-    hit: () => tone(240, 60, .1, 'square', .45), skill: () => { tone(300, 900, .22, 'sawtooth', .3); tone(150, 80, .2, 'triangle', .4); },
-    level: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .3, 'triangle', .5, i * .11)),
-    pick: () => { tone(880, 880, .08, 'sine', .4); tone(1320, 1320, .1, 'sine', .35, .07); },
-    hurt: () => tone(160, 50, .18, 'sawtooth', .4), potion: () => tone(400, 800, .25, 'sine', .45),
-    die: () => tone(300, 40, .8, 'sawtooth', .5), boom: () => { tone(120, 30, .4, 'sawtooth', .5); tone(500, 60, .25, 'square', .25); },
-    thunder: () => { tone(70, 25, 1.6, 'sawtooth', .6); tone(120, 30, 1.2, 'square', .35, .1); },
-    shoot: () => tone(700, 300, .1, 'triangle', .3), coin: () => tone(1200, 1500, .08, 'square', .2),
-  };
-  function sfx(n) { if (sfxT[n] && G.t - sfxT[n] < .04) return; sfxT[n] = G.t; if (SFX[n]) SFX[n](); }
+  function audioUpdate(dt) {
+    if (G.mute) return;
+    const p = G.player, play = G.state === 'play' && p && !G.dead; SND.listener(cam.x, cam.z, cam.yaw);
+    let env = null; if ((audEnvT -= dt) <= 0) { audEnvT = .3; env = audioEnv(); }
+    SND.tick(dt, env);
+    if (!play) return;
+    if (lastX != null && p.moving) { const d = Math.hypot(p.x - lastX, p.z - lastZ); if (d < 3) stepAcc += d; } else if (!p.moving) stepAcc = Math.min(stepAcc, .8);
+    lastX = p.x; lastZ = p.z;
+    const mnt = p.mount && MOUNTS[p.mount];
+    if (mnt && mnt.fly) { wingT -= dt; if (p.moving && wingT <= 0) { wingT = .55; sfx('wing'); } }
+    else { const stride = mnt ? 2.1 : 1.55; if (stepAcc >= stride) { stepAcc -= stride; sfx(mnt ? 'gallop' : 'step_' + (inSafe(p.x, p.z) ? 'stone' : (SURF[G.zone.id] || 'grass')), { force: true }); } }
+  }
 
   /* ---------- grade espacial / colisão ---------- */
   const gkey = (cx, cz) => cx * 1024 + cz;
@@ -302,7 +312,7 @@ const Game = (() => {
   function newPlayer(cls, look, name) {
     G.player = {
       cls, name: name || 'Herói', attr: { str: 0, dex: 0, int: 0, vit: 0, spi: 0 }, ap: 0, tier: 0, lvl: 1, xp: 0, gold: 60, x: 4, z: 4, rot: 0, hp: 1, maxHp: 1, mp: 1, maxMp: 1,
-      inv: [], eq: { w: null, h: null, a: null, l: null, b: null, c: null }, pots: { hp: 5, mp: 3 }, cd: [0, 0, 0, 0, 0, 0, 0], sk: [1, 1, 0, 0, 0, 0, 0], sp: 0, feed: 0, mst: 100, mlv: {}, mbox: [],
+      inv: [], eq: { w: null, h: null, a: null, l: null, b: null, c: null }, pots: { hp: 5, mp: 3 }, cd: [0, 0, 0, 0, 0, 0, 0], sk: [0, 0, 0, 0, 0, 0, 0], sp: SK_PTS_LEVEL, feed: 0, mst: 100, mlv: {}, mbox: [],
       buffs: { atk: { v: 0, t: 0 }, def: { v: 0, t: 0 }, spd: { v: 0, t: 0 }, dodge: { v: 0, t: 0 }, crit: { v: 0, t: 0 }, aspd: { v: 0, t: 0 }, leech: { v: 0, t: 0 } }, shield: { hp: 0, t: 0 },
       atkCd: 0, atkT: 0, flash: 0, moving: false, dash: null, potCd: { hp: 0, mp: 0 },
       look: Object.assign({}, DEFLOOK[cls] || DEFLOOK.vanguard, look || {}), mounts: [], mount: null, lastMount: null,
@@ -314,29 +324,30 @@ const Game = (() => {
     recalc(); G.player.hp = G.stats.maxHp; G.player.mp = G.stats.maxMp;
     updateQuestLocks(true);
   }
+  const EL = p => effLv(p.lvl, p.tier); // nível efetivo (escala 1..50 do conteúdo)
   function recalc() {
-    const p = G.player, c = CLASSES[p.cls], b = c.base, g = c.grow, l = p.lvl - 1, E = p.eq, w = E.w, ac = E.c;
+    const p = G.player, c = CLASSES[p.cls], b = c.base, g = c.grow, l = EL(p) - 1, E = p.eq, w = E.w, ac = E.c;
     const ad = { atk: 0, def: 0, hpp: 0, crit: 0, arc: 0 }; // adicionais das pedras
     for (const s of SLOT_ORDER) { const it = E[s]; if (it && Array.isArray(it.adds)) for (const a of it.adds) if (a && a.k in ad) ad[a.k] += +a.v || 0; }
     const T = tmul(p.tier), A = p.attr, intCls = c.main === 'int'; // tier multiplica os stats base
-    let atk = (b.atk + g.atk * l) * T + (w ? w.atk * itemMul(w) : 0) + ad.atk, eDef = 0, eHp = 0, eSpd = 0;
-    for (const s of ['h', 'a', 'l', 'b']) { const it = E[s]; if (it) { eDef += it.def * itemMul(it); eHp += it.hp * itemMul(it); if (it.spd) eSpd += it.spd; } }
+    let atk = (b.atk + g.atk * l) * T + (w ? w.atk * itemMul(w) : 0) + ad.atk, eDef = 0, eHp = 0, eSpd = 0, eMp = 0, eDodge = 0;
+    for (const s of ['h', 'a', 'l', 'g', 'b']) { const it = E[s]; if (it) { if (it.atk) atk += it.atk * itemMul(it); eDef += it.def * itemMul(it); eHp += it.hp * itemMul(it); if (it.spd) eSpd += it.spd; if (it.mp) eMp += it.mp * itemMul(it); if (it.dodge) eDodge += it.dodge; } }
     let def0 = (b.def + g.def * l) * T + eDef + ad.def;
     let maxHp = ((b.hp + g.hp * l) * T + eHp) * (1 + ad.hpp);
-    const maxMp = ((b.mp + g.mp * l) * T + (ac ? ac.mp * itemMul(ac) : 0)) * (1 + .02 * A.int) * (1 + ad.arc);
+    const maxMp = ((b.mp + g.mp * l) * T + (ac ? ac.mp * itemMul(ac) : 0) + eMp) * (1 + .02 * A.int) * (1 + ad.arc);
     let crit = b.crit + (ac ? ac.crit : 0) + ad.crit;
     atk *= 1 + (c.main === 'dex' ? .007 : .008) * (A[c.main] || A.str | 0); maxHp *= 1 + .012 * A.vit; def0 *= 1 + .006 * A.vit; crit += .003 * A.dex;
     const set = SLOT_ORDER.every(s => E[s]) && SLOT_ORDER.every(s => E[s].grade === E.a.grade);
     if (set) { atk *= 1.15; maxHp *= 1.15; }
     const mb = p.lastMount && MOUNTS[p.lastMount] ? MOUNTS[p.lastMount].bon : null, mk = mountLvBon(mountLv(p.lastMount));
-    if (mb) { atk *= 1 + (mb.atk || 0) * mk; maxHp *= 1 + (mb.hp || 0) * mk; def0 *= 1 + (mb.def || 0) * mk; crit += (mb.crit || 0) * mk; }
+    if (mb) { const mm = p.mount ? 1 : .5; atk *= 1 + (mb.atk || 0) * mk * mm; maxHp *= 1 + (mb.hp || 0) * mk * mm; def0 *= 1 + (mb.def || 0) * mk * mm; crit += (mb.crit || 0) * mk * mm; }
     G.eqSpd = eSpd;
     const bf = p.buffs, S = G.stats;
     S.atk = atk * (1 + (bf.atk.t > 0 ? bf.atk.v : 0)); S.def = def0 * (1 + (bf.def.t > 0 ? bf.def.v : 0));
     S.skillMul = (1 + (intCls ? .004 : .008) * A.int) * (1 + ad.arc);
-    S.dodge = Math.min(.6, (b.dodge || 0) + .0015 * A.dex + (bf.dodge.t > 0 ? bf.dodge.v : 0));
+    S.dodge = Math.min(.6, Math.min(.35, (b.dodge || 0) + eDodge + .0015 * A.dex) + (bf.dodge.t > 0 ? bf.dodge.v : 0)); // teto de 35% sem buff
     S.aspd = (b.aspd || 1) * (1 + (bf.aspd.t > 0 ? bf.aspd.v : 0)); S.leech = bf.leech.t > 0 ? bf.leech.v : 0; S.tierMul = T;
-    crit += bf.crit.t > 0 ? bf.crit.v : 0; S.healMul = 1 + .015 * p.attr.spi; S.potMul = 1 + .01 * p.attr.spi;
+    crit = Math.min(.6, crit) + (bf.crit.t > 0 ? bf.crit.v : 0); S.dr = b.dr ? b.dr + .03 * p.tier : 0; S.healMul = 1 + .015 * p.attr.spi; S.potMul = 1 + .01 * p.attr.spi;
     S.crit = crit; S.spd = 5.4 * (1 + .001 * p.attr.dex) * (1 + (G.eqSpd || 0)) * (1 + (bf.spd.t > 0 ? bf.spd.v : 0)); S.maxHp = Math.round(maxHp); S.maxMp = Math.round(maxMp); S.setBonus = set; S.adds = ad;
     p.maxHp = S.maxHp; p.maxMp = S.maxMp; p.hp = Math.min(p.hp, p.maxHp); p.mp = Math.min(p.mp, p.maxMp);
   }
@@ -345,32 +356,44 @@ const Game = (() => {
   function checkGifts() {
     const p = G.player; p.gifts = p.gifts || {};
     for (const gf of GIFTS) {
-      const gid = gf.id + (p.tier ? '_t' + p.tier : ''); // os presentes voltam a valer em cada tier
-      if (p.lvl < gf.lvl || p.gifts[gid]) continue;
+      const gid = gf.id; // presentes só uma vez por personagem (evoluir de fase não dá nada)
+      if (EL(p) < gf.lvl || p.gifts[gid]) continue;
       if (!ACC) accLoad(); if (!ACC) continue;
       for (const s of SLOT_ORDER) ACC.bank.items.push(buildItem(s, p.cls, gf.lvl, gf.rar, s === 'w' ? WTYPES[p.cls][0] : undefined, p.tier));
       ACC.bank.max = Math.max(bankMax(), ACC.bank.items.length);
       p.gifts[gid] = 1;
-      const msg = 'Um conjunto ' + RARITY[gf.rar].n + ' de nível ' + gf.lvl + ' foi entregue no Guarda de Carga';
+      const msg = 'Um conjunto ' + RARITY[gf.rar].n + ' de nível ' + gf.lvl + ' foi entregue no Baú';
       UI.toast('🎁 ' + msg); UI.log(msg + ' (baú da conta).', 'lvl'); save();
     }
   }
   const xpMul = () => Math.max(0, CFG.econ.xpMul) * EV_EFF.xpMul, goldMul = () => Math.max(0, CFG.econ.goldMul) * EV_EFF.goldMul;
+  /* nível 29 no campo de treino: leva o personagem sozinho para a praça de Aldoria */
+  function campGraduate() {
+    const p = G.player, v = VILLAGES[0];
+    UI.log('Treinamento concluído! O Instrutor Brann o enviou para Aldoria: procure o Capitão Roderic.', 'quest'); UI.toast('Treinamento concluído: indo para Aldoria');
+    fxBurst(p.x, 1.2, p.z, [.6, .7, 1], 26, 5, .2); fxDisc(p.x, p.z, .5, 4, .8, [.6, .7, 1], .6);
+    portalLock = true; p.path = null; p.x = v.arrive[0]; p.z = v.arrive[1]; cmd = null; tmob = null; autoHome = null; G.wasSafe = true;
+    if (pet) { pet.x = p.x + 1.5; pet.z = p.z + 1.5; }
+    cam.init = false; fxBurst(p.x, 1.2, p.z, [.6, .7, 1], 26, 5, .2); fxDisc(p.x, p.z, .5, 4, .8, [.6, .7, 1], .6); save();
+  }
   function gainXp(n, scaled) { // multiplicador global de XP (CFG + eventos); scaled = já multiplicado
-    const p = G.player; if (p.lvl >= MAXLV) return;
+    const p = G.player; if (p.lvl >= lvCap(p.tier)) return;
     if (!scaled) n = Math.max(1, Math.round(n * xpMul()));
     p.xp += n; UI.float(p.x, 2.8, p.z, '+' + n + ' XP', 'xp');
     let up = false;
-    while (p.lvl < MAXLV && p.xp >= xpNeed(p.lvl)) { p.xp -= xpNeed(p.lvl); p.lvl++; p.ap += AP_PER_LEVEL; up = true; }
-    if (p.lvl >= MAXLV) p.xp = 0;
+    let apG = 0, spG = 0;
+    while (p.lvl < lvCap(p.tier) && p.xp >= xpPlayer(p.lvl, p.tier)) { p.xp -= xpPlayer(p.lvl, p.tier); const a0 = ptsAt(AP_PER_LEVEL, p.lvl, p.tier), s0 = ptsAt(SK_PTS_LEVEL, p.lvl, p.tier); p.lvl++; apG += ptsAt(AP_PER_LEVEL, p.lvl, p.tier) - a0; spG += ptsAt(SK_PTS_LEVEL, p.lvl, p.tier) - s0; up = true; }
+    p.ap += apG; p.sp = (p.sp || 0) + spG;
+    if (p.lvl >= lvCap(p.tier)) p.xp = 0;
     if (up) {
       recalc(); p.hp = p.maxHp; p.mp = p.maxMp;
-      UI.levelUp(p.lvl); UI.log('Você alcançou o nível ' + p.lvl + '! +' + AP_PER_LEVEL + ' pontos de atributo (painel C).', 'lvl'); sfx('level');
+      UI.levelUp(p.lvl); UI.log('Você alcançou o nível ' + p.lvl + '!' + (apG ? ' +' + apG + ' de atributo (painel C)' : '') + (spG ? ' +' + spG + ' de habilidade (Mestre de Habilidades)' : '') + '.', 'lvl'); sfx('level');
       fxDisc(p.x, p.z, .5, 6, .9, [1, .9, .4], .6); fxDisc(p.x, p.z, .5, 3.5, 1.2, [1, 1, .7], .5); fxPillar(p.x, p.z, 1.2, [1, .9, .4], 1.2);
       fxBurst(p.x, 1, p.z, [1, .9, .4], 24, 5, .22);
-      updateQuestLocks(false); track('lvl', 0); p.sp = (p.sp || 0) + 1;
+      updateQuestLocks(false); track('lvl', 0);
+      if (G.zone && G.zone.id === 'camp' && EL(p) >= CAMP.endLv && !G.dead) campGraduate();
       checkGifts();
-      { const s = curStep(); if (s && p.lvl === s.lvl) UI.log('Nova etapa da história liberada: ' + stepTitle(s), 'quest'); }
+      { const s = curStep(); if (s && EL(p) >= s.lvl && effLv(p.lvl - 1, p.tier) < s.lvl) UI.log('Nova etapa da história liberada: ' + stepTitle(s), 'quest'); }
     }
   }
 
@@ -378,7 +401,7 @@ const Game = (() => {
   function updateQuestLocks(silent) {
     for (let i = 0; i < QUESTS.length; i++) {
       const q = QUESTS[i], st = G.quests[q.id];
-      if (st.state === 'locked' && G.player.lvl >= q.lvl && (q.after ? G.quests[q.after].state === 'done' : (i === 0 || G.quests[QUESTS[i - 1].id].state === 'done'))) {
+      if (st.state === 'locked' && EL(G.player) >= q.lvl && (q.after ? G.quests[q.after].state === 'done' : (i === 0 || G.quests[QUESTS[i - 1].id].state === 'done'))) {
         st.state = 'available'; if (!silent) UI.log('Nova missão disponível: ' + q.n + '. Fale com um Ancião.', 'quest');
       }
     }
@@ -401,36 +424,39 @@ const Game = (() => {
   function turnInQuest(id) {
     const st = G.quests[id], q = QUESTS.find(x => x.id === id), p = G.player; if (!st || st.state !== 'ready') return;
     st.state = 'done'; p.gold += q.rew.gold; p.pots.hp += q.rew.pots; p.pots.mp += q.rew.pots;
-    UI.log('Missão entregue: ' + q.n + ' (+' + q.rew.xp + ' XP, +' + q.rew.gold + ' ouro, +' + q.rew.pots + ' poções de cada)', 'quest'); sfx('level');
+    UI.log('Missão entregue: ' + q.n + ' (+' + q.rew.xp + ' XP, +' + q.rew.gold + ' ouro, +' + q.rew.pots + ' poções de cada)', 'quest'); sfx('quest');
     track('gold', q.rew.gold); track('quest', 1); gainXp(q.rew.xp); updateQuestLocks(false); UI.refreshPanels();
   }
   /* ---------- história principal (story.js) ---------- */
   function newProgress() {
-    G.main = { i: 0, prog: 0, chaps: [] };
-    G.rec = { kill: 0, elite: 0, boss: 0, bossU: [], skill: 0, crit: 0, gold: 0, loot: 0, quest: 0, refine: 0, legend: 0, regions: [], daily: 0, plus: 0, ach: [] };
+    G.main = { i: 0, prog: 0, chaps: [], v: 1 };
+    G.rec = { kill: 0, elite: 0, boss: 0, bossU: [], skill: 0, crit: 0, gold: 0, loot: 0, quest: 0, refine: 0, legend: 0, regions: [], disc: [], enc: 0, daily: 0, plus: 0, ach: [] };
     G.daily = null;
   }
   const curStep = () => MAIN[G.main.i] || null;
-  const stepOpen = s => s && G.player.lvl >= s.lvl;
+  const chapN = () => G.main.chaps.filter(k => k !== 'c0').length; // capítulos da história (o prólogo do campo de treino não conta)
+  /* eventos do tutorial (etapas 'do' da história): ev = 'move' | 'open:<janela>' | 'learn' | 'skill' | 'potion' */
+  function mainEv(ev) { const s = G.main && curStep(); if (!s || !stepOpen(s) || s.k !== 'do' || s.ev !== ev) return; G.main.prog++; if (G.main.prog >= stepGoal(s)) stepDone(); }
+  const stepOpen = s => s && EL(G.player) >= s.lvl;
   function stepDone() {
     const s = curStep(); if (!s) return;
     const p = G.player, r = stepReward(s);
     p.gold += r.gold; track('gold', r.gold); track('quest', 1);
-    UI.log('História: ' + stepTitle(s) + ' concluída (+' + fmt(r.xp) + ' XP, +' + fmt(r.gold) + ' ouro).', 'quest'); sfx('level');
+    UI.log('História: ' + stepTitle(s) + ' concluída (+' + fmt(r.xp) + ' XP, +' + fmt(r.gold) + ' ouro).', 'quest'); sfx('quest');
     gainXp(r.xp);
     const nx = MAIN[s.i + 1];
     if (!nx || nx.ch !== s.ch) { // fim de capítulo
       const c = CHAP[s.ch]; G.main.chaps.push(c.id); p.gold += c.rew.gold;
-      const slot = SLOT_ORDER[Math.floor(rnd() * SLOT_ORDER.length)], it = makeItem(slot, p.cls, Math.max(p.lvl, c.lv[1] - 2), 0);
+      const slot = SLOT_ORDER[Math.floor(rnd() * SLOT_ORDER.length)], it = makeItem(slot, p.cls, Math.max(Math.round(EL(p)), c.lv[1] - 2), 0, p.tier); it.rq = Math.floor(EL(p)); // recompensa de capítulo: sempre utilizável na hora
       if (it.rar < c.rew.item) { const f = RARITY[c.rew.item].m / RARITY[it.rar].m; it.rar = c.rew.item; for (const k of ['atk', 'def', 'hp', 'mp']) if (it[k]) it[k] = Math.round(it[k] * f); if (it.crit) it.crit = +(it.crit * f).toFixed(3); if (it.spd) it.spd = +(it.spd * f).toFixed(3); }
       if (p.inv.length < 24) p.inv.push(it); else items.push({ it, x: p.x + 1, z: p.z, t0: G.t, ph: 0 });
       UI.toast('✦ ' + c.n.split('—')[0].trim() + ' concluído!'); UI.log('Capítulo concluído: ' + c.n + '. Recompensa: ' + fmt(c.rew.gold) + ' ouro e ' + itemName(it) + ' (' + RARITY[it.rar].n + ').', 'lvl');
       fxPillar(p.x, p.z, 1.4, [1, .85, .4], 1.6); fxRing(p.x, 1, p.z, .5, 8, 1, [1, .85, .4], .9, 2);
       track('chap', 0);
     } else UI.toast('História: próxima etapa');
-    G.main.i++; G.main.prog = 0;
+    G.main.i++; G.main.prog = 0; G.main.mx = null;
     const n2 = curStep();
-    if (n2 && !stepOpen(n2)) UI.log('Próxima etapa da história no nível ' + n2.lvl + '.', 'quest');
+    if (n2 && !stepOpen(n2)) UI.log('Próxima etapa da história no nível ' + dispLv(n2.lvl, p.tier) + '.', 'quest');
     UI.refreshPanels();
   }
   function mainKill(m) {
@@ -446,7 +472,9 @@ const Game = (() => {
     if (G.main.prog >= goal) stepDone(); else UI.log((s.item || stepTitle(s)) + ': ' + G.main.prog + '/' + goal, 'quest');
   }
   function mainUpdate() {
-    const s = curStep(); if (!stepOpen(s) || s.k !== 'explore') return;
+    const s = curStep();
+    if (stepOpen(s) && s.k === 'do' && s.ev === 'move') { const p = G.player; if (!G.main.mx) G.main.mx = [p.x, p.z]; else if (Math.hypot(p.x - G.main.mx[0], p.z - G.main.mx[1]) >= 12) mainEv('move'); return; }
+    if (!stepOpen(s) || s.k !== 'explore') return;
     const p = G.player; if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) { UI.toast('Descoberto: ' + s.place); stepDone(); }
   }
   function storyTalk(npc) {
@@ -461,7 +489,7 @@ const Game = (() => {
     const pick = []; while (pick.length < 3) { h = (h * 1103515245 + 12345) >>> 0; const k = h % DAILY_POOL.length; if (!pick.includes(k)) pick.push(k); }
     G.daily = { day: d, list: pick.map(pi => ({ pi, prog: 0, done: false, claimed: false })) };
   }
-  function dailyReward() { const l = G.player.lvl; return { xp: Math.round(xpNeed(l) * .35), gold: Math.round(80 + l * 40), pots: 2 + Math.floor(l / 10) }; }
+  function dailyReward() { const l = Math.round(EL(G.player)); return { xp: Math.round(xpNeed(l) * .35), gold: Math.round(80 + l * 40), pots: 2 + Math.floor(l / 10) }; }
   function claimDaily(k) {
     dailyCheck(); const d = G.daily.list[k | 0]; if (!d || !d.done || d.claimed) return;
     const r = dailyReward(), p = G.player; d.claimed = true; p.gold += r.gold; p.pots.hp += r.pots; p.pots.mp += r.pots; gainXp(r.xp); track('daily', 1);
@@ -473,10 +501,10 @@ const Game = (() => {
     if (G.daily) for (const d of G.daily.list) { const D = DAILY_POOL[d.pi]; if (!d.done && D.k === k) { d.prog = Math.min(D.n, d.prog + n); if (d.prog >= D.n) { d.done = true; UI.toast('Desafio diário pronto: ' + D.t); UI.log('Desafio diário pronto: ' + D.t + '. Resgate no painel de missões (Q).', 'quest'); } } }
     for (const a of ACHIEVEMENTS) {
       if (R_.ach.includes(a.id)) continue;
-      const v = a.k === 'lvl' ? G.player.lvl : a.k === 'chap' ? G.main.chaps.length : a.k === 'bossU' ? R_.bossU.length : a.k === 'regions' ? R_.regions.length : R_[a.k];
+      const v = a.k === 'lvl' ? Math.floor(EL(G.player)) : a.k === 'chap' ? chapN() : a.k === 'bossU' ? R_.bossU.length : a.k === 'regions' ? R_.regions.length : a.k === 'disc' ? R_.disc.length : R_[a.k];
       if (v >= a.n_) {
         R_.ach.push(a.id); if (a.rew) G.player.gold += a.rew;
-        UI.toast('🏆 Conquista: ' + a.n); UI.log('Conquista desbloqueada: ' + a.n + ' — ' + a.t + (a.rew ? ' (+' + fmt(a.rew) + ' ouro)' : ''), 'lvl'); sfx('level');
+        UI.toast('🏆 Conquista: ' + a.n); UI.log('Conquista desbloqueada: ' + a.n + ' — ' + (a.k === 'lvl' ? 'Alcance o nível ' + dispLv(a.n_, G.player.tier) : a.t) + (a.rew ? ' (+' + fmt(a.rew) + ' ouro)' : ''), 'lvl'); sfx('achievement');
       }
     }
   }
@@ -486,23 +514,20 @@ const Game = (() => {
   function canEvolve() {
     const p = G.player, nt = p.tier + 1, cost = EVO_COST[p.tier];
     if (!TIERS[nt]) return { ok: false, reason: 'Você já alcançou a forma máxima: ' + TIERS[p.tier] + '.', nextTier: null, cost: 0 };
-    if (p.lvl < MAXLV) return { ok: false, reason: 'Requer nível ' + MAXLV + '.', nextTier: nt, cost };
+    if (p.lvl < lvCap(p.tier)) return { ok: false, reason: 'Requer nível ' + lvCap(p.tier) + '.', nextTier: nt, cost };
     if (p.gold < cost) return { ok: false, reason: 'Ouro insuficiente (' + fmt(cost) + ').', nextTier: nt, cost };
     return { ok: true, reason: '', nextTier: nt, cost };
   }
   function evolve() {
     const c = canEvolve(), p = G.player; if (!c.ok) return { ok: false, msg: c.reason };
-    if (!ACC) accLoad(); if (!ACC) createAccount('Jogador');
     p.gold -= c.cost;
-    const moved = SLOT_ORDER.map(s => p.eq[s]).filter(Boolean).concat(p.inv);
-    for (const it of moved) ACC.bank.items.push(it);
-    ACC.bank.max = Math.max(bankMax(), ACC.bank.items.length); // baú cresce para caber tudo
-    p.eq = { w: null, h: null, a: null, l: null, b: null, c: null }; p.inv = [];
-    p.tier = c.nextTier; p.lvl = 1; p.xp = 0; p.sp = 0; p.ap = 0; p.attr = { str: 0, dex: 0, int: 0, vit: 0, spi: 0 };
+    // só muda a fase: nível, pontos e habilidades voltam ao início; itens (equipados e da mochila), ouro, montarias, história e conquistas ficam.
+    // Não há kit inicial nem presentes: o jogador dropa, farma e compra o equipamento da fase nova.
+    p.tier = c.nextTier; p.lvl = 1; p.xp = 0; p.sp = SK_PTS_LEVEL; p.ap = 0; p.attr = { str: 0, dex: 0, int: 0, vit: 0, spi: 0 };
     p.sk = p.sk.map(v => v ? 1 : 0); p.cd = p.cd.map(() => 0);
     for (const k in p.buffs) p.buffs[k].t = 0; p.shield = { hp: 0, t: 0 }; pet = null;
-    starterKit(true); retierMobs(); recalc(); p.hp = p.maxHp; p.mp = p.maxMp;
-    UI.toast('Você se tornou ' + TIERS[p.tier] + '!'); UI.log('Evolução: ' + TIERS[p.tier] + '! Você voltou ao nível 1 com poder ×' + tmul(p.tier) + '. ' + moved.length + ' itens foram para o baú da conta.', 'lvl'); sfx('level');
+    retierMobs(); recalc(); p.hp = p.maxHp; p.mp = p.maxMp;
+    UI.toast('Você se tornou ' + TIERS[p.tier] + '!'); UI.log('Evolução: ' + TIERS[p.tier] + '! Você voltou ao nível 1 com poder ×' + tmul(p.tier) + '. Nenhum item foi entregue: dropar, farmar e comprar são com você.', 'lvl'); sfx('evolve');
     for (let i = 0; i < 3; i++) fxDisc(p.x, p.z, .5, 5 + i * 1.5, 1 + i * .3, i % 2 ? [.6, .8, 1] : [1, .85, .3], .55);
     fxPillar(p.x, p.z, 1.5, [1, .95, .6], 1.8); fxBurst(p.x, 1, p.z, [1, .95, .6], 40, 6, .25);
     save(); UI.refreshPanels(); return { ok: true, msg: 'Você se tornou ' + TIERS[p.tier] + '!' };
@@ -512,14 +537,16 @@ const Game = (() => {
   function equip(id) {
     const p = G.player, i = p.inv.findIndex(x => x.id === Number(id)); if (i < 0) return;
     const it = p.inv[i], old = p.eq[it.slot];
-    if ((it.tierReq | 0) > p.tier) { UI.toast('Requer classe ' + TIERS[it.tierReq | 0]); UI.log('Não é possível equipar ' + itemName(it) + ': requer classe ' + TIERS[it.tierReq | 0] + '.', 'sys'); return; }
-    p.eq[it.slot] = it; if (old) p.inv[i] = old; else p.inv.splice(i, 1);
+    if (it.cls && it.cls !== p.cls) { UI.toast('Equipamento de ' + CLASSES[it.cls].name); UI.log('Não é possível equipar ' + itemName(it) + ': é equipamento de ' + CLASSES[it.cls].name + ' (você é ' + CLASSES[p.cls].name + ').', 'sys'); sfx('hurt'); return; }
+    if ((it.tierReq | 0) > p.tier) { UI.toast('Requer fase ' + TIERS[it.tierReq | 0]); UI.log('Não é possível equipar ' + itemName(it) + ': requer fase ' + TIERS[it.tierReq | 0] + '.', 'sys'); return; }
+    const rq = itemReqLvl(it, p.tier); if (EL(p) < rq) { const dq = dispLv(rq, it.tierReq | 0); UI.toast('Requer nível ' + dq); UI.log('Não é possível equipar ' + itemName(it) + ': requer nível ' + dq + ' (você está no ' + p.lvl + '). Guarde no Baú.', 'sys'); sfx('hurt'); return; }
+    p.eq[it.slot] = it; if (old) { old.pos = it.pos; p.inv[i] = old; } else p.inv.splice(i, 1); delete it.pos; // o item que sai ocupa o espaço do que entrou
     recalc(); sfx('pick'); UI.log('Equipado: ' + itemName(it), 'loot'); UI.refreshPanels();
   }
   function unequip(slot) {
     const p = G.player, it = p.eq[slot]; if (!it) return;
     if (p.inv.length >= 24) { UI.log('Inventário cheio.', 'sys'); return; }
-    p.eq[slot] = null; p.inv.push(it); recalc(); UI.refreshPanels();
+    p.eq[slot] = null; delete it.pos; p.inv.push(it); recalc(); UI.refreshPanels();
   }
   /* acha um item na mochila ou equipado */
   function findItem(id) {
@@ -544,10 +571,10 @@ const Game = (() => {
     const ch = jewelChance(it); p.gold -= cost; p.mats[sid]--; if (p.mats[sid] <= 0) delete p.mats[sid];
     let r;
     if (rnd() < ch) {
-      const a = { k: st.k, v: addVal(st.k, it.grade) }; it.adds = (it.adds || []).concat([a]);
-      recalc(); sfx('level'); fxBurst(p.x, 1.4, p.z, [.8, .5, 1], 16, 3, .18);
+      const a = { k: st.k, v: addVal(st.k, pgOf(it)) }; it.adds = (it.adds || []).concat([a]);
+      recalc(); sfx('gem'); fxBurst(p.x, 1.4, p.z, [.8, .5, 1], 16, 3, .18);
       UI.log('O Joalheiro engastou ' + st.n + ' em ' + itemName(it) + ': ' + addTxt(a) + '.', 'loot'); r = { ok: true, msg: 'Sucesso! ' + itemName(it) + ' ganhou ' + addTxt(a) + '.' };
-    } else { sfx('hit'); UI.log('A ' + st.n + ' rachou. O engaste em ' + itemName(it) + ' falhou.', 'sys'); r = { ok: false, msg: 'Falhou! A pedra se partiu.' }; }
+    } else { sfx('refinoFail'); UI.log('A ' + st.n + ' rachou. O engaste em ' + itemName(it) + ' falhou.', 'sys'); r = { ok: false, msg: 'Falhou! A pedra se partiu.' }; }
     save(); UI.refreshPanels(); return r;
   }
   function sellItem(id) {
@@ -574,7 +601,7 @@ const Game = (() => {
     p.attr[k] += n; p.ap -= n; const hp = p.hp / (p.maxHp || 1), mp = p.mp / (p.maxMp || 1); recalc(); p.hp = Math.max(1, Math.round(p.maxHp * hp)); p.mp = Math.round(p.maxMp * mp); sfx('coin'); save(); UI.refreshPanels();
   }
   function resetAttr() {
-    const p = G.player, cost = 50 * p.lvl; if (!p) return;
+    const p = G.player, cost = 50 * Math.round(EL(G.player)); if (!p) return;
     const spent = ATTR_KEYS.reduce((a, k) => a + p.attr[k], 0); if (!spent) return;
     if (p.gold < cost) { UI.log('Redistribuir custa ' + cost + ' ouro.', 'sys'); return; }
     p.gold -= cost; p.ap += spent; for (const k of ATTR_KEYS) p.attr[k] = 0; recalc(); sfx('potion'); UI.log('Pontos redistribuídos (-' + cost + ' ouro).', 'sys'); save(); UI.refreshPanels();
@@ -607,9 +634,9 @@ const Game = (() => {
     if (!id) { const L = MOUNT_DROP.zone[m.zone] || []; if (!L.length) return; id = L[Math.min(L.length - 1, Math.floor(rnd() * L.length + (m.champ || m.elite ? .5 : 0)))]; }
     if (!MOUNTS[id]) return;
     p.mbox = p.mbox || []; if (p.mbox.length >= 20) return;
-    p.mbox.push(id); sfx('level');
+    const had = p.mounts.includes(id); p.mbox.push(id); useMountItem(p.mbox.length - 1); // entra na coleção na hora (sem passo extra na mochila)
     UI.float(m.x, (m.hgt || 2) + 1.9, m.z, MOUNTS[id].ic + ' Montaria: ' + MOUNTS[id].n, 'xp'); UI.toast('Montaria encontrada: ' + MOUNTS[id].n + '!');
-    UI.log('★ Você encontrou: Montaria: ' + MOUNTS[id].n + '. Use na mochila [I] para adicioná-la.', 'lvl');
+    UI.log('★ Montaria ' + (had ? 'repetida: ela ganhou um nível de experiência. ' : 'nova! ') + 'Abra Montarias [H]: Equipar dá o bônus, X monta, e ela evolui com XP (lute montado ou cavalgue).', 'lvl');
   }
   function restMount() {
     const p = G.player, mx = mstMax(), cost = 30; if ((p.mst == null ? mx : p.mst) >= mx) return { ok: false, msg: 'Sua montaria já está descansada.' };
@@ -618,11 +645,11 @@ const Game = (() => {
   }
   function buyMount(id) {
     const p = G.player, m = MOUNTS[id]; if (!m || p.mounts.includes(id)) return;
-    if (p.lvl < m.lvl) { UI.log('Requer nível ' + m.lvl + '.', 'sys'); return; }
+    if (EL(p) < m.lvl) { UI.log('Requer nível ' + dispLv(m.lvl, p.tier) + '.', 'sys'); return; }
     if (p.gold < m.price) { UI.log('Ouro insuficiente.', 'sys'); return; }
     p.gold -= m.price; p.mounts.push(id); if (!p.lastMount) { p.lastMount = id; recalc(); } sfx('coin'); UI.log('Você adquiriu: ' + m.n + '! Equipada! Pressione X para montar.', 'loot'); UI.toast(m.n + ' adquirido!'); save(); UI.refreshPanels();
   }
-  function dismount(quiet) { const p = G.player; if (!p || !p.mount) return; p.mount = null; if (!quiet) UI.toast('Você desmontou'); }
+  function dismount(quiet) { const p = G.player; if (!p || !p.mount) return; p.mount = null; recalc(); if (!quiet) UI.toast('Você desmontou'); }
   function equipMount(id) {
     const p = G.player; if (!p || !MOUNTS[id] || !p.mounts.includes(id)) return;
     if (p.lastMount === id) { p.lastMount = null; if (p.mount) dismount(true); UI.toast('Montaria desequipada'); }
@@ -644,14 +671,29 @@ const Game = (() => {
   function enhance(slot) { // aceita o espaço equipado ('w', 'h'...) ou o id de um item (equipado ou na mochila)
     const p = G.player, f = SLOTS[slot] ? null : findItem(slot), it = f ? f.it : p.eq[slot]; let res;
     if (!it) res = { ok: false, msg: f === null && SLOTS[slot] ? 'Nada equipado neste espaço.' : 'Escolha um item.' };
-    else if (it.plus >= 10) res = { ok: false, msg: 'O item já está no refino máximo (+10).' };
+    else if (it.plus >= PLUS_MAX) res = { ok: false, msg: it.plus >= 10 ? 'Item Ancient: não refina mais.' : 'Refino máximo no Ferreiro: +9. Para o Ancient (+10), junte 2 peças +9 iguais com o Refinador.' };
     else {
       const cost = enhCost(it);
       if (p.gold < cost) res = { ok: false, msg: 'Ouro insuficiente (' + cost + ').' };
       else {
         p.gold -= cost;
-        if (rnd() < enhChance(it.plus)) { it.plus++; recalc(); track('refine', 1); if (it.plus > G.rec.plus) { G.rec.plus = it.plus; track('plus', 0); } sfx('level'); res = { ok: true, msg: itemName(it) + ' refinado com sucesso!' }; }
-        else { sfx('hurt'); res = { ok: false, msg: 'O refino falhou. Apenas o ouro foi perdido.' }; }
+        if (rnd() < enhChance(it.plus)) { it.plus++; recalc(); track('refine', 1); if (it.plus > G.rec.plus) { G.rec.plus = it.plus; track('plus', 0); } sfx('refinoOk'); res = { ok: true, msg: itemName(it) + ' refinado com sucesso!' }; }
+        else { sfx('refinoFail'); res = { ok: false, msg: 'O refino falhou. Apenas o ouro foi perdido.' }; }
+      }
+    }
+    UI.refreshPanels(); return res;
+  }
+  /* Refinador: funde 2 peças IGUAIS (mesmo espaço, classe, material/tipo, fase e refino) na mochila: 2× +9 → +10 Ancient (grátis); 2× +10 → +11 Ancient (100.000 de ouro) */
+  function fuseItems(idA, idB) {
+    const p = G.player, A = p.inv.find(x => x.id === Number(idA)), B = p.inv.find(x => x.id === Number(idB)); let res;
+    if (!A || !B || A === B) res = { ok: false, msg: 'Escolha duas peças na mochila.' };
+    else if ((A.plus | 0) < PLUS_MAX || (A.plus | 0) >= ANCIENT_MAX || fuseKey(A) !== fuseKey(B)) res = { ok: false, msg: 'As duas peças precisam ser iguais e ter o mesmo refino (+9 ou +10).' };
+    else {
+      const gold = A.plus >= 10 ? FUSE_GOLD : 0;
+      if (p.gold < gold) res = { ok: false, msg: 'Ouro insuficiente (' + gold + ').' };
+      else {
+        p.gold -= gold; p.inv.splice(p.inv.indexOf(B), 1); A.plus++; recalc(); track('refine', 1); if (A.plus > G.rec.plus) { G.rec.plus = A.plus; track('plus', 0); }
+        sfx('refinoOk'); fxBurst(p.x, 1.3, p.z, [1, .85, .3], 30, 5, .22); res = { ok: true, msg: itemName(A) + '! As duas peças foram fundidas.' }; save();
       }
     }
     UI.refreshPanels(); return res;
@@ -667,7 +709,7 @@ const Game = (() => {
     if (!v || G.dead || G.state !== 'play') return null;
     const from = VILLAGES.find(q => Math.hypot(p.x - q.portal[0], p.z - q.portal[1]) < 6);
     if (from && from.id !== id && !from.links.includes(id)) return { ok: false, msg: 'Este portal não leva até ' + v.n + '.' };
-    if (p.lvl < v.lvl) return { ok: false, msg: 'Requer nível ' + v.lvl + '.' };
+    if (EL(p) < v.lvl) return { ok: false, msg: 'Requer nível ' + dispLv(v.lvl, p.tier) + '.' };
     if (p.gold < v.price) return { ok: false, msg: 'Ouro insuficiente (' + v.price + ').' };
     p.gold -= v.price; if (v.price) sfx('coin');
     fxBurst(p.x, 1.2, p.z, [.6, .7, 1], 26, 5, .2); fxDisc(p.x, p.z, .5, 4, .8, [.6, .7, 1], .6);
@@ -682,6 +724,7 @@ const Game = (() => {
     const p = G.player; if (G.state !== 'play' || G.dead) return;
     if (p.pots[kind] <= 0) { if (throttle('nopot', .8)) UI.log('Sem ' + POT[kind].n + '.', 'sys'); return; }
     if (p.potCd[kind] > 0) return;
+    mainEv('potion'); // o tutorial conta a tecla mesmo com a barra cheia
     if (kind === 'hp' && p.hp >= p.maxHp) return;
     if (kind === 'mp' && p.mp >= p.maxMp) return;
     p.pots[kind]--; p.potCd[kind] = 1.5;
@@ -699,6 +742,7 @@ const Game = (() => {
     const el = ELITES[zid]; if (el && (forceElite || rng() < .11)) { def = el[Math.floor(rng() * el.length)]; elite = true; }
     const s = mobStats(lvl, elite ? ELITE_M : null), sc = (MOB_SC[def.id] || 1) * (.95 + rng() * .1) * (elite ? 1.25 : 1);
     if (elite) s.gold *= 3;
+    if (zid === 'camp') { s.atk *= CAMP.atkK; s.hp = CAMP.hp[CAMP.lv.indexOf(lvl)] || s.hp; } // campo de treino: monstros fraquinhos
     const m = mobObj(def.id, def.n, zid, lvl, s, sc, MOB_COL[def.id], x, z, null, rng); m.elite = elite; return m;
   }
   /* o nível efetivo dos monstros acompanha o tier do jogador: vida, ataque e ouro × multiplicador do tier */
@@ -708,7 +752,8 @@ const Game = (() => {
   }
   function retierMobs() { for (const m of G.mobs) tierMob(m); }
   function xpFor(m) { // bônus por monstro acima do nível; reduzido se 6+ níveis abaixo
-    const df = m.lvl - G.player.lvl;
+    if (m.zone === 'camp' && EL(G.player) >= CAMP.endLv) return 0; // o campo de treino ensina só até o nível 29
+    const df = m.lvl - EL(G.player);
     const f = df > 0 ? 1 + Math.min(1, .15 * df) : df <= -6 ? Math.max(.1, 1 - .2 * (-df - 5)) : 1;
     return Math.max(1, Math.round(m.xp * f));
   }
@@ -726,7 +771,7 @@ const Game = (() => {
     // monstros por zona em todo o continente (perto das fronteiras as zonas se misturam); nunca no mar, em vilas, postos, estradas ou arenas
     const ok = (x, z) => coastD(x, z) > 4 && !inTownSq(x, z, 4) && !SAFES.some(s => !s.sq && Math.hypot(x - s.x, z - s.z) < s.r + 3) && !bossPts.some(b => Math.hypot(x - b[0], z - b[1]) < 13)
       && !SITES.some(s => Math.hypot(x - s.x, z - s.z) < (s.k === 'lair' ? 12 : 9)) && roadDist(x, z) > 3.2 && !placed.some(q => Math.abs(x - q[0]) < 5.5 && Math.hypot(x - q[0], z - q[1]) < 5.5) && !blocked(x, z, 1.3);
-    for (const [zid, count0] of [['field', 190], ['forest', 290], ['ruins', 330], ['dunes', 340], ['tundra', 330], ['ashlands', 260]]) {
+    for (const [zid, count0] of [['camp', 52], ['field', 190], ['forest', 290], ['ruins', 330], ['dunes', 340], ['tundra', 330], ['ashlands', 260]]) {
       const count = Math.round(count0 * MOB_K / 2.6);
       let n = 0, tries = 0;
       while (n < count && tries++ < count * 40) {
@@ -746,7 +791,7 @@ const Game = (() => {
   let champT = CFG.champ.first;
   function champUpdate(dt) {
     for (let i = G.mobs.length - 1; i >= 0; i--) if ((G.mobs[i].champ || G.mobs[i].adm) && G.mobs[i].dead && G.mobs[i].deadT > 4) G.mobs.splice(i, 1);
-    const p = G.player, z = G.zone; if (!z || !MOBS[z.id] || G.dead) return;
+    const p = G.player, z = G.zone; if (!z || !MOBS[z.id] || z.id === 'camp' || G.dead) return; // campo de treino: sem campeões
     const cur = G.mobs.find(m => m.champ && !m.dead);
     if (cur) { if (Math.hypot(cur.x - p.x, cur.z - p.z) > 120) { G.mobs.splice(G.mobs.indexOf(cur), 1); } return; }
     champT -= dt * EV_EFF.champMul; if (champT > 0) return; { const C = CFG.champ, lo = Math.max(5, Math.min(C.min, C.max)); champT = lo + rnd() * Math.max(0, Math.max(C.min, C.max) - lo); }
@@ -757,8 +802,8 @@ const Game = (() => {
   }
   function champAt(x, zz, z) {
     const p = G.player, list = (ELITES[z.id] || []).concat(MOBS[z.id]), def = list[Math.floor(rnd() * list.length)];
-    const near = G.mobs.filter(m => !m.boss && m.zone === z.id), lv = near.length ? Math.max(...near.map(m => m.lvl)) : p.lvl;
-    const lvl = Math.min(MAXLV + 10, lv + 3), s = mobStats(lvl, { hpm: 14, atkm: 2, xpm: 18 }); s.gold *= 12;
+    const near = G.mobs.filter(m => !m.boss && m.zone === z.id), lv = near.length ? Math.max(...near.map(m => m.lvl)) : Math.round(EL(p));
+    const lvl = Math.min(MAXLV + 10, lv + 3), s = mobStats(lvl, { hpm: 14, atkm: 2, xpm: 18, hpk: BOSS_HPK }); s.gold *= 12;
     const m = mobObj(def.id, 'Campeão ' + def.n, z.id, lvl, s, (MOB_SC[def.id] || 1) * 1.75, [1, .78, .3], x, zz, null, rnd);
     m.elite = true; m.champ = true; m.respawnAt = Infinity; m.aggroR = 11; G.mobs.push(m);
     UI.toast('⚠ Um ' + m.name + ' (nv ' + lvl + ') apareceu por perto!'); UI.log('⚠ ' + m.name + ' (nível ' + lvl + ') surgiu em ' + z.name + '. Derrote-o para um tesouro épico!', 'lvl'); sfx('boom');
@@ -771,7 +816,7 @@ const Game = (() => {
     if (m.dead) return;
     if (TST.one && d < m.hp) d = Math.ceil(m.hp); // teste: mata com 1 golpe
     m.hp -= d; m.flash = .15; combatT = G.t; m.hurtT = G.t;
-    if (m.state !== 'chase') m.state = 'chase';
+    if (m.state !== 'chase') { m.state = 'chase'; mobVoice(m, 'aggro'); }
     UI.float(m.x, m.hgt, m.z, crit ? d + '!' : String(d), crit ? 'crit' : 'dmg');
     if (m.hp <= 0) killMob(m);
   }
@@ -785,7 +830,7 @@ const Game = (() => {
   }
   function hitMob(m, mult, skill, so) {
     if (!m || m.dead) return;
-    const r = playerDmg(m, mult, skill, so); hurtMob(m, r.d, r.crit); sfx('hit'); if (r.crit) track('crit', 1);
+    const r = playerDmg(m, mult, skill, so); hurtMob(m, r.d, r.crit); sfx('hit_' + (MAT[m.id] || MAT[MOB_ALIAS[m.id]] || 'flesh'), { p: r.crit ? 1.15 : 1, v: r.crit ? 1.25 : 1, force: true }); if (r.crit) { track('crit', 1); sfx('crit', { force: true }); }
     if (G.stats.leech > 0) { const p = G.player, v = Math.round(r.d * G.stats.leech); if (v > 0) p.hp = Math.min(p.maxHp, p.hp + v); }
     if (CLASSES[G.player.cls].res) { const p = G.player; p.mp = Math.min(p.maxMp, p.mp + Math.max(1, p.maxMp * .04)); } // Fúria: regenera ao acertar
     const hc = r.crit ? [1, .85, .3] : [1, .65, .5];
@@ -794,22 +839,33 @@ const Game = (() => {
     if (r.crit) { fxRing(m.x, m.hgt * .5, m.z, .2, 1.8, .28, hc, .9, 1.3); shake(.22); }
     return r.d;
   }
+  /* item dropado: de qualquer classe (40% a do jogador), nível em torno do monstro (às vezes bem acima) e, de vez em quando, de fase superior:
+     o que não dá para usar agora fica no Guarda de Carga até o personagem ter classe, nível e fase */
+  function rollDropItem(m, slot, mt, own) {
+    const p = G.player, ids = Object.keys(CLASSES), others = ids.filter(c => c !== p.cls);
+    const cls = own || rnd() < .4 ? p.cls : others[Math.floor(rnd() * others.length)];
+    const q = rnd(), dl = q < .55 ? -Math.floor(rnd() * 7) : q < .88 ? Math.floor(rnd() * 5) : q < .97 ? 5 + Math.floor(rnd() * 8) : 13 + Math.floor(rnd() * 13);
+    const lvl = Math.max(1, Math.min(MAXLV + 5, m.lvl + dl)), tq = rnd();
+    let tier = p.tier; if (tq < .03 && tier > 0) tier--; else if (tq >= .99) tier += 3; else if (tq >= .96) tier += 2; else if (tq >= .84) tier++;
+    return makeItem(slot, cls, lvl, CFG.drop.mobBoost[mt], Math.min(TMUL.length - 1, tier));
+  }
   function killMob(m) {
-    m.dead = true; m.deadT = 0; m.respawnAt = m.champ || m.adm ? Infinity : G.t + (m.boss ? 120 : 20); m.warn = null; m.state = 'idle';
+    mobVoice(m, 'die'); m.dead = true; m.deadT = 0; m.respawnAt = m.champ || m.adm || m.enc ? Infinity : G.t + (m.boss ? 120 : 20); m.warn = null; m.state = 'idle';
     if (tmob === m) tmob = null;
     if (cmd && cmd.mob === m) cmd = null;
-    const p = G.player, xg = Math.max(1, Math.round(xpFor(m) * xpMul())), gold = Math.max(m.gold ? 1 : 0, Math.round(m.gold * goldMul()));
-    gainXp(xg, true);
+    const p = G.player, xg = Math.max(xpFor(m) > 0 ? 1 : 0, Math.round(xpFor(m) * xpMul())), gold = Math.max(m.gold ? 1 : 0, Math.round(m.gold * goldMul()));
+    if (xg > 0) gainXp(xg, true);
     p.gold += gold; UI.float(m.x, (m.hgt || 2) + .8, m.z, '+' + gold + ' ouro', 'xp'); sfx('coin');
-    UI.log(m.name + ' derrotado (+' + xg + ' XP, +' + gold + ' ouro).', 'loot');
-    if (rnd() < (m.boss ? 1 : .12)) { p.pots.hp += m.boss ? 2 : 1; UI.log('Você encontrou uma Poção de Vida.', 'loot'); }
-    if (rnd() < (m.boss ? 1 : .12)) { p.pots.mp += m.boss ? 2 : 1; UI.log('Você encontrou uma Poção de Mana.', 'loot'); }
+    UI.log(m.name + ' derrotado (' + (xg > 0 ? '+' + xg + ' XP, ' : '') + '+' + gold + ' ouro).', 'loot');
+    const cmp = m.zone === 'camp'; // campo de treino: poções e pedras caem com mais frequência
+    if (rnd() < (m.boss ? 1 : cmp ? .22 : .12)) { p.pots.hp += m.boss ? 2 : 1; UI.log('Você encontrou uma Poção de Vida.', 'loot'); }
+    if (rnd() < (m.boss ? 1 : cmp ? .22 : .12)) { p.pots.mp += m.boss ? 2 : 1; UI.log('Você encontrou uma Poção de Mana.', 'loot'); }
     const D = CFG.drop, mt = m.boss ? 'boss' : m.champ ? 'champ' : m.elite ? 'elite' : 'normal'; // tipo do monstro para as tabelas do CFG
     const q = Math.max(0, +D.items[mt] || 0), nDrops = Math.min(10, Math.floor(q) + (rnd() < q % 1 ? 1 : 0));
     for (let i = 0; i < nDrops; i++) {
-      const r = rnd(), slot = (m.boss && i === 0) ? 'w' : r < .26 ? 'w' : r < .4 ? 'h' : r < .58 ? 'a' : r < .72 ? 'l' : r < .86 ? 'b' : 'c';
-      const it = makeItem(slot, p.cls, Math.min(m.lvl, MAXLV + 5), D.mobBoost[mt], p.tier); // drop usa o tier do jogador
-      if (rnd() < D.adds[mt]) { const k = STONES[STONE_IDS[Math.floor(rnd() * STONE_IDS.length)]].k; it.adds = [{ k, v: addVal(k, it.grade) }]; }
+      const r = rnd(), slot = (m.boss && i === 0) ? 'w' : r < .22 ? 'w' : r < .34 ? 'h' : r < .5 ? 'a' : r < .62 ? 'l' : r < .74 ? 'g' : r < .86 ? 'b' : 'c';
+      const it = rollDropItem(m, slot, mt, m.boss && i === 0 && !!UNIQUE_W[m.id]); // a arma única do chefe é sempre da classe do jogador
+      if (rnd() < D.adds[mt]) { const k = STONES[STONE_IDS[Math.floor(rnd() * STONE_IDS.length)]].k; it.adds = [{ k, v: addVal(k, pgOf(it)) }]; }
       if (m.boss && i === 0 && UNIQUE_W[m.id]) { // arma única do chefe
         const f = RARITY[4].m / RARITY[it.rar].m * 1.15; it.rar = 4; it.atk = Math.round(it.atk * f); it.uniq = 1; it.name = UNIQUE_W[m.id]; it.plus = Math.max(it.plus, 3);
         UI.log('★ Arma única: ' + it.name + '!', 'lvl');
@@ -817,12 +873,12 @@ const Game = (() => {
       const a = rnd() * PI * 2, dd = m.boss ? 1.5 + rnd() * 2 : rnd() * 1.2;
       items.push({ it, x: m.x + Math.cos(a) * dd, z: m.z + Math.sin(a) * dd, t0: G.t, ph: rnd() * 6 });
     }
-    if (rnd() < D.stone[mt] * EV_EFF.stoneMul) { // pedra de adicional
+    if (rnd() < Math.max(D.stone[mt], cmp ? .08 : 0) * EV_EFF.stoneMul) { // pedra de adicional
       const sid = STONE_IDS[Math.floor(rnd() * STONE_IDS.length)]; p.mats = p.mats || {}; p.mats[sid] = (p.mats[sid] || 0) + 1;
       UI.float(m.x, (m.hgt || 2) + 1.4, m.z, STONES[sid].ic + ' ' + STONES[sid].n, 'xp'); UI.log('Você encontrou: ' + STONES[sid].n + '.', 'loot');
     }
     dropMount(m); if (p.mount) mountXp(Math.round((2 + m.lvl * .4) * (m.boss ? 10 : m.champ ? 6 : m.elite ? 3 : 1)));
-    questKill(m); mainKill(m);
+    questKill(m); mainKill(m); ENC.onKill(m);
     track('kill', 1); track('gold', gold); if (m.elite) track('elite', 1); if (m.boss) { if (!G.rec.bossU.includes(m.id)) G.rec.bossU.push(m.id); track('boss', 1); }
     fxBurst(m.x, m.hgt * .4, m.z, [.9, .8, .6], m.boss ? 30 : 12, 4, .2);
     if (m.boss) { shake(.7); fxRing(m.x, 1, m.z, .5, 11, .9, [1, .8, .4], .9, 3); fxDisc(m.x, m.z, 1, 9, 1, [1, .8, .4], .5); UI.toast(m.name + ' foi derrotado!'); }
@@ -875,7 +931,7 @@ const Game = (() => {
       if (dS < 1.2) m.state = 'idle'; return;
     }
     if (m.state === 'idle') {
-      if (tg && tg.d < m.aggroR) m.state = 'chase';
+      if (tg && tg.d < m.aggroR) { m.state = 'chase'; mobVoice(m, 'aggro'); }
       else {
         m.wt -= dt;
         if (m.wt <= 0) { m.wt = 3 + rnd() * 4; m.wand = rnd() < .6; const a = rnd() * PI * 2, r = rnd() * 4; m.wx = m.sx + Math.cos(a) * r; m.wz = m.sz + Math.sin(a) * r; }
@@ -887,11 +943,11 @@ const Game = (() => {
       if (!tg || dS > 28 || tg.d > 26) { m.state = 'return'; return; }
       if (m.boss) {
         m.slamCd -= dt;
-        if (m.slamCd <= 0 && tg.d < 12) { m.warn = { t: 1, x: m.x, z: m.z, r: 5.5 + m.sc }; m.slamCd = 6; return; }
+        if (m.slamCd <= 0 && tg.d < 12) { m.warn = { t: 1, x: m.x, z: m.z, r: 5.5 + m.sc }; m.slamCd = 6; mobVoice(m, 'aggro'); return; }
       }
       if (tg.d <= m.range) {
         m.rot += angDiff(m.rot, Math.atan2(tg.x - m.x, tg.z - m.z)) * Math.min(1, dt * 12);
-        if (m.atkCd <= 0) { m.atkCd = 1.6; m.atkT = .45; m.hitPend = true; m.atkTarget = tg.ref; }
+        if (m.atkCd <= 0) { m.atkCd = 1.6; m.atkT = .45; m.hitPend = true; m.atkTarget = tg.ref; if (rnd() < .4) mobVoice(m, 'attack'); }
       } else if (tg.d > m.range * .85) stepTo(m, tg.x, tg.z, sp, dt, m.rad);
     }
   }
@@ -911,11 +967,12 @@ const Game = (() => {
     if (TST.god) { combatT = G.t; if (throttle('imune', .6)) UI.float(p.x, 2.6, p.z, 'Imune', 'miss'); return; } // teste: invencível
     if (G.stats.dodge > 0 && rnd() < G.stats.dodge) { combatT = G.t; UI.float(p.x, 2.6, p.z, 'Errou!', 'miss'); G.dodges = (G.dodges || 0) + 1; return; } // esquiva
     const K = 100 * tmul(p.tier); // a constante da defesa escala com o tier: a proporção fica igual em todo tier
-    let d = Math.max(1, Math.round(raw * (.9 + rnd() * .2) * K / (K + G.stats.def)));
+    let d = Math.max(1, Math.round(raw * (.9 + rnd() * .2) * K / (K + G.stats.def) * (1 - (G.stats.dr || 0))));
     combatT = G.t;
     if (p.shield.t > 0 && p.shield.hp > 0) {
       const ab = Math.min(p.shield.hp, d); p.shield.hp -= ab; d -= ab;
-      if (d <= 0) { UI.float(p.x, 2.6, p.z, 'Bloqueado', 'miss'); return; }
+      if (p.shield.refl && ab > 0) { let a = null, bd = 6; for (const m of G.mobs) { if (m.dead) continue; const dd = Math.hypot(m.x - p.x, m.z - p.z) - m.rad; if (dd < bd) { bd = dd; a = m; } } if (a) { const rf = Math.max(1, Math.round(ab * p.shield.refl)); hurtMob(a, rf, false); UI.float(a.x, a.hgt + .4, a.z, 'Reflexo ' + rf, 'crit'); } }
+      if (d <= 0) { UI.float(p.x, 2.6, p.z, 'Bloqueado', 'miss'); sfx('block'); return; }
     }
     p.hp -= d; p.flash = .15; UI.float(p.x, 2.6, p.z, '-' + d, 'player'); sfx('hurt');
     if (p.hp <= 0) die();
@@ -928,15 +985,15 @@ const Game = (() => {
   function die() {
     const p = G.player; if (G.dead) return;
     G.dead = true; p.hp = 0; cmd = null; tmob = null; pet = null; p.dash = null; p.mount = null; p.shield.hp = 0;
-    p.xp = Math.max(0, p.xp - Math.round(xpNeed(p.lvl) * .05));
+    p.xp = Math.max(0, p.xp - Math.round(xpPlayer(p.lvl, p.tier) * .05));
     for (const m of G.mobs) if (!m.dead && m.state === 'chase') m.state = 'return';
     UI.showDeath(); UI.log('Você caiu em batalha.', 'sys'); sfx('die');
   }
   function respawn() {
-    const p = G.player; G.dead = false; G.wasSafe = false; p.x = 4; p.z = 4; cmd = null; tmob = null; autoHome = null; p.shield.hp = 0;
+    const p = G.player, inCamp = G.zone && G.zone.id === 'camp'; G.dead = false; G.wasSafe = false; p.x = inCamp ? CAMP.sx : 4; p.z = inCamp ? CAMP.sz : 4; cmd = null; tmob = null; autoHome = null; p.shield.hp = 0;
     for (const k in p.buffs) p.buffs[k].t = 0;
     recalc(); p.hp = p.maxHp; p.mp = p.maxMp;
-    cam.init = false; UI.hideDeath(); UI.log('Você despertou na vila.', 'sys');
+    cam.init = false; UI.hideDeath(); UI.log(inCamp ? 'Você despertou na clareira do campo.' : 'Você despertou na vila.', 'sys');
   }
 
   /* ---------- pet ---------- */
@@ -946,7 +1003,7 @@ const Game = (() => {
     // dano das invocações escala com o ataque do Invocador (que escala com inteligência) e com o bônus de habilidade
     pet = {
       kind, x: p.x + 1.5, z: p.z + 1.5, rot: p.rot, sc: wolf ? 1 : spirit ? .9 : 1.2, rad: wolf ? .5 : spirit ? .5 : .8,
-      maxHp: Math.round(wolf ? 60 + S.maxHp * .6 : spirit ? 30 + S.maxHp * .3 : 150 + S.maxHp * 2.2), atk: S.atk * S.skillMul * (wolf ? .6 : spirit ? .95 : .35), def: wolf ? S.def * .8 + 5 : spirit ? S.def * .4 : S.def * 1.5 + 20,
+      maxHp: Math.round(wolf ? 60 + S.maxHp * .6 : spirit ? 30 + S.maxHp * .3 : 150 + S.maxHp * 2.2), atk: S.atk * S.skillMul * (wolf ? .9 : spirit ? 1.4 : .5), def: wolf ? S.def * .8 + 5 : spirit ? S.def * .6 : S.def * 1.5 + 20, crit: S.crit,
       spd: wolf ? 6.6 : spirit ? 7.4 : 4.6, range: wolf ? 2 : spirit ? 3 : 2.6, taunt: golem, until: G.t + dur, cd: 0, atkT: 0, flash: 0, moving: false, focus: null,
       col: wolf ? [.92, .9, 1] : spirit ? [.6, .85, 1] : [.62, .52, .4],
     };
@@ -973,8 +1030,8 @@ const Game = (() => {
         pet.rot += angDiff(pet.rot, Math.atan2(tg.x - pet.x, tg.z - pet.z)) * Math.min(1, dt * 12);
         if (pet.cd <= 0) {
           pet.cd = 1.2; pet.atkT = .3;
-          const dm = Math.max(1, Math.round(pet.atk * (pet.rage > G.t ? 1.4 : 1) * (.9 + rnd() * .2) * 100 / (100 + tg.def)));
-          hurtMob(tg, dm, false); fxBurst(tg.x, tg.hgt * .5, tg.z, [1, .7, .5], 4, 2, .12);
+          const pc = rnd() < (pet.crit || 0), dm = Math.max(1, Math.round(pet.atk * (pet.rage > G.t ? 1.4 : 1) * (.9 + rnd() * .2) * 100 / (100 + tg.def) * (pc ? 2 : 1)));
+          hurtMob(tg, dm, pc); fxBurst(tg.x, tg.hgt * .5, tg.z, [1, .7, .5], 4, 2, .12);
         }
       } else stepTo(pet, tg.x, tg.z, pet.spd, dt, pet.rad);
     } else {
@@ -1067,11 +1124,11 @@ const Game = (() => {
     if (!p.sk[i]) { if (throttle('lock' + i, 1)) UI.log('Você ainda não aprendeu ' + s0.n + '. Fale com um Mestre de Habilidades.', 'sys'); return; }
     const s = skEff(s0, p.sk[i]);
     if ((s.tier || 0) > p.tier) { if (throttle('lock' + i, 1)) UI.log('Habilidade bloqueada: requer evolução de classe.', 'sys'); return; }
-    if ((s.lvl || 0) > p.lvl) { if (throttle('lock' + i, 1)) UI.log('Habilidade bloqueada: requer nível ' + s.lvl + '.', 'sys'); return; }
+    if ((s.lvl || 0) > EL(p)) { if (throttle('lock' + i, 1)) UI.log('Habilidade bloqueada: requer nível ' + dispLv(s.lvl, p.tier) + '.', 'sys'); return; }
     if (p.cd[i] > 0) return;
     if (!TST.inf && p.mp < s.mp) { if (throttle('mana', 1)) UI.log('Mana insuficiente.', 'sys'); return; }
     const col = s.col || CLASSES[p.cls].col, k = s.k; let m = null;
-    const spend = () => { if (!TST.inf) p.mp -= s.mp; p.cd[i] = TST.nocd ? 0 : s.cd; p.atkT = .3; p.atkCd = Math.max(p.atkCd, .5); sfx('skill'); track('skill', 1); };
+    const spend = () => { mainEv('skill'); if (!TST.inf) p.mp -= s.mp; p.cd[i] = TST.nocd ? 0 : s.cd; p.atkT = .3; p.atkCd = Math.max(p.atkCd, .5); sfx(k === 'heal' || k === 'hpp' ? 'heal' : k === 'shield' ? 'shield' : k === 'summon' ? 'summon' : 'skill', { force: true }); track('skill', 1); };
     const reach = (mm, rng) => Math.hypot(mm.x - p.x, mm.z - p.z) - mm.rad <= rng;
     const needT = () => {
       m = needTarget(); if (!m) { if (throttle('notgt', 1)) UI.log('Nenhum alvo por perto.', 'sys'); return false; }
@@ -1131,12 +1188,12 @@ const Game = (() => {
       if (s.pet && pet) { pet.rage = G.t + s.dur; fxPillar(pet.x, pet.z, .8, [1, .6, .3], .5); }
       fxDisc(p.x, p.z, .5, 4, .6, [1, .8, .3], .5); fxPillar(p.x, p.z, 1, [1, .8, .3], .6); UI.float(p.x, 2.8, p.z, 'Fortalecido!', 'heal');
     } else if (k === 'shield') {
-      spend(); p.shield = { hp: Math.round(s.sh * p.maxHp), t: s.dur }; fxDisc(p.x, p.z, .5, 3, .6, [.5, .8, 1], .5); fxPillar(p.x, p.z, 1.1, [.5, .8, 1], .6);
+      spend(); p.shield = { hp: Math.round(s.sh * p.maxHp), t: s.dur, refl: s.refl || 0 }; fxDisc(p.x, p.z, .5, 3, .6, [.5, .8, 1], .5); fxPillar(p.x, p.z, 1.1, [.5, .8, 1], .6);
       UI.float(p.x, 2.8, p.z, 'Escudo ' + p.shield.hp, 'heal');
     } else if (k === 'heal') {
       spend(); const v = Math.round(s.p * p.maxHp * G.stats.healMul); p.hp = Math.min(p.maxHp, p.hp + v); UI.float(p.x, 2.8, p.z, '+' + v, 'heal');
       fxDisc(p.x, p.z, .5, 3.5, .7, [.4, 1, .5], .5); fxBurst(p.x, 1, p.z, [.4, 1, .5], 16, 3, .18);
-      if (pet) { const hv = Math.round(s.p * pet.maxHp * G.stats.healMul); pet.hp = Math.min(pet.maxHp, pet.hp + hv); UI.float(pet.x, 2, pet.z, '+' + hv, 'heal'); fxBurst(pet.x, 1, pet.z, [.4, 1, .5], 10, 2, .15); }
+      if (pet) { const hv = Math.round((s.pp || s.p) * pet.maxHp * G.stats.healMul); pet.hp = Math.min(pet.maxHp, pet.hp + hv); UI.float(pet.x, 2, pet.z, '+' + hv, 'heal'); fxBurst(pet.x, 1, pet.z, [.4, 1, .5], 10, 2, .15); }
     } else if (k === 'mark') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
       face(m.x, m.z); spend(); m.mark = s.dur; m.markV = s.v; UI.float(m.x, m.hgt + .5, m.z, 'Marcado!', 'miss'); fxDisc(m.x, m.z, .5, 2.5, .5, [1, .3, .3], .5); fxPillar(m.x, m.z, .5, [1, .3, .3], .5);
@@ -1145,7 +1202,7 @@ const Game = (() => {
     }
   }
   function basicAttack(m) {
-    const p = G.player, c = CLASSES[p.cls]; p.atkCd = 1.1 / (G.stats.aspd || 1); p.atkT = .3; face(m.x, m.z);
+    const p = G.player, c = CLASSES[p.cls]; p.atkCd = 1.1 / (G.stats.aspd || 1); p.atkT = .3; face(m.x, m.z); sfx(swingOf(p.eq.w && p.eq.w.wt), { force: true });
     if (c.atkType === 'melee') { hitMob(m, 1, false); }
     else launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 24, col: c.col, size: .28, arrow: p.cls === 'huntress', onHit: t => hitMob(t, 1, false) });
   }
@@ -1189,7 +1246,7 @@ const Game = (() => {
     }
   }
   const SKILL_ORDER = ['heal', 'shield', 'buff', 'summon', 'aoe_self', 'aoe_ground', 'mark', 'pierce', 'proj', 'melee', 'dash'];
-  function autoSkills() {
+  function autoSkills(fleeing) {
     const p = G.player, sk = CLASSES[p.cls].skills; if (p.dash) return;
     let t = tmob && !tmob.dead ? tmob : null;
     if (!t) {
@@ -1202,15 +1259,16 @@ const Game = (() => {
     if (dist > 20) return;
     const hpf = p.hp / p.maxHp, reserve = (G.auto.mp && !autoOut.mp) ? 0 : p.maxMp * .15;
     const near = (x, z, r) => { let n = 0; for (const m of G.mobs) if (!m.dead && Math.hypot(m.x - x, m.z - z) - m.rad * .5 <= r) n++; return n; };
-    const ok = (i, s, kind) => p.sk[i] > 0 && (s.tier || 0) <= p.tier && (s.lvl || 0) <= p.lvl && (p.cd[i] || 0) <= 0 && p.mp >= s.mp && (kind === 'heal' || p.mp - s.mp >= reserve);
+    const ok = (i, s, kind) => p.sk[i] > 0 && (s.tier || 0) <= p.tier && (s.lvl || 0) <= EL(p) && (p.cd[i] || 0) <= 0 && p.mp >= s.mp && (kind === 'heal' || p.mp - s.mp >= reserve);
     for (const kind of SKILL_ORDER) {
+      if (fleeing && kind !== 'heal' && kind !== 'shield') continue;
       const idx = sk.map((_, j) => j).reverse(); if (kind === 'summon') idx.sort((a, b) => b - a);
       for (const i of idx) {
         const s = sk[i]; if (s.k !== kind || !ok(i, s, kind)) continue;
         let go = false;
         switch (kind) {
-          case 'heal': go = hpf < .55; break;
-          case 'shield': go = !(p.shield.t > 0 && p.shield.hp > 0) && dist <= 12; break;
+          case 'heal': go = hpf < .6 || (pet && pet.maxHp && pet.hp / pet.maxHp < .35 && hpf < .9); break;
+          case 'shield': go = !(p.shield.t > 0 && p.shield.hp > 0) && (dist <= 12 || hpf < .5) && (hpf < .85 || t.boss || near(p.x, p.z, 7) >= 2); break;
           case 'buff': go = p.buffs.atk.t <= 0 && dist <= 12; break;
           case 'summon': go = !pet && dist <= 16; break;
           case 'aoe_self': go = dist <= s.r && (near(p.x, p.z, s.r) >= 2 || t.boss); break;
@@ -1236,7 +1294,7 @@ const Game = (() => {
     for (const m of G.mobs) {
       if (m.dead || m.state === 'return' || m.noReach > G.t) continue;
       if (m.boss && p.hp / p.maxHp < .6) continue;
-      if (m.state !== 'chase' && m.lvl > p.lvl + 8) continue; // não puxa monstros muito acima do seu nível
+      if (m.state !== 'chase' && m.lvl > EL(p) + 8) continue; // não puxa monstros muito acima do seu nível
       const d = Math.hypot(m.x - p.x, m.z - p.z); if (d > 18) continue;
       const sc = d - (m.state === 'chase' ? 6 : 0); if (sc < bs) { bs = sc; best = m; }
     }
@@ -1254,7 +1312,7 @@ const Game = (() => {
     autoAcc += dt; if (autoAcc < .15) return; autoAcc = 0;
     if (G.state !== 'play' || G.dead || UI.isBlocking()) return;
     if (A.hp || A.mp) autoPotions();
-    if (A.skills) autoSkills();
+    if (A.skills) autoSkills(G.t < autoPause || !!(cmd && !cmd.auto && cmd.type === 'move')); // fugindo à mão: só cura e escudo (nada de Investida puxando de volta)
     if (A.attack) autoAttack();
   }
 
@@ -1355,7 +1413,10 @@ const Game = (() => {
     autoPause = G.t + 3;
     let best = null, bt = 1e9;
     for (const g of items) { const t = raySphere(r, [g.x, .8, g.z], 1); if (t >= 0 && t < bt) { bt = t; best = { k: 'item', g }; } }
-    for (const m of G.mobs) { if (m.dead) continue; const t = raySphere(r, [m.x, m.hgt * .5, m.z], Math.max(.9, m.hgt * .45)); if (t >= 0 && t < bt) { bt = t; best = { k: 'mob', m }; } }
+    // ponto do chão clicado: um clique no corpo do monstro cai, no máximo, a (altura × cotg do ângulo da câmera) atrás dele; mais longe que isso é um clique no chão (fugir)
+    const gt = r.d[1] < -1e-4 ? -r.o[1] / r.d[1] : -1, gX = r.o[0] + r.d[0] * gt, gZ = r.o[2] + r.d[2] * gt, hdr = Math.hypot(r.d[0], r.d[2]) / Math.max(1e-4, -r.d[1]);
+    for (const m of G.mobs) { if (m.dead) continue; const t = raySphere(r, [m.x, m.hgt * .5, m.z], Math.max(.8, m.hgt * .38)); if (t < 0 || t >= bt) continue;
+      if (gt > 0 && Math.hypot(gX - m.x, gZ - m.z) > m.hgt * hdr * .8 + m.rad + .3) continue; best = { k: 'mob', m }; bt = t; }
     for (const n of NPCS) { const t = raySphere(r, [n.x, 1.1, n.z], 1.2); if (t >= 0 && t < bt) { bt = t; best = { k: 'npc', n }; } }
     if (best) {
       if (best.k === 'item') cmd = { type: 'item', item: best.g };
@@ -1444,8 +1505,16 @@ const Game = (() => {
     try { const old = localStorage.getItem(SAVE_KEY); if (old) { const s = JSON.parse(old); if (s && CLASSES[s.cls]) { if (!ACC) { ACC = { name: 'Jogador', chars: [], bank: { items: [], gold: 0 } }; ACCS.list.push(ACC); ACCS.cur = ACC.name; } ACC.chars.push({ id: 'c' + Date.now().toString(36), data: s }); } localStorage.removeItem(SAVE_KEY); accWrite(); } } catch (e) { /* ignore */ }
     return ACC;
   }
-  function accWrite() { try { if (ACCS) localStorage.setItem(ACCS_KEY, JSON.stringify(ACCS)); } catch (e) { /* ignore */ } }
-  function account() { if (!ACC) accLoad(); return ACC ? { name: ACC.name, chars: ACC.chars.map(c => ({ id: c.id, name: c.data.name, cls: c.data.cls, lvl: c.data.lvl, tier: c.data.tier | 0, look: c.data.look, ch: c.data.main ? c.data.main.chaps.length : 0 })), bank: ACC.bank } : null; }
+  let saveFail = false;
+  function accWrite() {
+    try { if (ACCS) localStorage.setItem(ACCS_KEY, JSON.stringify(ACCS)); saveFail = false; }
+    catch (e) {
+      if (saveFail) return; saveFail = true;
+      const msg = 'Não foi possível gravar o progresso (armazenamento cheio ou bloqueado). Exporte o save no painel de administrador para não perder dados.';
+      try { UI.toast('⚠ Falha ao salvar'); UI.log(msg, 'quest'); } catch (e2) { /* UI ainda não pronta */ }
+    }
+  }
+  function account() { if (!ACC) accLoad(); return ACC ? { name: ACC.name, chars: ACC.chars.map(c => ({ id: c.id, name: c.data.name, cls: c.data.cls, lvl: c.data.lvl, tier: c.data.tier | 0, look: c.data.look, ch: c.data.main ? c.data.main.chaps.filter(k => k !== 'c0').length : 0 })), bank: ACC.bank } : null; }
   function accounts() { accsLoad(); return ACCS.list.map(a => ({ name: a.name, chars: a.chars.length, cur: !!(ACC && a === ACC) })); }
   /* entra na conta com esse nome; se não existir, cria uma nova (nunca renomeia a atual) */
   function createAccount(name) {
@@ -1460,7 +1529,7 @@ const Game = (() => {
   const hasSave = () => { const a = account(); return !!(a && a.chars.length); };
   function snapshot() {
     const p = G.player;
-    return { v: 3, w: 2, cls: p.cls, name: p.name, tier: p.tier, lvl: p.lvl, xp: p.xp, gold: p.gold, inv: p.inv, eq: p.eq, pots: p.pots, quests: G.quests, x: p.x, z: p.z, look: p.look, mounts: p.mounts, lastMount: p.lastMount, attr: p.attr, ap: p.ap, sk: p.sk, sp: p.sp, main: G.main, rec: G.rec, daily: G.daily, feed: p.feed, mst: p.mst, mlv: p.mlv || {}, mbox: p.mbox || [], mats: p.mats || {}, gifts: p.gifts || {} };
+    return { v: 3, w: 2, lv2: 1, cls: p.cls, name: p.name, tier: p.tier, lvl: p.lvl, xp: p.xp, gold: p.gold, inv: p.inv, eq: p.eq, pots: p.pots, quests: G.quests, x: p.x, z: p.z, look: p.look, mounts: p.mounts, lastMount: p.lastMount, attr: p.attr, ap: p.ap, sk: p.sk, sp: p.sp, main: G.main, rec: G.rec, daily: G.daily, feed: p.feed, mst: p.mst, mlv: p.mlv || {}, mbox: p.mbox || [], mats: p.mats || {}, gifts: p.gifts || {} };
   }
   function save() {
     if (G.state !== 'play' || !G.player || !ACC) return;
@@ -1474,12 +1543,28 @@ const Game = (() => {
   function bankPut(id) {
     const p = G.player, i = p.inv.findIndex(it => it.id === id); if (i < 0 || !ACC) return;
     if (ACC.bank.items.length >= bankMax()) return UI.toast('Baú cheio');
-    ACC.bank.items.push(p.inv.splice(i, 1)[0]); sfx('pick'); save(); UI.refreshPanels();
+    const it = p.inv.splice(i, 1)[0]; delete it.pos; ACC.bank.items.push(it); sfx('pick'); save(); UI.refreshPanels();
+  }
+  /* mover um item para um espaço (pos) da mochila ('bag') ou do baú ('bank'): no mesmo lugar troca de posição, em outro leva junto o ocupante do destino */
+  function itemMove(from, id, to, pos) {
+    const p = G.player; if (!p || !ACC) return; id = Number(id); pos |= 0;
+    const A = from === 'bank' ? ACC.bank.items : p.inv, B = to === 'bank' ? ACC.bank.items : p.inv, it = A.find(x => x.id === id); if (!it) return;
+    const sz = (z, l) => z === 'bank' ? Math.max(120, bankMax(), l.length) : Math.max(24, l.length);
+    const sa = sz(from, A), sb = sz(to, B); if (pos < 0 || pos >= sb) return;
+    fillPos(A, sa); if (A !== B) fillPos(B, sb);
+    const occ = B.find(x => x !== it && x.pos === pos);
+    if (A === B) { const old = it.pos; it.pos = pos; if (occ) occ.pos = old; }
+    else {
+      if (!occ && B.length >= (to === 'bank' ? bankMax() : 24)) return UI.toast(to === 'bank' ? 'Baú cheio' : 'Mochila cheia');
+      const old = it.pos; A.splice(A.indexOf(it), 1); it.pos = pos; B.push(it); if (it.id >= ITEM_UID) ITEM_UID = it.id + 1;
+      if (occ) { B.splice(B.indexOf(occ), 1); occ.pos = old; A.push(occ); if (occ.id >= ITEM_UID) ITEM_UID = occ.id + 1; }
+    }
+    sfx('pick'); save(); UI.refreshPanels();
   }
   function bankTake(id) {
     const p = G.player; if (!ACC) return; const i = ACC.bank.items.findIndex(it => it.id === id); if (i < 0) return;
     if (p.inv.length >= 24) return UI.toast('Mochila cheia');
-    const it = ACC.bank.items.splice(i, 1)[0]; if (it.id < ITEM_UID) { /* mantém */ } p.inv.push(it); if (it.id >= ITEM_UID) ITEM_UID = it.id + 1; sfx('pick'); save(); UI.refreshPanels();
+    const it = ACC.bank.items.splice(i, 1)[0]; delete it.pos; p.inv.push(it); if (it.id >= ITEM_UID) ITEM_UID = it.id + 1; sfx('pick'); save(); UI.refreshPanels();
   }
   function bankGold(n) {
     const p = G.player; if (!ACC) return; n = Math.round(n);
@@ -1490,11 +1575,11 @@ const Game = (() => {
     try {
       if (!ACC) accLoad(); const ch = ACC && ACC.chars.find(c => c.id === id); const s = ch && ch.data; if (!s || !CLASSES[s.cls]) return false; G.charId = id;
       newPlayer(s.cls, null, typeof s.name === 'string' ? s.name.slice(0, 16) : 'Herói'); const p = G.player;
-      p.tier = s.tier | 0; p.lvl = clamp(s.lvl | 0 || 1, 1, MAXLV); p.xp = s.xp || 0; p.gold = s.gold || 0; p.inv = Array.isArray(s.inv) ? s.inv : [];
+      p.tier = s.tier | 0; p.lvl = s.lv2 ? clamp(s.lvl | 0 || 1, 1, lvCap(p.tier)) : lvForEff(clamp(s.lvl | 0 || 1, 1, MAXLV), p.tier); p.xp = s.xp || 0; // saves antigos (nível 1..50) viram o nível equivalente da escala nova p.gold = s.gold || 0; p.inv = Array.isArray(s.inv) ? s.inv : [];
       p.eq = Object.assign({ w: null, h: null, a: null, l: null, b: null, c: null }, s.eq || {}); p.pots = Object.assign({ hp: 0, mp: 0 }, s.pots || {});
       for (const q of QUESTS) if (s.quests && s.quests[q.id]) G.quests[q.id] = s.quests[q.id];
       let mx = ITEM_UID; for (const it of p.inv.concat(SLOT_ORDER.map(s => p.eq[s]))) if (it && it.id >= mx) mx = it.id + 1; ITEM_UID = mx;
-      p.attr = Object.assign({ str: 0, dex: 0, int: 0, vit: 0, spi: 0 }, s.attr || {}); { const sp = ATTR_KEYS.reduce((a, k) => a + (p.attr[k] | 0), 0); p.ap = s.ap != null ? s.ap | 0 : Math.max(0, AP_PER_LEVEL * (p.lvl - 1) - sp); }
+      p.attr = Object.assign({ str: 0, dex: 0, int: 0, vit: 0, spi: 0 }, s.attr || {}); { const sp = ATTR_KEYS.reduce((a, k) => a + (p.attr[k] | 0), 0); p.ap = s.ap != null ? s.ap | 0 : Math.max(0, ptsAt(AP_PER_LEVEL, p.lvl, p.tier) - sp); }
       p.look = Object.assign({}, DEFLOOK[s.cls], s.look || {}); p.mounts = Array.isArray(s.mounts) ? s.mounts.filter(x => MOUNTS[x]) : []; p.lastMount = MOUNTS[s.lastMount] ? s.lastMount : null;
       if (isFinite(s.x) && isFinite(s.z)) { p.x = s.x; p.z = s.z; }
       if (!s.w) { // save de antes do continente: cada região era um disco separado; leva para o lugar equivalente no continente
@@ -1507,9 +1592,9 @@ const Game = (() => {
       if (coastD(p.x, p.z) < 1) { p.x = VILLAGES[0].arrive[0]; p.z = VILLAGES[0].arrive[1]; }
       if (Array.isArray(s.sk)) { p.sk = s.sk.slice(0, 7); while (p.sk.length < 7) p.sk.push(0); p.sp = s.sp | 0; }
       else { // save antigo: já conhece o que o nível/evolução liberava
-        const sk = CLASSES[p.cls].skills; p.sk = sk.map((k, i) => (k.tier || 0) <= p.tier && p.lvl >= Math.max(SK_LEARN[i].lvl, k.lvl || 0) ? 1 : 0); p.sp = Math.max(0, p.lvl - 1);
+        const sk = CLASSES[p.cls].skills; p.sk = sk.map((k, i) => (k.tier || 0) <= p.tier && EL(p) >= Math.max(SK_LEARN[i].lvl, k.lvl || 0) ? 1 : 0); p.sp = Math.max(0, ptsAt(SK_PTS_LEVEL, p.lvl, p.tier));
       }
-      if (s.main && isFinite(s.main.i)) G.main = Object.assign(G.main, s.main);
+      if (s.main && isFinite(s.main.i)) { if (!s.main.v) { s.main.v = 1; if (s.w) s.main.i += MAIN.filter(q => q.ch === 'c0').length; } G.main = Object.assign(G.main, s.main); } // v1: o prólogo do campo de treino entrou no começo da história
       if (s.rec) for (const k in G.rec) if (k in s.rec) G.rec[k] = s.rec[k];
       if (s.daily && s.daily.list) G.daily = s.daily;
       p.feed = s.feed | 0; p.mst = s.mst == null ? 100 : s.mst;
@@ -1519,11 +1604,11 @@ const Game = (() => {
       p.gifts = Object.assign({}, s.gifts || {});
       { let mx = ITEM_UID; for (const it of ACC.bank.items) if (it.id >= mx) mx = it.id + 1; ITEM_UID = mx; }
       // tipos de arma removidos viram um tipo válido da classe; itens sem tier ficam como Mortal
-      for (const it of p.inv.concat(SLOT_ORDER.map(k => p.eq[k]))) if (it) { fixWeapon(it, p.cls); it.tierReq = it.tierReq | 0; }
-      for (const it of ACC.bank.items) { fixWeapon(it); it.tierReq = it.tierReq | 0; }
+      for (const it of p.inv.concat(SLOT_ORDER.map(k => p.eq[k]))) if (it) { fixWeapon(it, p.cls); it.tierReq = it.tierReq | 0; if (!it.cls && (it.slot === 'w' || ARM_SHARE[it.slot])) it.cls = p.cls; }
+      for (const it of ACC.bank.items) { fixWeapon(it); it.tierReq = it.tierReq | 0; if (!it.cls && it.slot === 'w' && CLS_OF_WT[it.wt]) it.cls = CLS_OF_WT[it.wt]; }
       if ((s.v | 0) < 3 && p.tier > 0) { // saves antigos: Ascendido/Transcendente (níveis 20/40) viram Mortal; o ouro da evolução antiga volta
         const back = [0, 500, 5500][Math.min(2, p.tier)] || 0; p.gold += back; p.tier = 0;
-        G.loadMsg = 'O sistema de evolução mudou: agora são 4 classes (Mortal → Imortal → Ancestral → Ser Supremo), a partir do nível 50. Você voltou a Mortal e recebeu ' + back + ' ouro de volta.';
+        G.loadMsg = 'O sistema de evolução mudou: agora são 4 classes (Mortal → Imortal → Ancestral → Supremo), a partir do nível 50. Você voltou a Mortal e recebeu ' + back + ' ouro de volta.';
       }
       p.tier = clamp(p.tier, 0, TIERS.length - 1);
       recalc(); p.hp = p.maxHp; p.mp = p.maxMp; updateQuestLocks(true);
@@ -1607,12 +1692,12 @@ const Game = (() => {
   function admItem(cls, slot, rar, plus, tier, wt, adds) {
     if (!CLASSES[cls]) cls = 'vanguard'; if (!SLOTS[slot]) slot = 'w';
     const it = buildItem(slot, cls, MAXLV, clamp(rar | 0, 0, RARITY.length - 1), slot === 'w' ? (WTYPES[cls].includes(wt) ? wt : WTYPES[cls][0]) : undefined, clamp(tier | 0, 0, TIERS.length - 1));
-    it.plus = clamp(plus | 0, 0, 10); if (adds) it.adds = admAdds(cls, slot, it.grade);
+    it.plus = clamp(plus | 0, 0, ANCIENT_MAX); if (adds) it.adds = admAdds(cls, slot, pgOf(it));
     return it;
   }
   function admChar(cls) { // personagem completo (monta em G.player e devolve o snapshot)
     newPlayer(cls, null, ADM_NAME[cls]); const p = G.player, T = TIERS.length - 1;
-    p.tier = T; p.lvl = MAXLV; p.xp = 0;
+    p.tier = T; p.lvl = lvCap(T); p.xp = 0;
     const tot = AP_PER_LEVEL * (MAXLV - 1), W = ADM_ATTR[cls], ks = Object.keys(W); let used = 0;
     ks.forEach((k, i) => { const n = i === ks.length - 1 ? tot - used : Math.round(tot * W[k]); p.attr[k] = n; used += n; }); p.ap = 0;
     p.sk = p.sk.map((_, i) => CLASSES[cls].skills[i] ? SK_MAX : 0); p.sp = 0;
@@ -1642,12 +1727,12 @@ const Game = (() => {
     A.bank.max = A.bank.items.length + 40; A.last = A.chars[0].id;
     ACC = A; ACCS.cur = A.name; accWrite();
     newPlayer('vanguard'); G.charId = null; UI.showMenu(hasSave());
-    return { ok: true, prev, msg: 'Conta "' + A.name + '" ' + (again ? 'recriada' : 'criada') + ' com ' + A.chars.length + ' personagens (Ser Supremo, nível ' + MAXLV + ') e ' + A.bank.items.length + ' itens no baú.' + (prev && prev !== A.name ? ' Sua conta "' + prev + '" continua intacta (use ⇄ Trocar conta para voltar).' : '') };
+    return { ok: true, prev, msg: 'Conta "' + A.name + '" ' + (again ? 'recriada' : 'criada') + ' com ' + A.chars.length + ' personagens (Supremo, nível ' + MAXLV + ') e ' + A.bank.items.length + ' itens no baú.' + (prev && prev !== A.name ? ' Sua conta "' + prev + '" continua intacta (use ⇄ Trocar conta para voltar).' : '') };
   }
   function admLevel(n) {
     const e = admNeedPlay(); if (e) return e; const p = G.player;
-    if (p.lvl >= MAXLV) return { ok: false, msg: 'Já está no nível ' + MAXLV + '.' };
-    for (let i = 0; i < n && p.lvl < MAXLV; i++) gainXp(Math.max(1, xpNeed(p.lvl) - p.xp), true);
+    if (p.lvl >= lvCap(p.tier)) return { ok: false, msg: 'Já está no nível ' + lvCap(p.tier) + '.' };
+    for (let i = 0; i < n && p.lvl < lvCap(p.tier); i++) gainXp(Math.max(1, xpPlayer(p.lvl, p.tier) - p.xp), true);
     save(); UI.refreshPanels(); return { ok: true, msg: 'Nível ' + p.lvl + '.' };
   }
   function admTier(t) {
@@ -1722,6 +1807,8 @@ const Game = (() => {
       return { state: G.state, acc: ACC ? ACC.name : null, isAdm: !!(ACC && ACC.adm), admExists: !!A, admReal: !!(A && !A.adm && A.chars.length), play: G.state === 'play', name: p && p.name, cls: p && p.cls, lvl: p && p.lvl, tier: p && p.tier, gold: p && p.gold, tod: G.tod, weather: wx.id };
     },
     buildAdm: admBuild, level: admLevel, tier: admTier, gold: admGold, heal: admHeal, story: admStory, give: admGive, spawn: admSpawn, time: admTime, weather: admWeather, village: admVillage, tp: admTp,
+    soundNames: () => SND.names(), soundPlay: n => { SND.init(); return { ok: !!SND.play(n, { force: true }), msg: 'Som: ' + n }; }, soundZones: () => SND.zones(),
+    soundPreview: (env) => { SND.init(); audPreview = env ? { until: G.t + 45, env } : null; return { ok: true, msg: env ? 'Prévia por 45 s: ' + (env.label || '') : 'Prévia desligada.' }; },
     lists: () => ({ classes: Object.keys(CLASSES).map(k => [k, CLASSES[k].name, WTYPES[k].slice()]), tiers: TIERS.slice(), rarity: RARITY.map(r => r.n), slots: SLOT_ORDER.map(s => [s, SLOTS[s]]), bosses: Object.keys(BOSSES).map(k => [k, BOSSES[k].n, BOSSES[k].lvl]), villages: VILLAGES.map(v => [v.id, v.n]), weather: Object.keys(WEATHER).map(k => [k, WEATHER[k].n]) }),
   });
   function _adminHook(fn) {
@@ -1745,18 +1832,18 @@ const Game = (() => {
   /* lojas de equipamento básico (sem bônus de raridade nem refino) e ração */
   const shopPrice = it => Math.max(1, Math.round(itemValue(it) * 2.2 * CFG.econ.shopMul));
   function shopStock(kind) { // grau atual e o anterior
-    const p = G.player, top = Math.min(5, Math.floor(p.lvl / 9)), out = [];
-    for (let gr = Math.max(0, top - 1); gr <= top; gr++) {
-      const lv = Math.max(1, gr * 9);
+    const p = G.player, top = gradeOfLvl(Math.round(EL(p)), p.tier), out = [];
+    for (let gr = Math.max(gradeMin(p.tier), top - 1); gr <= top; gr++) {
+      const lv = lvlOfGrade(gr, p.tier);
       if (kind === 'weapon') for (const wt of WTYPES[p.cls]) out.push(buildItem('w', p.cls, lv, 0, wt, p.tier));
-      else for (const s of ['h', 'a', 'l', 'b', 'c']) out.push(buildItem(s, p.cls, lv, 0, undefined, p.tier));
+      else for (const s of ['h', 'a', 'l', 'g', 'b', 'c']) out.push(buildItem(s, p.cls, lv, 0, undefined, p.tier));
     }
     ITEM_UID -= out.length; // só vitrine: não gasta ids
     return out.map(it => ({ it, price: shopPrice(it) }));
   }
   function buyItem(slot, wt, grade) {
-    const p = G.player, it = buildItem(slot, p.cls, Math.max(1, grade * 9), 0, wt || undefined, p.tier), price = shopPrice(it);
-    if (grade > Math.floor(p.lvl / 9)) return { ok: false, msg: 'Nível insuficiente.' };
+    const p = G.player, it = buildItem(slot, p.cls, lvlOfGrade(grade, p.tier), 0, wt || undefined, p.tier), price = shopPrice(it);
+    if (grade > gradeOfLvl(Math.round(EL(p)), p.tier)) return { ok: false, msg: 'Nível insuficiente.' };
     if (p.gold < price) { ITEM_UID--; return { ok: false, msg: 'Ouro insuficiente.' }; }
     if (p.inv.length >= 24) { ITEM_UID--; return { ok: false, msg: 'Mochila cheia.' }; }
     p.gold -= price; p.inv.push(it); sfx('coin'); save(); return { ok: true, msg: 'Você comprou ' + itemName(it) + '.' };
@@ -1769,18 +1856,20 @@ const Game = (() => {
   function learnSkill(i) {
     const p = G.player, s = CLASSES[p.cls].skills[i], L = SK_LEARN[i]; if (!s || !L || p.sk[i]) return;
     if ((s.tier || 0) > p.tier) return UI.toast('Requer a evolução ' + TIERS[s.tier]);
-    if (p.lvl < Math.max(L.lvl, s.lvl || 0)) return UI.toast('Requer nível ' + Math.max(L.lvl, s.lvl || 0));
-    if (p.gold < L.price) return UI.toast('Ouro insuficiente');
-    p.gold -= L.price; p.sk[i] = 1; sfx('level'); UI.toast('Habilidade aprendida: ' + s.n); UI.log('Você aprendeu ' + s.n + '!', 'lvl'); save(); UI.refreshPanels();
+    if (EL(p) < Math.max(L.lvl, s.lvl || 0)) return UI.toast('Requer nível ' + dispLv(Math.max(L.lvl, s.lvl || 0), p.tier));
+    if ((p.sp || 0) < L.pts) return UI.toast('Pontos de habilidade insuficientes (' + L.pts + ')');
+    p.sp -= L.pts; p.sk[i] = 1; mainEv('learn'); sfx('level'); UI.toast('Habilidade aprendida: ' + s.n); UI.log('Você aprendeu ' + s.n + '!', 'lvl'); save(); UI.refreshPanels();
   }
   function raiseSkill(i) {
-    const p = G.player; if (!p.sk[i] || p.sk[i] >= SK_MAX || (p.sp || 0) <= 0) return;
-    p.sk[i]++; p.sp--; sfx('pick'); UI.refreshPanels();
+    const p = G.player, L = p.sk[i], cost = skRaiseCost(L); if (!L || L >= SK_MAX) return;
+    if (L >= skCap(EL(p))) return UI.toast('Nível da habilidade limitado pelo seu nível: precisa do nível ' + dispLv(L * 5, p.tier));
+    if ((p.sp || 0) < cost) return UI.toast('Pontos de habilidade insuficientes (' + cost + ')');
+    p.sk[i]++; p.sp -= cost; sfx('pick'); UI.refreshPanels();
   }
   function resetSkills() {
-    const p = G.player, cost = 40 * p.lvl; if (p.gold < cost) return UI.toast('Ouro insuficiente (' + cost + ')');
-    let back = 0; for (let i = 0; i < p.sk.length; i++) if (p.sk[i] > 1) { back += p.sk[i] - 1; p.sk[i] = 1; }
-    p.gold -= cost; p.sp += back; UI.refreshPanels();
+    const p = G.player, cost = 40 * Math.round(EL(p)); if (p.gold < cost) return UI.toast('Ouro insuficiente (' + cost + ')');
+    let back = 0; for (let i = 0; i < p.sk.length; i++) { back += skSpent(i, p.sk[i]); p.sk[i] = 0; }
+    p.gold -= cost; p.sp += back; UI.log('Habilidades redistribuídas: ' + back + ' pontos devolvidos. Fale com o Mestre de Habilidades.', 'sys'); UI.refreshPanels();
   }
   function starterKit(evo) { // modo história: arma e roupa básicas do tier atual + 10 poções de cada
     const p = G.player;
@@ -1788,12 +1877,15 @@ const Game = (() => {
     for (const s of ['a', 'l', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier);
     if (evo) { p.pots.hp = Math.max(p.pots.hp, 10); p.pots.mp = Math.max(p.pots.mp, 10); p.feed = Math.max(p.feed || 0, 5); }
     else { p.pots.hp = 10; p.pots.mp = 10; p.feed = 5; }
+    if (!evo) { // personagem novo: peças de grau 0 com poder 1 (ataque 1, defesa 1) e sem extras; o poder de verdade vem dos drops
+      for (const s of SLOT_ORDER) { const it = p.eq[s]; if (!it) continue; for (const k of ['mp', 'dodge', 'spd', 'crit']) delete it[k]; if (it.atk != null) it.atk = 1; if (it.def != null) it.def = 1; if (it.hp != null) it.hp = 0; }
+    }
     recalc(); p.hp = p.maxHp; p.mp = p.maxMp;
   }
   function newGame(cls, look, name) {
     if (!CLASSES[cls]) return; initAudio(); if (!ACC) accLoad(); if (!ACC) createAccount('Jogador'); G.charId = 'c' + Date.now().toString(36);
-    { let mx = ITEM_UID; for (const it of ACC.bank.items) if (it.id >= mx) mx = it.id + 1; ITEM_UID = mx; } newPlayer(cls, look ? fixLook(Object.assign({}, look)) : look, name); starterKit(); startPlay();
-    UI.log('Bem-vindo a Aldoria, ' + G.player.name + '! Clique para mover, clique em monstros para atacar. Fale com a Anciã Maelis.', 'sys'); save();
+    { let mx = ITEM_UID; for (const it of ACC.bank.items) if (it.id >= mx) mx = it.id + 1; ITEM_UID = mx; } newPlayer(cls, look ? fixLook(Object.assign({}, look)) : look, name); starterKit(); G.player.x = CAMP.sx; G.player.z = CAMP.sz; startPlay();
+    UI.log('Bem-vindo a Aldoria, ' + G.player.name + '! Você está no Campo de Treinamento: fale com o Instrutor Brann (clique nele ou aperte F). Você começa sem habilidades: gaste os ' + SK_PTS_LEVEL + ' pontos com o Mestre de Habilidades, ao lado dele.', 'sys'); save();
   }
   /* ---------- criação de personagem ---------- */
   const NAMES_M = ['Aldric', 'Bram', 'Cassian', 'Dorian', 'Evander', 'Fenris', 'Gareth', 'Hadrian', 'Ivor', 'Joren', 'Kael', 'Lucan', 'Magnus', 'Orin', 'Rowan', 'Soren', 'Tarik', 'Varian'];
@@ -1849,14 +1941,14 @@ const Game = (() => {
   }
   function cycleQuality() { return R.setQuality(R.qi + 1); }
   function deleteSave(id) { deleteChar(id); UI.showMenu(hasSave()); }
-  function toggleMute() { G.mute = !G.mute; UI.log(G.mute ? 'Som desligado.' : 'Som ligado.', 'sys'); }
+  function toggleMute() { G.mute = !G.mute; SND.mute(G.mute); UI.log(G.mute ? 'Som desligado.' : 'Som ligado.', 'sys'); }
 
   /* ---------- loop ---------- */
   function update(dt) {
     const p = G.player;
     const sf = inSafe(p.x, p.z);
     if (sf && !G.wasSafe && (G.auto.attack || G.auto.skills)) { setAuto('attack', false); setAuto('skills', false); UI.toast('Vila segura: ataque automático desligado'); UI.refreshPanels(); }
-    G.wasSafe = sf; champUpdate(dt);
+    G.wasSafe = sf; champUpdate(dt); ENC.tick(dt); audioUpdate(dt);
     { const now = Date.now(); if (now - evLast >= 1000) evTick(true); }
     const MX = mstMax(); if (p.mst > MX) p.mst = MX;
     if (p.mount && p.moving) { // fôlego da montaria: gasta andando, a ração recupera; cavalgar dá XP à montaria
@@ -1894,6 +1986,13 @@ const Game = (() => {
     if (tmob && (tmob.dead || Math.hypot(tmob.x - p.x, tmob.z - p.z) > 55)) tmob = null;
     const z = zoneAt(p.x, p.z); G.zone = z; mainUpdate();
     if (G.rec && !G.rec.regions.includes(z.reg)) { G.rec.regions.push(z.reg); track('regions', 0); }
+    if (G.rec && G.rec.disc) for (const q of SITES) { // locais secretos: descobrir dá XP e ouro uma única vez
+      if (!q.poi || G.rec.disc.includes(q.id) || Math.hypot(p.x - q.x, p.z - q.z) > 13) continue;
+      G.rec.disc.push(q.id); const xg = Math.max(1, Math.round(xpNeed(Math.max(1, EL(p))) * .6 * xpMul())), gd = Math.round((150 + EL(p) * 30) * goldMul());
+      gainXp(xg, true); p.gold += gd; track('disc', 0);
+      sfx('discover'); UI.toast('🗺️ Local descoberto: ' + q.n + ' (' + G.rec.disc.length + '/' + SITES.filter(w => w.poi).length + ')'); UI.log('Você descobriu ' + q.n + '! +' + fmt(xg) + ' XP, +' + fmt(gd) + ' ouro.', 'quest'); 
+      fxPillar(q.x, q.z, 1.3, [.6, .9, 1], 1.6); fxRing(q.x, 1, q.z, .5, 9, 1, [.6, .9, 1], .9, 2);
+    }
     if (throttle('daily', 5)) dailyCheck();
     if (lastZone && lastZone !== z) UI.toast(z.name);
     lastZone = z;
@@ -1904,7 +2003,7 @@ const Game = (() => {
     for (const m of G.mobs) {
       if (m.dead) continue;
       if ((m.boss || m.elite) && Math.hypot(m.x - p.x, m.z - p.z) < 40) L.push({ x: m.x, y: m.hgt + .5, z: m.z, text: (m.elite ? '★ ' : '') + m.name + ' Nv ' + m.lvl, cls: 'boss' });
-      else if (m === tmob) L.push({ x: m.x, y: m.hgt + .4, z: m.z, text: m.name + ' Nv ' + m.lvl, cls: 'mob' });
+      else if (m === tmob) L.push({ x: m.x, y: m.hgt + .4, z: m.z, text: m.name + ' Nv ' + dispLv(m.lvl, p.tier), cls: 'mob' });
     }
   }
   const envOut = { dir: [-.5, -1, -.35], sun: [1, .94, .8], ambT: [.5, .56, .66], ambB: [.3, .27, .22], top: [.3, .5, .85], disc: [1, .95, .8], stars: 0, fog: [.6, .7, .85], fogD: .011, exp: .8, night: 0, lampK: .35 };
@@ -1981,9 +2080,31 @@ const Game = (() => {
     transparent(shadows, late);
     R.end(envOut.exp);
   }
+  /* peças do jogador de acordo com o equipamento (usado no desenho do mundo e na prévia da janela de Equipamento) */
+  const curParts = p => {
+    const eq = p.eq, W = eq.w, A = eq.a, C = eq.c, H = eq.h, Lg = eq.l, Bt = eq.b, Gl = eq.g;
+    return playerParts(p.cls, p.tier, W ? W.grade : -1, A ? A.grade : -1,
+      { wr: W ? W.rar : 0, wp: W ? W.plus : 0, ar: A ? A.rar : 0, ap: A ? A.plus : 0, ac: C ? C.grade : -1, cr: C ? C.rar : 0, look: p.look,
+        wt: W ? W.wt : null, hg: H ? H.grade : -1, hr: H ? H.rar : 0, lg: Lg ? Lg.grade : -1, bg: Bt ? Bt.grade : -1, gg: Gl ? Gl.grade : -1 });
+  };
+  /* prévia 3D do personagem equipado para a janela de Equipamento (ui.js): yaw em rad; chamar só entre quadros (ui.js usa setInterval) */
+  function portrait(cv, yaw) {
+    const p = G.player; if (!R || !p || !cv) return;
+    const parts = curParts(p), psc = lookScale(p.look), cc = CLASSES[p.cls].col, WH = [1, 1, 1];
+    R.renderPortrait(cv, () => {
+      R.draw(R.mesh.cyl, M.part([0, .09, 0], [0, 0, 0], [0, 0, 0], [2.6, .18, 2.6]), [.3, .28, .33], 0, 1);
+      R.draw(R.mesh.cyl, M.part([0, .2, 0], [0, 0, 0], [0, 0, 0], [2.1, .06, 2.1]), [.5, .46, .4], 0, 1);
+      R.draw(R.mesh.cyl, M.part([0, .235, 0], [0, 0, 0], [0, 0, 0], [2.2, .02, 2.2]), shade(cc, .8), .45, 1);
+      R.setRim((cc[0] * .5 + .5) * .5, (cc[1] * .5 + .5) * .5, (cc[2] * .5 + .5) * .5);
+      R.parts(parts, M.part([0, .23, 0], [0, yaw || 0, 0], [0, 0, 0], [psc, psc, psc]), WH, 0, 1, { t: G.t * .35, amp: 0, atk: 0 });
+      R.setRim(0, 0, 0);
+    }, { eye: [0, 1.5, 6.2], at: [0, 1.0, 0], fov: .62 });
+  }
+  const RIM_BOSS = [1, .38, .2, .55], RIM_CHAMP = [.8, .4, 1, .5], RIM_ELITE = [1, .82, .35, .45], RIM_TARGET = [1, .9, .5, .35]; // [r, g, b, intensidade]
   function opaque(shadows, late) {
     for (const w of world.regs) {
       R.draw(w, IDM, [1, 1, 1], 0, 1, 1);
+      if (!shadowPass) R.drawAO(w.ao, G.vp, camPos, 1.1);
       if (!shadowPass) { R.draw(w.mtn, IDM, [1, 1, 1], 0, 1, 2); R.draw(w.glow, IDM, [1, 1, 1], envOut.lampK, 1, 0); R.draw(w.water, IDM, [1, 1, 1], .12, 1, 0, .06, 0); }
     }
     const cx = camPos[0], cz = camPos[2], vp = G.vp, WH = [1, 1, 1];
@@ -2009,8 +2130,14 @@ const Game = (() => {
       else if (m.elite && tint === WH) tint = [1.25, 1.08, .72];
       const b = base(m.x, m.z, m.rot, m.sc);
       if (m.dead) { late.push([parts, b, tint, 1 - m.deadT / .5, anim]); continue; }
+      // rim por tipo (engine.js setRim): chefe vermelho, campeão roxo, elite dourada; o alvo selecionado ganha um destaque dourado; chefe em ataque pulsa
+      let rc = m.boss ? RIM_BOSS : m.champ ? RIM_CHAMP : m.elite ? RIM_ELITE : null, rk = rc ? rc[3] : 0;
+      if (m === tmob) { if (!rc) rc = RIM_TARGET; rk = Math.max(rk, rc[3]); }
+      if (m.warn) rk *= 1.6;
+      R.setRim(rc ? rc[0] * rk : 0, rc ? rc[1] * rk : 0, rc ? rc[2] * rk : 0);
       R.parts(parts, b, tint, m.warn ? .3 : 0, 1, anim); shadows.push([m.x, m.z, m.rad * 1.3]);
     }
+    R.setRim(0, 0, 0);
     if (G.state === 'create' && G.cr) {
       const c = G.cr, sk = SKINS.beta;
       if (c.test3d && sk) {
@@ -2027,11 +2154,9 @@ const Game = (() => {
     }
     if (play) {
       // aparência segue o equipamento: grau (-1 = nada equipado), raridade e refino de arma/armadura/acessório
-      const eq = p.eq, W = eq.w, A = eq.a, C = eq.c, H = eq.h, Lg = eq.l, Bt = eq.b;
-      const parts = playerParts(p.cls, p.tier, W ? W.grade : -1, A ? A.grade : -1,
-        { wr: W ? W.rar : 0, wp: W ? W.plus : 0, ar: A ? A.rar : 0, ap: A ? A.plus : 0, ac: C ? C.grade : -1, cr: C ? C.rar : 0, look: p.look,
-          wt: W ? W.wt : null, hg: H ? H.grade : -1, hr: H ? H.rar : 0, lg: Lg ? Lg.grade : -1, bg: Bt ? Bt.grade : -1 });
+      const parts = curParts(p);
       const psc = lookScale(p.look), b = base(p.x, p.z, p.rot, psc), tint = p.flash > 0 ? [1.8, 1.1, 1.1] : WH;
+      { const cc = CLASSES[p.cls].col; R.setRim((cc[0] * .5 + .5) * .3, (cc[1] * .5 + .5) * .3, (cc[2] * .5 + .5) * .3); } // jogador: rim suave na cor da classe
       if (G.dead) R.parts(parts, M.part([p.x, 0, p.z], [-1.5, p.rot, 0], [0, 0, 0], [psc, psc, psc]), [.7, .7, .7], 0, 1, null);
       else if (p.mount) {
         const fly = MOUNTS[p.mount].fly, hov = fly ? .9 + Math.sin(G.t * 2) * .12 : 0, st = MOUNT_SEAT[p.mount];
@@ -2039,6 +2164,7 @@ const Game = (() => {
         R.parts(seatedParts(parts), M.part([p.x, hov + st[0] - SEAT_HIP * psc, p.z], [0, p.rot, 0], [0, 0, st[1]], [psc, psc, psc]), tint, 0, 1, { t: G.t, amp: 0, atk: p.atkT > 0 ? 1 - p.atkT / .3 : 0 });
         shadows.push([p.x, p.z, fly ? 1.8 : 1.0]);
       } else { R.parts(parts, b, tint, 0, 1, { t: G.t, amp: p.moving ? 1 : 0, atk: p.atkT > 0 ? 1 - p.atkT / .3 : 0 }); shadows.push([p.x, p.z, .75]); }
+      R.setRim(0, 0, 0);
       if (pet) { R.parts(mobParts(PET_MODEL[pet.kind] || 'golemm', pet.col), base(pet.x, pet.z, pet.rot, pet.sc), pet.flash > 0 ? [2.2, 2.2, 2.2] : WH, 0, 1, { t: G.t, amp: pet.moving ? 1 : 0, atk: pet.atkT > 0 ? 1 - pet.atkT / .3 : 0 }); shadows.push([pet.x, pet.z, pet.rad * 1.3]); }
       R.softBox = false;
       for (const g of items) {
@@ -2120,20 +2246,7 @@ const Game = (() => {
       }
     }
   }
-  let rainNode = null;
-  function weatherAudio() {
-    if (!AC) return;
-    try {
-      if (!rainNode) {
-        const len = AC.sampleRate * 2, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-        const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
-        const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = .4;
-        const gn = AC.createGain(); gn.gain.value = 0; src.connect(f); f.connect(gn); gn.connect(AC.destination); src.start(); rainNode = gn;
-      }
-      const tgt = G.mute || G.state !== 'play' || precipType() !== 'rain' ? 0 : wx.level * .14;
-      rainNode.gain.value += (tgt - rainNode.gain.value) * .05;
-    } catch (e) { /* ignore */ }
-  }
+  function weatherAudio() { /* a chuva agora é a camada 'rain' do ambiente (audio.js) */ }
   /* partículas ambientes (pólen, vagalumes, brasas) ao redor da câmera */
   function ambientMotes() {
     const zid = (G.state === 'play' ? G.zone : ZONES[0]).id, col = zid === 'forest' ? [.55, 1, .6] : zid === 'ruins' ? [.75, .55, 1] : zid === 'field' ? [1, .95, .6] : zid === 'dunes' ? [1, .88, .55] : zid === 'tundra' ? [.85, .95, 1] : zid === 'ashlands' || zid === 'forge' ? [1, .5, .2] : [1, .9, .7];
@@ -2196,10 +2309,24 @@ const Game = (() => {
     last = bgLast = performance.now(); requestAnimationFrame(frame); startBgTicker();
     UI.showMenu(hasSave());
   }
+  /* ---------- encontros aleatórios (encounters.js) ---------- */
+  const encFree = (x, z) => isLand(x, z) && coastD(x, z) > 20 && !inSafe(x, z) && !SITES.some(q => Math.hypot(q.x - x, q.z - z) < 14) && !VILLAGES.some(v => Math.hypot(v.cx - x, v.cz - z) < (v.r || v.hs || 9) + 22) && zoneAt(x, z) && zoneAt(x, z).id !== 'town';
+  function encMob(zid, id, name, x, z, lvlAdd, tag, elite) {
+    const list = MOBS[zid] || []; if (!MOB_COL[id] || !MOBM[id]) id = (list[0] || { id: 'slime' }).id;
+    const lvl = zoneLvl(zid, x, z) + (lvlAdd | 0), s = mobStats(lvl, elite ? ELITE_M : null), sc = (MOB_SC[id] || 1) * (elite ? 1.25 : 1), def = list.find(q => q.id === id), nm = name || (def && def.n) || id;
+    if (elite) s.gold *= 3; const m = mobObj(id, nm, zid, lvl, s, sc, MOB_COL[id], x, z, null, rnd); m.elite = !!elite; m.enc = tag; m.aggroR = 14; G.mobs.push(m); return m;
+  }
+  const ENC = registerEncounters({
+    G, NPCS, UI, rnd, fmt, sfx, track, gainXp, recalc, shake, inSafe, MAXLV, makeItem, itemName, zoneLvl, zoneAt, isLand, xpNeed, elv: () => EL(G.player),
+    goldMul: () => goldMul(), xpMul: () => xpMul(), freeSpot: encFree, spawnMob: encMob,
+    hasMob: (zid, id) => (MOBS[zid] || []).some(q => q.id === id), firstMob: zid => ((MOBS[zid] || [])[0] || { id: 'slime' }).id,
+    dropItem: (x, z, it) => items.push({ it, x, z, t0: G.t, ph: 0 }),
+    fx: { pillar: fxPillar, burst: fxBurst },
+  });
   return {
-    boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    addAttr, resetAttr, toMenu, cycleQuality, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
-    _dbg: { get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
+    boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();
 

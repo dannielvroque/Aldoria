@@ -80,6 +80,7 @@ function townFloorColor(v, lx, lz) {
     const k = .8 + n * .12; return [k * .95, k * .78, k * .52];
   }
   if (th === 'snow') {
+    if (tp === 4) { const k = .86 + n * .08; return [k * .72, k * .88, k]; } // gelo do lago
     if (tp === 1) { const k = .62 + n * .08 + cob; return [k * .95, k, k * 1.08]; }
     if (tp === 0) { const k = .7 + n * .14; return mix([k * .82, k * .8, k * .8], [k * 1.2, k * 1.24, k * 1.3], cl(n - .2, 0, 1) * .5); } // neve pisada
     if (tp === 3) return mix([.88, .92, .98], [.78, .84, .94], n);
@@ -99,14 +100,16 @@ function townFloorColor(v, lx, lz) {
 /* cor do chão de cada zona (sem transição) */
 function zoneGround(id, x, z, n, n2, road) {
   if (id === 'dunes') {
-    let col = shade(road ? [.66, .52, .34] : [.84, .7, .44], .9 + n * .25 + Math.sin(x * .55 + vnoise(x * .12, z * .12) * 9) * .04);
-    if (!road) col = mix(col, n2 > .55 ? [.92, .62, .32] : [.76, .58, .36], Math.abs(n2 - .5) * .7);
+    const crest = Math.sin((x * .8 + z * .35) * .16 + vnoise(x * .05, z * .05) * 6); // cristas largas de duna: lado claro e lado sombreado
+    let col = shade(road ? [.66, .52, .34] : [.84, .7, .44], .9 + n * .25 + crest * .07 + Math.sin(x * .55 + vnoise(x * .12, z * .12) * 9) * .04);
+    if (!road) { col = mix(col, n2 > .55 ? [.92, .62, .32] : [.76, .58, .36], Math.abs(n2 - .5) * .7); const pk = vnoise(x * .35 + 5, z * .35 - 11); if (pk > .7) col = mix(col, [.62, .48, .32], (pk - .7) * 2.2); } // areia compactada mais escura
     return col;
   }
   if (id === 'tundra') {
     let col = road ? shade([.74, .78, .86], .92 + n * .2) : shade([.93, .96, 1], .92 + n * .12);
     if (!road) col = mix(col, [.66, .78, .92], cl((n2 - .45) * 2.2, 0, .7));
     if (!road && vnoise(x * .22 + 9, z * .22 - 3) > .74) col = mix(col, [.46, .5, .58], .7);
+    if (!road) { const dr = Math.sin((x * .5 - z * .8) * .14 + vnoise(x * .06, z * .06) * 5); col = shade(col, .96 + dr * .04); if (dr < -.5) col = mix(col, [.78, .86, .97], .5); if (vnoise(x * .12 - 4, z * .12 + 8) > .8) col = mix(col, [.55, .74, .9], .8); } // ondas de neve, vales azulados e poças congeladas
     return col;
   }
   if (id === 'ashlands') {
@@ -117,7 +120,7 @@ function zoneGround(id, x, z, n, n2, road) {
   let base = id === 'forest' ? [.16, .32, .18] : id === 'ruins' ? [.34, .3, .36] : [.3, .56, .22];
   if (road) base = id === 'ruins' ? [.42, .38, .4] : [.58, .48, .32];
   const pt = vnoise(x * .09 + 40, z * .09 - 7); let col = shade(base, .82 + n * .35);
-  if (!road && id === 'field') col = mix(col, pt > .55 ? [.42, .6, .2] : [.2, .5, .26], Math.abs(pt - .5) * .9); // manchas de capim seco/escuro
+  if (!road && (id === 'field' || id === 'camp')) col = mix(col, pt > .55 ? [.42, .6, .2] : [.2, .5, .26], Math.abs(pt - .5) * .9); // manchas de capim seco/escuro
   if (!road && id === 'forest') col = mix(col, [.1, .24, .14], pt * .6);
   return col;
 }
@@ -141,7 +144,7 @@ function groundColor(x, z, c) {
 function buildWorld(R, obstacles) {
   const CS = 48; // tamanho do bloco de malha (m)
   if (!R.bm.blade) R.bm.blade = mkCyl(3, 0, .5); // folha de capim: cone de 3 lados (barato)
-  let mb = new CMB(CS), gl = new CMB(CS), wt = new CMB(CS), mt = new CMB(CS);
+  let mb = new CMB(CS), gl = new CMB(CS), wt = new CMB(CS), mt = new CMB(CS), ao = new CMB(CS);
   const GS = 1.5, GN = CS / GS; // chão: células de 1,5 m, um pedaço por bloco; blocos só de mar fundo ficam de fora
   const ground = () => {
     for (let bi = Math.floor(WB.x0 / CS) - 1; bi <= Math.floor(WB.x1 / CS) + 1; bi++) for (let bj = Math.floor(WB.z0 / CS) - 1; bj <= Math.floor(WB.z1 / CS) + 1; bj++) {
@@ -149,7 +152,7 @@ function buildWorld(R, obstacles) {
       for (let a = 0; a <= 4; a++) for (let c = 0; c <= 4; c++) mx = Math.max(mx, coastD(X0 + a * CS / 4, Z0 + c * CS / 4));
       if (mx < -38) continue;
       const b = mb.get(X0 + CS / 2, Z0 + CS / 2), base = b.nv;
-      for (let j = 0; j <= GN; j++) for (let i = 0; i <= GN; i++) { const x = X0 + i * GS, z = Z0 + j * GS, c = coastD(x, z); b.v([x, groundY(c), z], [0, 1, 0], groundColor(x, z, c)); }
+      for (let j = 0; j <= GN; j++) for (let i = 0; i <= GN; i++) { const x = X0 + i * GS, z = Z0 + j * GS, c = coastD(x, z); const gc = groundColor(x, z, c); b.v([x, groundY(c), z], [0, 1, 0], [gc[0] + 4, gc[1], gc[2]]); } // +4 no canal r = terreno (engine.js FS)
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const a = base + j * (GN + 1) + i, bb = a + 1, c = a + GN + 2, d = a + GN + 1; b.idx(a, d, c, a, c, bb); }
     }
   };
@@ -163,7 +166,22 @@ function buildWorld(R, obstacles) {
     }
   };
   ground();
-  const add = (shape, p, s, c, r, to) => (to || mb).merge(R.bm[shape], M.part(p, r || [0, 0, 0], [0, 0, 0], s), c);
+  /* AO estático: disco escuro suave sob peças altas que tocam o chão (árvores, rochas, paredes, postes...). Só o bloco principal (mb), sem duplicar vizinhos a menos de 0,5 m */
+  const AO_BOXY = { box: 1, rbox: 1, tbox: 1, prism: 1, pyr: 1 }, AO_ROUND = { cyl: 1, cyl6: 1, cyl12: 1, cone: 1, cone6: 1, cone12: 1, sphere: 1 }, aoSeen = new Map();
+  const aoFor = (shape, p, s) => {
+    const boxy = AO_BOXY[shape]; if (!boxy && !AO_ROUND[shape]) return;
+    if (s[1] < .5 || p[1] - s[1] / 2 > .6) return;
+    const rad = boxy ? Math.hypot(s[0], s[2]) * .42 : Math.max(s[0], s[2]) * .5; if (rad < .22) return;
+    const rr = rad + .5 + .12 * Math.min(s[1], 4), key = Math.round(p[0] * 2) * 100003 + Math.round(p[2] * 2);
+    if ((aoSeen.get(key) || 0) >= rr) return; aoSeen.set(key, rr);
+    // anel interno (opacidade a, até a pegada da peça) + anel externo (opacidade 0): cor r = opacidade; o centro some sob a peça, então o platô precisa começar na borda dela
+    const y = groundY(coastD(p[0], p[2])) + .02, a = Math.min(.55, .25 + .06 * Math.min(s[1], 5)), ri = rad * .85, N = 8, b = ao.get(p[0], p[2]), base = b.nv;
+    b.v([p[0], y, p[2]], [0, 1, 0], [a, 0, 0]);
+    for (let i = 0; i < N; i++) { const t = i / N * 2 * PI; b.v([p[0] + Math.cos(t) * ri, y, p[2] + Math.sin(t) * ri], [0, 1, 0], [a, 0, 0]); }
+    for (let i = 0; i < N; i++) { const t = i / N * 2 * PI; b.v([p[0] + Math.cos(t) * rr, y, p[2] + Math.sin(t) * rr], [0, 1, 0], [0, 0, 0]); }
+    for (let i = 0; i < N; i++) { const j = (i + 1) % N; b.idx(base, base + 1 + i, base + 1 + j); b.idx(base + 1 + i, base + 1 + N + i, base + 1 + N + j, base + 1 + i, base + 1 + N + j, base + 1 + j); }
+  };
+  const add = (shape, p, s, c, r, to) => { if (!to) aoFor(shape, p, s); return (to || mb).merge(R.bm[shape], M.part(p, r || [0, 0, 0], [0, 0, 0], s), (shape === 'prism' || shape === 'pyr') && c[0] > 0 ? CLN(c) : c); }; // prism/pyr = telhado ou tenda: liso, sem textura de rocha
   const addG = (shape, p, s, c, r) => add(shape, p, s, c, r, gl);
   const rng = (() => { let s = 12345; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; })();
   const pick = a => a[Math.floor(rng() * a.length) % a.length];
@@ -172,7 +190,7 @@ function buildWorld(R, obstacles) {
   const WOOD = [.3, .19, .1], STONE = [.55, .54, .56], DSTONE = [.4, .39, .42];
   /* bandeiras de material no sinal da cor (engine.js FS): CLN = liso (sem textura de rocha), MAS = alvenaria em blocos, PLK = tábuas.
      Aplique só no fim (shade/mix antes). */
-  const ng = v => -Math.max(v, .002), CLN = c => [ng(c[0]), c[1], c[2]], MAS = c => [ng(c[0]), ng(c[1]), c[2]], PLK = c => [ng(c[0]), c[1], ng(c[2])];
+  const ng = v => -Math.max(v, .002), CLN = c => [ng(c[0]), c[1], c[2]], SHG = c => [ng(c[0]), ng(c[1]), ng(c[2])], MAS = c => [ng(c[0]), ng(c[1]), c[2]], PLK = c => [ng(c[0]), c[1], ng(c[2])];
 
   // ---------- casas da vila ----------
   /* casa medieval: base de pedra, térreo de pedra/reboco, andar de cima saliente em enxaimel (vigas escuras),
@@ -218,7 +236,7 @@ function buildWorld(R, obstacles) {
       for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) add('cyl6', Q(sx * (w / 2 - .5 - k * .9), 2.42, d / 2 + .15), [.12, .3, .12], BEAM, [PI / 2, r, 0]); // mísulas
       // telhado de duas águas (cumeeira paralela à frente) com beiral
       const RH = style === 'stone' ? 1.9 : 2.5, RW = W2 + 1.0, RD = D2 + 1.2;
-      add('prism', Q(0, 4.08 + RH / 2, 0), [RW, RH, RD], roofc, rr);
+      add('prism', Q(0, 4.08 + RH / 2, 0), [RW, RH, RD], SHG(roofc), rr);
       add('box', Q(0, 4.08 + RH + .03, 0), [RW + .1, .14, .2], shade(roofc, .7), rr); // cumeeira
       for (let k = 0; k < 6; k++) { const t = (k + .5) / 6; add('box', Q(0, 4.12 + RH * t, (RD / 2) * (1 - t) + .02), [RW + .02, .05, .05], shade(roofc, .78), [Math.atan2(RH, RD / 2), r, 0]); } // fileiras de telhas
       if (style === 'timber' && roofc[0] > .8 && roofc[2] > .85) add('prism', Q(0, 4.12 + RH / 2, 0), [RW + .06, RH * .9, RD * .98], [.95, .97, 1], rr); // neve
@@ -301,6 +319,11 @@ function buildWorld(R, obstacles) {
     snow: { w: [[.5, .36, .22], [.44, .32, .2], [.56, .42, .28], [.42, .3, .2], [.52, .38, .26]], rf: [[.3, .22, .15]], wall: [.42, .3, .2], cap: [.9, .94, 1], style: 'log', wst: 'palisade', ban: [[.2, .35, .62], [.8, .82, .9]] },
     volcano: { w: [[.3, .27, .3], [.38, .3, .28], [.26, .24, .28], [.34, .28, .3], [.28, .26, .3]], rf: [[.5, .15, .1], [.22, .2, .25], [.6, .25, .1], [.4, .12, .12], [.24, .22, .28]], wall: [.24, .21, .24], cap: [.4, .16, .12], style: 'stone', wst: 'basalt', ban: [[.6, .14, .08], [.15, .12, .14]] },
   };
+  // cidades novas: mesma família do bioma, paleta própria
+  PAL.pedraluz = Object.assign({}, PAL.town, { w: [[.62, .62, .66], [.55, .56, .62], [.7, .68, .64], [.6, .58, .56]], rf: [[.22, .32, .5], [.28, .3, .42], [.2, .38, .42], [.34, .28, .44]], wall: [.52, .52, .58], cap: [.7, .7, .76], style: 'stone', ban: [[.25, .4, .75], [.85, .85, .9]] });
+  PAL.zahar = Object.assign({}, PAL.desert, { w: [[.94, .86, .7], [.9, .72, .6], [.96, .9, .78], [.86, .66, .5]], rf: [[.15, .5, .55], [.78, .3, .2], [.85, .62, .2], [.4, .2, .5]], wall: [.92, .8, .6], cap: [.85, .7, .5], ban: [[.8, .3, .2], [.2, .5, .5]] });
+  PAL.cinzeiro = Object.assign({}, PAL.volcano, { w: [[.36, .22, .2], [.3, .2, .22], [.42, .26, .22], [.26, .2, .22]], rf: [[.55, .1, .08], [.3, .08, .1], [.62, .2, .06]], wall: [.2, .17, .19], cap: [.5, .14, .08], ban: [[.7, .1, .06], [.9, .6, .15]] });
+  PAL.frostmar = Object.assign({}, PAL.snow, { w: [[.4, .3, .22], [.34, .26, .2], [.46, .36, .28]], rf: [[.22, .3, .4], [.3, .2, .14]], wall: [.36, .27, .2], ban: [[.15, .35, .6], [.85, .85, .9]] });
   const brazier = (x, z, s) => { s = s || 1; add('cyl6', [x, .5 * s, z], [.5 * s, 1.0 * s, .5 * s], [.18, .16, .17]); add('cyl', [x, 1.05 * s, z], [1.0 * s, .3 * s, 1.0 * s], [.25, .22, .22]); addG('cone6', [x, 1.45 * s, z], [.7 * s, .9 * s, .7 * s], [1, .5, .12]); addG('sphere', [x, 1.25 * s, z], [.5 * s, .3 * s, .5 * s], [1, .8, .3]); obstacles.push({ x, z, r: .55 * s }); };
   const bonfire = (x, z) => { for (let k = 0; k < 8; k++) { const a = k / 8 * PI * 2; add('sphere', [x + Math.cos(a) * .85, .18, z + Math.sin(a) * .85], [.38, .3, .38], shade(STONE, .8 + (k % 3) * .1)); }
     for (let k = 0; k < 4; k++) add('cyl6', [x, .35, z], [.18, 1.4, .18], [.3, .18, .1], [.9, k * 1.6, 0]); addG('cone6', [x, .75, z], [.8, 1.4, .8], [1, .55, .15]); addG('sphere', [x, .45, z], [.5, .4, .5], [1, .85, .35]); obstacles.push({ x, z, r: 1.0 }); };
@@ -364,7 +387,7 @@ function buildWorld(R, obstacles) {
       for (const k of [-1, 1]) { const b = out + k * PI / 6 * 1, b2 = Math.round((b * 180 / PI - 15) / 30) * 30 + 15, br = b2 * PI / 180, r0 = TR * Math.cos(PI / 12) + .02;
         add('box', [x + Math.cos(br) * r0, 4.2, z + Math.sin(br) * r0], [.2, 1.0, .1], CLN([.1, .09, .1]), [0, PI / 2 - br, 0]); }
       if (bas) { addG('cone6', [x, 8.6, z], [1.1, 1.3, 1.1], [1, .45, .1]); addG('sphere', [x, 8.2, z], [1.0, .45, 1.0], [1, .7, .25]); return; }
-      add('cone12', [x, 8.06 + 1.9, z], [D - .3, 3.8, D - .3], CLN(ROOF)); add('cyl12', [x, 8.1, z], [D - .2, .12, D - .2], CLN(shade(ROOF, .7)));
+      add('cone12', [x, 8.06 + 1.9, z], [D - .3, 3.8, D - .3], SHG(ROOF)); add('cyl12', [x, 8.1, z], [D - .2, .12, D - .2], CLN(shade(ROOF, .7)));
       add('cyl6', [x, 12.25, z], [.08, 1.1, .08], CLN([.25, .2, .16])); add('sphere', [x, 12.82, z], [.16, .16, .16], CLN([.95, .8, .3]));
       add('box', [x + .42, 12.45, z], [.82, .44, .04], CLN(gate ? pal.ban[0] : pal.ban[1]));
     };
@@ -502,13 +525,13 @@ function buildWorld(R, obstacles) {
     add('rbox', Q(0, .15, 0), [w + .3, .3, d + .3], DSTONE, rr);
     add('box', Q(0, 1.7, -d / 2 + .1), [w, 3.2, .25], [.55, .36, .2], rr); for (const s of [-1, 1]) add('box', Q(s * (w / 2 - .1), 1.7, 0), [.25, 3.2, d], [.5, .33, .18], rr);
     for (const s of [-1, -.33, .33, 1]) add('box', Q(s * (w / 2 - .15), 1.7, d / 2 - .1), [.3, 3.2, .3], WOOD, rr);
-    add('prism', Q(0, 4.3, 0), [w + .8, 2.2, d + 1.2], roofc, rr); add('box', Q(0, 5.42, 0), [w + .9, .14, .2], shade(roofc, .7), rr);
+    add('prism', Q(0, 4.3, 0), [w + .8, 2.2, d + 1.2], SHG(roofc), rr); add('box', Q(0, 5.42, 0), [w + .9, .14, .2], shade(roofc, .7), rr);
     for (let k = 0; k < 3; k++) add('box', Q(-1.6 + k * 1.6, .6, -d / 2 + .6), [1.2, 1.0, .5], WOOD, rr); // baias
     add('sphere', Q(1.6, .6, -.4), [1.4, 1.0, 1.0], [.85, .72, .32]); add('sphere', Q(-1.4, .5, 0), [1.0, .8, .8], [.8, .66, .28]);
     for (const s of [-1, 1]) { const q = lp(x, z, r, s * (w / 2 - .6), 0); obstacles.push({ x: q[0], z: q[1], r: d / 2 }); } { const q = lp(x, z, r, 0, -d / 4); obstacles.push({ x: q[0], z: q[1], r: d / 3 }); }
   };
   const townLayout = v => {
-    const cx = v.cx, cz = v.cz, L = v.L, pal = PAL[v.theme], style = pal.style, th = v.theme, hs = v.hs, ave = L.ave;
+    const cx = v.cx, cz = v.cz, L = v.L, pal = PAL[v.id] || PAL[v.theme], style = pal.style, th = v.theme, hs = v.hs, ave = L.ave;
     const slots = L.slots, spots = slots.map(sl => { const q = slotSpot(sl); return [cx + q[0], cz + q[1]]; });
     // livre: longe das casas (com a área da frente), dos pontos dos NPCs, do portal e da chegada
     const clear = (x, z, m) => { m = m || 0;
@@ -528,7 +551,53 @@ function buildWorld(R, obstacles) {
     const P0 = th === 'aldoria' || th === 'town' ? 16 : th === 'desert' ? 16.5 : 12;
     for (let t = P0; t < hs - 4; t += 7) for (const [ax, az] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const sd of [-1, 1]) {
       const x = cx + ax * t + (az ? sd * (ave + .6) : 0), z = cz + az * t + (ax ? sd * (ave + .6) : 0); if (clear(x, z, -2.6)) lampAt(x, z); }
-    if (th === 'town') { // ===== Aldoria: fonte, mercado, bancos, canteiros, jardins e pomares =====
+    if (v.id === 'pedraluz') { // ===== Pedraluz: obelisco de cristal, bancos em roda, postes na rua circular, pomares nos cantos =====
+      add('cyl12', [cx, .18, cz], [8.6, .36, 8.6], MAS(shade(STONE, .95))); add('cyl12', [cx, .42, cz], [6.2, .2, 6.2], MAS(DSTONE));
+      add('box', [cx, 2.2, cz], [.95, 3.6, .95], MAS(shade(DSTONE, .9))); add('cone6', [cx, 4.5, cz], [1.2, 1.0, 1.2], MAS(DSTONE)); addG('sphere', [cx, 5.5, cz], [.7, 1.0, .7], [.5, .8, 1]);
+      for (const g of [0, 90, 180, 270]) { const a = g * PI / 180; add('box', [cx + Math.cos(a) * 1.6, .7, cz + Math.sin(a) * 1.6], [.5, .6, .5], MAS(shade(STONE, .85)), [0, -a, 0]); }
+      obstacles.push({ x: cx, z: cz, r: 2.3 });
+      for (const g of [45, 135, 225, 315]) { const a = g * PI / 180; bench(cx + Math.cos(a) * 6.8, cz + Math.sin(a) * 6.8, -a + PI / 2); }
+      for (let g = 22.5; g < 360; g += 45) { const a = g * PI / 180; lampAt(cx + Math.cos(a) * 9.8, cz + Math.sin(a) * 9.8); banner(cx + Math.cos(a) * 12.4, cz + Math.sin(a) * 12.4, pal.ban[(g / 45 | 0) & 1]); }
+      for (let g = 0; g < 360; g += 15) { const a = g * PI / 180, x = cx + Math.cos(a) * 25.4, z = cz + Math.sin(a) * 25.4; if (clear(x, z, -1.5)) tree(x, z, 'round', .75 + rng() * .25); }
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const ox = cx + sx * 29, oz = cz + sz * 29; if (clear(ox, oz, 1)) { well(ox, oz); crates(ox + sx * 3.2, oz, rng() * 3); } hay(cx + sx * 35, cz + sz * 20); }
+    } else if (v.id === 'zahar') { // ===== Zahar: cisterna, palmeiras, barracas de mercado no boulevard =====
+      add('cyl12', [cx, .3, cz], [7.4, .6, 7.4], [.8, .68, .46]); add('cyl12', [cx, .62, cz], [5.8, .1, 5.8], [.18, .55, .6], null, wt);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * PI * 2; add('box', [cx + Math.cos(a) * 3.55, .85, cz + Math.sin(a) * 3.55], [.9, .5, .9], [.9, .8, .6], [0, -a, 0]); }
+      obstacles.push({ x: cx, z: cz, r: 3.5 });
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) tree(cx + sx * 6.2, cz + sz * 6.2, 'palm', 1.1);
+      const SC = [[.75, .2, .18], [.2, .45, .55], [.85, .6, .2], [.45, .25, .55], [.2, .55, .35], [.8, .4, .3]];
+      [[-13.2, 1], [-21.8, -1], [13.2, -1], [21.8, 1]].forEach(([x, sz], i) => { stall(cx + x, cz + sz * 2.6, sz > 0 ? PI : 0, SC[i]); stall(cx + x * .9, cz - sz * 2.9, sz > 0 ? 0 : PI, SC[i + 2]); });
+      for (const [x, z] of [[-31, -3.5], [31, 3.5]]) { crates(cx + x, cz + z, rng() * 3); }
+      cart(cx - 30.5, cz + 3.4, .3, 'barrel'); hay(cx + 30.5, cz - 3.4);
+      for (const [x, z] of [[-27, -22], [27, -22], [-27, 22], [27, 22], [0, -28], [0, 28]]) if (clear(cx + x, cz + z, -1)) tree(cx + x, cz + z, 'palm', .95 + rng() * .3);
+      for (const g of [0, 180]) { const a = g * PI / 180; tent(cx + Math.cos(a) * 31, cz + Math.sin(a) * 31 + (g ? 8 : -8), g ? PI / 2 : -PI / 2, pick([[.75, .2, .18], [.2, .45, .55]])); }
+    } else if (v.id === 'cinzeiro') { // ===== Cinzeiro: fortaleza central, torres de canto, braseiros e poços de lava no pátio =====
+      const KC = MAS([.2, .17, .2]), KT = MAS([.3, .27, .3]);
+      add('rbox', [cx, 4.6, cz], [14, 9.2, 14], KC); add('rbox', [cx, 9.5, cz], [15, .8, 15], KT);
+      for (let k = -3; k <= 3; k++) for (const sd of [-1, 1]) { add('box', [cx + k * 2.1, 10.3, cz + sd * 7.3], [1.1, 1.0, .8], KT); add('box', [cx + sd * 7.3, 10.3, cz + k * 2.1], [.8, 1.0, 1.1], KT); }
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add('cyl12', [cx + sx * 7.6, 7, cz + sz * 7.6], [4.4, 14, 4.4], KC); add('cyl12', [cx + sx * 7.6, 14.1, cz + sz * 7.6], [5.0, .5, 5.0], KT); add('cone12', [cx + sx * 7.6, 16.2, cz + sz * 7.6], [4.6, 3.6, 4.6], [.5, .1, .08]); }
+      add('box', [cx, 2.3, cz - 7.1], [3.2, 4.6, .5], [.14, .09, .06]); add('box', [cx, 4.9, cz - 7.15], [3.8, .5, .6], KT);
+      for (const x of [-4.2, -2.1, 2.1, 4.2]) addG('box', [cx + x, 6.6, cz - 7.05], [.5, 1.3, .1], [1, .55, .15]);
+      for (let k = 0; k < 5; k++) for (let j = 0; j < 5; j++) obstacles.push({ x: cx + (k - 2) * 3.2, z: cz + (j - 2) * 3.2, r: 2.2 });
+      for (const x of [-3.3, 3.3]) brazier(cx + x, cz - 10.3, 1.1);
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { if (clear(cx + sx * 13.5, cz + sz * 13.5, 0)) lavaPool(cx + sx * 13.5, cz + sz * 13.5, 2.1); brazier(cx + sx * 9.3, cz + sz * 12.4, .9); }
+      for (const [x, z] of [[-6, -14], [6, -14]]) banner(cx + x, cz + z, pal.ban[0]);
+    } else if (v.id === 'frostmar') { // ===== Frostmar: lago congelado, barco encalhado, cabanas de pesca, fogueiras =====
+      add('cyl', [cx, .045, cz], [23.4, .08, 23.4], [.62, .8, .92]); add('cyl', [cx, .075, cz], [19.5, .04, 19.5], [.72, .88, .98]);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * PI * 2 + .3, rr_ = 3 + (k % 3) * 2.4; add('box', [cx + Math.cos(a) * rr_, .1, cz + Math.sin(a) * rr_], [4 + (k % 3), .02, .1], [.42, .6, .8], [0, a * 1.7, 0]); }
+      const BR = .5, BQ = (dx, dz, y) => Q0(cx - 2, cz + 1, BR, dx, dz, y);
+      add('rbox', BQ(0, 0, .9), [9, 1.4, 2.8], [.34, .22, .12], [0, BR, 0]); add('box', BQ(0, 0, 1.62), [8.4, .12, 2.4], PLK([.5, .36, .22]), [0, BR, 0]);
+      for (const sd of [-1, 1]) { add('cyl6', BQ(sd * 4.7, 0, 1.9), [.34, 2.6, .34], [.3, .18, .1], [0, BR, 0]); add('sphere', BQ(sd * 4.7, 0, 3.3), [.8, .8, 1.0], [.36, .24, .12]); }
+      add('cyl6', BQ(0, 0, 4.2), [.28, 6.4, .28], [.3, .18, .1]); add('box', BQ(0, 0, 4.7), [.1, 3.6, 3.6], CLN([.75, .2, .16]), [0, BR, 0]);
+      for (let k = -3; k <= 3; k++) for (const sd of [-1, 1]) add('cyl', BQ(k * 1.2, sd * 1.45, 1.2), [.8, .1, .8], [.8 - Math.abs(k) * .05, .5, .15], [PI / 2, BR, 0]);
+      obstacles.push({ x: cx - 4.5, z: cz + 2, r: 2 }, { x: cx - 2, z: cz + 1, r: 2.3 }, { x: cx + .5, z: cz, r: 2 });
+      for (const [x, z, c] of [[6.5, -5.5, [.7, .3, .2]], [4.5, 7.5, [.2, .4, .6]]]) { tent(cx + x, cz + z, Math.atan2(-x, -z), c); }
+      for (const [x, z] of [[2.5, -9], [8, 2], [-6.8, -5.4]]) add('cyl', [cx + x, .1, cz + z], [1.0, .02, 1.0], [.08, .18, .3]);
+      for (const g of [45, 135, 225, 315]) { const a = g * PI / 180; bonfire(cx + Math.cos(a) * 14, cz + Math.sin(a) * 14); }
+      for (const g of [100, 200, 300]) { const a = g * PI / 180; snowman(cx + Math.cos(a) * 16.4, cz + Math.sin(a) * 16.4); }
+      for (let g = 0; g < 360; g += 20) { const a = g * PI / 180, x = cx + Math.cos(a) * 29.5, z = cz + Math.sin(a) * 29.5; if (clear(x, z, -1.5)) tree(x, z, 'snowpine', .8 + rng() * .3); }
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const wx_ = cx + sx * 12.6, wz = cz + sz * 12.6; if (clear(wx_, wz, 0)) crates(wx_, wz, rng() * 3); }
+    } else if (th === 'town') { // ===== Aldoria: fonte, mercado, bancos, canteiros, jardins e pomares =====
       fountain(cx, cz, 1.35);
       for (const g of [20, 70, 110, 160, 200, 340]) { const a = g * PI / 180; bench(cx + Math.cos(a) * 7.2, cz + Math.sin(a) * 7.2, -a + PI / 2); }
       for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { planter(cx + sx * 11.2, cz + sz * 11.2, 'round', .85); lampAt(cx + sx * 13.6, cz + sz * 13.6); }
@@ -966,11 +1035,132 @@ function buildWorld(R, obstacles) {
     for (let k = 0; k < 6; k++) { const a = rng() * PI * 2, r = 3 + rng() * 4; add('cyl6', [s.x + Math.cos(a) * r, .12, s.z + Math.sin(a) * r], [.12, .9, .12], [.88, .86, .78], [0, rng() * 3, PI / 2]); }
   }
 
+  // ---------- locais secretos (SITES com poi): estruturas únicas, cada uma com forma, cor e brilho próprios ----------
+  { const place = (id, tint, R0, fn) => { const q = SITE[id]; clearing(q.x, q.z, R0, mix(shade(groundColor(q.x, q.z, coastD(q.x, q.z)), .65), tint, .3), 31 + q.x); fn(q.x, q.z); };
+    const at = (x, z, a, r) => [x + Math.cos(a) * r, z + Math.sin(a) * r];
+    // Mina Abandonada (Campos): boca de mina escavada na rocha, estrutura de madeira, trilhos, vagonete e cristais de minério
+    place('mina', [.45, .38, .3], 10, (x, z) => {
+      add('sphere', [x, 2.2, z - 3], [11, 6.5, 8], [.44, .42, .4], [0, .4, 0]); add('sphere', [x - 3.8, 1.2, z - 1.5], [5, 3.2, 4.5], [.4, .38, .37]); add('sphere', [x + 4, 1.0, z - 1.8], [4.5, 2.8, 4], [.47, .45, .43]);
+      add('box', [x, 1.35, z + .3], [2.8, 2.7, .5], CLN([.03, .03, .04]));
+      for (const sd of [-1, 1]) add('box', [x + sd * 1.7, 1.5, z + .8], [.34, 3.0, .34], PLK(WOOD));
+      add('box', [x, 3.1, z + .8], [4.2, .36, .4], PLK(WOOD)); add('box', [x, 2.7, z + .7], [3.2, .22, .22], PLK(shade(WOOD, 1.15)));
+      for (const sd of [-1, 1]) add('box', [x + sd * .55, .08, z + 5.4], [.09, .09, 8.4], CLN([.32, .32, .36]));
+      for (let k = 0; k < 10; k++) add('box', [x, .04, z + 1.4 + k * .85], [1.5, .07, .18], PLK(WOOD));
+      add('box', [x, .62, z + 6.4], [1.25, .7, 1.1], CLN([.3, .25, .22])); addG('sphere', [x - .15, 1.0, z + 6.4], [.55, .4, .5], [1, .75, .25]); addG('cone6', [x + .25, 1.1, z + 6.3], [.25, .5, .25], [1, .85, .3]);
+      for (let k = 0; k < 7; k++) { const [px, pz] = at(x, z + 1, rng() * PI * 2, 3.2 + rng() * 2.6), h = .6 + rng() * .9; addG('cone6', [px, h / 2, pz], [.3, h, .3], pick([[.4, .85, 1], [.5, 1, .7], [1, .8, .3]]), [rng() * .4 - .2, rng() * 3, rng() * .4 - .2]); }
+      add('cyl6', [x - 2.7, 1.2, z + 1.6], [.12, 2.4, .12], CLN([.2, .19, .2])); addG('sphere', [x - 2.7, 2.6, z + 1.6], [.4, .46, .4], [1, .85, .45]);
+      crate([x + 3.2, .4, z + 2.8], .8, [.5, .34, .18], .3); obstacles.push({ x, z: z - 3, r: 5.2 });
+    });
+    // Santuário Élfico (Floresta): círculo de arcos de pedra clara, cogumelos luminosos, altar com orbe flutuante e vaga-lumes
+    place('santuario', [.3, .8, .6], 11, (x, z) => {
+      for (let k = 0; k < 7; k++) { const a = k / 7 * PI * 2, [px, pz] = at(x, z, a, 7.2), tx = -Math.sin(a), tz = Math.cos(a);
+        for (const sd of [-1, 1]) add('cyl6', [px + tx * sd * 1.0, 1.8, pz + tz * sd * 1.0], [.42, 3.6, .42], MAS([.82, .84, .86]));
+        add('box', [px, 3.75, pz], [.5, .4, 2.6], CLN([.92, .94, .96]), [0, Math.atan2(tx, tz), 0]); addG('sphere', [px, 4.15, pz], [.28, .28, .28], [.5, 1, .85]); }
+      for (let k = 0; k < 16; k++) { const [px, pz] = at(x, z, rng() * PI * 2, 1.8 + rng() * 7.4), h = .25 + rng() * .35; add('cyl6', [px, h / 2, pz], [.08, h, .08], CLN([.9, .9, .85])); addG('sphere', [px, h + .06, pz], [.3, .18, .3], pick([[.4, 1, .9], [1, .5, .9], [.65, .6, 1]])); }
+      add('cyl12', [x, .3, z], [3.2, .6, 3.2], MAS([.8, .82, .85])); add('cyl6', [x, 1.1, z], [.9, 1.6, .9], CLN([.92, .94, .97])); addG('sphere', [x, 2.7, z], [.8, .8, .8], [.5, 1, .9]); addG('ring', [x, 2.7, z], [1.7, 1.7, 1.7], [.6, 1, .9], [.5, 0, .3]);
+      for (let k = 0; k < 10; k++) { const [px, pz] = at(x, z, rng() * PI * 2, 1 + rng() * 8); addG('sphere', [px, 1 + rng() * 3.2, pz], [.09, .09, .09], [.9, 1, .6]); }
+      obstacles.push({ x, z, r: 1.7 });
+    });
+    // Templo do Sol (Dunas): plataforma em degraus de arenito, quatro colunas, telhado com pirâmide dourada, braseiro e obelisco
+    place('templo', [1, .85, .5], 12, (x, z) => {
+      const SS = [.88, .74, .5], GD = [.95, .78, .3];
+      add('box', [x, .2, z], [13, .4, 13], MAS(SS)); add('box', [x, .6, z], [10.6, .4, 10.6], MAS(shade(SS, 1.05))); add('box', [x, 1.0, z], [8.2, .4, 8.2], MAS(shade(SS, 1.1)));
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add('cyl12', [x + sx * 3, 3.5, z + sz * 3], [.95, 4.6, .95], MAS(shade(SS, 1.08))); add('box', [x + sx * 3, 5.95, z + sz * 3], [1.5, .3, 1.5], MAS(SS)); obstacles.push({ x: x + sx * 3, z: z + sz * 3, r: .7 }); }
+      add('box', [x, 6.4, z], [7.8, .55, 7.8], MAS(SS)); add('box', [x, 6.75, z], [8.1, .16, 8.1], CLN(GD)); add('pyr', [x, 7.7, z], [3.4, 1.9, 3.4], CLN(GD), [0, PI / 4, 0]); addG('sphere', [x, 9.3, z], [1.3, 1.3, 1.3], [1, .85, .3]);
+      add('cyl6', [x, 1.7, z], [1.0, 1.1, 1.0], MAS([.4, .3, .22])); addG('cone6', [x, 2.7, z], [.85, 1.4, .85], [1, .55, .15]); addG('sphere', [x, 2.4, z], [.9, .6, .9], [1, .7, .2]);
+      add('box', [x + 9.2, 3, z], [1.2, 6, 1.2], MAS(SS)); add('pyr', [x + 9.2, 6.5, z], [1.2, .9, 1.2], CLN(GD), [0, PI / 4, 0]); addG('box', [x + 9.2, 3.6, z - .62], [.5, 1.8, .06], [1, .8, .3]); obstacles.push({ x: x + 9.2, z, r: .8 });
+      for (let k = 0; k < 4; k++) addG('sphere', [x + 6.8 * Math.cos(k * PI / 2 + .8), .5, z + 6.8 * Math.sin(k * PI / 2 + .8)], [.35, .35, .35], [1, .7, .25]);
+    });
+    // Observatório Gélido (Tundra): torre de pedra com cúpula azul, fresta, luneta apontada ao céu e cristais de gelo
+    place('observatorio', [.7, .85, 1], 11, (x, z) => {
+      add('cyl12', [x, 4.5, z], [5.2, 9, 5.2], MAS([.72, .78, .86])); add('cyl12', [x, 9.1, z], [5.9, .45, 5.9], CLN([.45, .55, .72])); add('sphere', [x, 9.4, z], [5.4, 3.8, 5.4], CLN([.55, .7, .92]));
+      add('box', [x, 10.1, z + 2.6], [.9, 2.6, .5], CLN([.04, .06, .1])); add('cyl6', [x + .2, 11.3, z + 3.4], [.5, 4.6, .5], CLN([.72, .62, .3]), [-.95, 0, 0]); add('cyl6', [x + .2, 10.5, z + 2.9], [.9, .5, .9], CLN([.5, .4, .2]));
+      add('box', [x, 1.1, z + 2.7], [1.5, 2.2, .35], CLN([.08, .1, .16])); for (let k = 0; k < 4; k++) add('box', [x, .1 + k * .2, z + 3.4 + (3 - k) * .45], [2.4, .22, .5], MAS([.6, .66, .76]));
+      addG('sphere', [x, 11.7, z - .6], [.6, .6, .6], [.6, .9, 1]);
+      for (let k = 0; k < 9; k++) { const [px, pz] = at(x, z, k / 9 * PI * 2 + .3, 6.4 + rng() * 2.4), h = 1.2 + rng() * 2.2; add('cone6', [px, h / 2, pz], [.9, h, .9], [.62, .82, .97], [rng() * .3 - .15, rng() * 3, rng() * .3 - .15]); if (k % 2) addG('cone6', [px, h * .35, pz], [.4, h * .7, .4], [.55, .85, 1]); }
+      obstacles.push({ x, z, r: 2.9 });
+    });
+    // Forja Esquecida (Cinzas): galpão de obsidiana com fornalha e chaminé em brasa, bigorna, canal de lava e correntes
+    place('forja', [1, .45, .15], 12, (x, z) => {
+      add('cyl12', [x, .1, z], [13, .2, 13], CLN([.1, .09, .1]));
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add('tcw', [x + sx * 5, 2.6, z + sz * 5], [1.1, 5.2, 1.1], CLN([.14, .1, .12])); obstacles.push({ x: x + sx * 5, z: z + sz * 5, r: .7 }); }
+      add('pyr', [x, 6.9, z], [13, 3.4, 13], CLN([.16, .12, .12])); add('box', [x, 5.35, z], [11, .35, 11], CLN([.12, .09, .1]));
+      add('box', [x, .95, z], [1.2, .9, .7], CLN([.2, .2, .24])); add('tbox', [x, 1.55, z], [1.9, .4, .8], CLN([.27, .27, .32])); add('cone6', [x + 1.1, 1.55, z], [.3, .7, .3], CLN([.27, .27, .32]), [0, 0, -PI / 2]);
+      add('box', [x - 3.4, 1.4, z - 3.6], [3.2, 2.8, 2.6], MAS([.2, .16, .16])); add('cyl12', [x - 3.4, 5.4, z - 3.9], [1.5, 6.5, 1.5], MAS([.2, .16, .16])); addG('box', [x - 3.4, 1.1, z - 2.28], [1.6, 1.2, .15], [1, .45, .1]); addG('sphere', [x - 3.4, 8.8, z - 3.9], [1, .8, 1], [1, .5, .15]);
+      addG('box', [x + 4.2, .12, z + 1], [1.1, .06, 9], [1, .42, .08]); addG('cyl', [x + 4.2, .1, z + 5.4], [2.2, .06, 2.2], [1, .42, .08]);
+      for (const k of [-1, 0, 1]) add('cyl6', [x + 2 + k * .5, 4.3, z + 3 + k * .6], [.07, 2.2, .07], CLN([.3, .3, .32]));
+      add('cyl6', [x - .9, .5, z + 1.4], [.1, 1.0, .1], CLN([.3, .2, .1]), [0, 0, 1.2]); add('box', [x - 1.35, .5, z + 1.4], [.5, .28, .28], CLN([.24, .24, .28]));
+      for (let k = 0; k < 6; k++) { const [px, pz] = at(x, z, rng() * PI * 2, 4 + rng() * 4); add('sphere', [px, .25, pz], [.9 + rng(), .5, .8 + rng() * .6], [.17, .14, .14]); }
+      obstacles.push({ x: x - 3.4, z: z - 3.6, r: 2.2 }); obstacles.push({ x, z, r: 1.1 });
+    });
+    // Fonte dos Esquecidos (Ruínas): bacia circular de pedra com água viva, espiral central, colunas quebradas e runas azuis no chão
+    place('fonte', [.5, .7, 1], 11, (x, z) => {
+      addG('cyl', [x, .05, z], [10.4, .06, 10.4], [.35, .6, 1]); add('cyl12', [x, .45, z], [7.2, .9, 7.2], MAS([.58, .56, .62])); add('cyl12', [x, .78, z], [6.1, .1, 6.1], [.35, .7, .85], [0, 0, 0], wt);
+      add('tcw', [x, 2.3, z], [1.3, 3.6, 1.3], MAS([.62, .6, .66])); addG('sphere', [x, 4.6, z], [.95, .95, .95], [.5, .8, 1]);
+      for (let k = 0; k < 4; k++) { const a = k * PI / 2 + .7, [px, pz] = at(x, z, a, 6.6), h = 1.4 + rng() * 1.6; add('cyl6', [px, h / 2, pz], [.9, h, .9], MAS([.56, .54, .6])); if (k % 2) add('cyl6', [px + 1.3, .35, pz + .8], [.9, 1.5, .9], MAS([.54, .52, .58]), [0, 0, PI / 2]); obstacles.push({ x: px, z: pz, r: .7 }); }
+      for (let k = 0; k < 6; k++) { const [px, pz] = at(x, z, k / 6 * PI * 2, 4.4); addG('box', [px, .1, pz], [.5, .06, .5], [.4, .7, 1], [0, k, 0]); }
+      for (let k = 0; k < 6; k++) { const [px, pz] = at(x, z, rng() * PI * 2, 1 + rng() * 5); addG('sphere', [px, 1.6 + rng() * 2.6, pz], [.14, .14, .14], [.55, .85, 1]); }
+      obstacles.push({ x, z, r: 3.5 });
+    });
+  }
+
   // ---------- cenário por zona (com transição: perto da fronteira as duas zonas se misturam) ----------
   const EX = [[LM.camp[0], LM.camp[1], 9], [LM.mill[0] + 5, LM.mill[1], 10], [LM.ancient[0], LM.ancient[1], 7], [LM.grave[0] + 4, LM.grave[1] + 3, 10], [LM.pyramid[0], LM.pyramid[1], 12],
     [LM.crypt[0], LM.crypt[1] - 2, 15], [LM.lichtower[0], LM.lichtower[1], 12], [LM.icecave[0], LM.icecave[1] - 12, 30], [LM.caldera[0] - 20, LM.caldera[1], 46]];
   for (const s of SITES) if (s.k === 'lair') EX.push([s.x, s.z, 11]);
+  for (const s of SITES) if (s.poi) EX.push([s.x, s.z, 13]);
   for (const k in BOSS_SPOT) EX.push([BOSS_SPOT[k][0], BOSS_SPOT[k][1], 11]);
+  EX.push([CAMP.x, CAMP.z, CAMP.ro + 4]);
+  { // Campo de Treinamento: ilha cercada num lago, com ponte e portão voltados para Aldoria, clareira do instrutor e bonecos de treino
+    const C = CAMP, U = [C.ux, C.uz], Vv = [-C.uz, C.ux], WD = [.46, .33, .19];
+    const sp = (a, b, o) => { o = o || [C.sx, C.sz]; return [o[0] + U[0] * a + Vv[0] * b, o[1] + U[1] * a + Vv[1] * b]; }; // a = rumo à ponte, b = lateral
+    const Rf = C.ri - 2.3, n = Math.round(PI * 2 * Rf / 1.9), hg = 3 / Rf, P = [];
+    for (let k = 0; k < n; k++) { // cerca de estacas com duas travessas; vão no portão
+      const a = k / n * PI * 2, da = Math.atan2(Math.sin(a - C.ang), Math.cos(a - C.ang));
+      if (Math.abs(da) < hg) { P.push(null); continue; }
+      const x = C.x + Math.cos(a) * Rf, z = C.z + Math.sin(a) * Rf, h = 1.35 + hash2(k, 5.1) * .25, c = shade(WD, .82 + hash2(k, 2.2) * .3);
+      add('cyl6', [x, h / 2, z], [.2, h, .2], c, [0, k, 0]); add('cone6', [x, h + .12, z], [.2, .24, .2], shade(c, 1.12), [0, k, 0]);
+      obstacles.push({ x, z, r: .8 }); P.push([x, z]);
+    }
+    for (let k = 0; k < n; k++) { const p = P[k], q = P[(k + 1) % n]; if (!p || !q) continue; const dx = q[0] - p[0], dz = q[1] - p[1];
+      for (const y of [.55, 1.0]) add('box', [(p[0] + q[0]) / 2, y, (p[1] + q[1]) / 2], [Math.hypot(dx, dz) + .1, .1, .08], shade(WD, .78), [0, Math.atan2(-dz, dx), 0]); }
+    for (const sd of [-1, 1]) { // portão: postes altos com tochas e trave com a placa
+      const a = C.ang + sd * (hg + .03), x = C.x + Math.cos(a) * Rf, z = C.z + Math.sin(a) * Rf;
+      add('cyl6', [x, 1.6, z], [.42, 3.2, .42], shade(WD, .85)); add('cyl6', [x, 3.25, z], [.52, .18, .52], [.15, .12, .1]); addG('flame', [x, 3.6, z], [.28, .55, .28], [1, .5, .1]); obstacles.push({ x, z, r: .5 });
+    }
+    { const gx = C.x + U[0] * Rf, gz = C.z + U[1] * Rf, ry = Math.atan2(Vv[0], Vv[1]);
+      add('box', [gx, 2.95, gz], [.2, .2, hg * Rf * 2 + .9], shade(WD, .7), [0, ry, 0]); add('box', [gx, 2.45, gz], [.12, .7, 3.4], [.3, .5, .25], [0, ry, 0]); add('box', [gx, 2.45, gz], [.16, .24, 1.8], [.9, .78, .35], [0, ry, 0]); }
+    for (const da of CAMP.div) { // cercas internas: uma por divisa de nível, com portão no meio
+      const h = Math.sqrt(Rf * Rf - da * da), nn = Math.round(2 * h / 1.9), pp = [];
+      for (let k = 0; k <= nn; k++) { const b = -h + 2 * h * k / nn; if (Math.abs(b) < 2.6) { pp.push(null); continue; } const q = sp(da, b, [C.x, C.z]), ph = 1.35 + hash2(k, da) * .25, c = shade(WD, .82 + hash2(k, 4.4) * .3);
+        add('cyl6', [q[0], ph / 2, q[1]], [.2, ph, .2], c, [0, k, 0]); add('cone6', [q[0], ph + .12, q[1]], [.2, .24, .2], shade(c, 1.12), [0, k, 0]); obstacles.push({ x: q[0], z: q[1], r: .8 }); pp.push(q); }
+      for (let k = 0; k < nn; k++) { const p = pp[k], q = pp[k + 1]; if (!p || !q) continue; const dx = q[0] - p[0], dz = q[1] - p[1];
+        for (const y of [.55, 1.0]) add('box', [(p[0] + q[0]) / 2, y, (p[1] + q[1]) / 2], [Math.hypot(dx, dz) + .1, .1, .08], shade(WD, .78), [0, Math.atan2(-dz, dx), 0]); }
+      for (const sd of [-1, 1]) { const q = sp(da, sd * 2.8, [C.x, C.z]); add('cyl6', [q[0], 1.6, q[1]], [.42, 3.2, .42], shade(WD, .85)); add('cyl6', [q[0], 3.25, q[1]], [.52, .18, .52], [.15, .12, .1]); addG('flame', [q[0], 3.6, q[1]], [.28, .55, .28], [1, .5, .1]); obstacles.push({ x: q[0], z: q[1], r: .5 }); }
+      { const q = sp(da, 0, [C.x, C.z]), ry = Math.atan2(Vv[0], Vv[1]); add('box', [q[0], 2.95, q[1]], [.2, .2, 6.4], shade(WD, .7), [0, ry, 0]); add('box', [q[0], 2.45, q[1]], [.12, .6, 2.6], [.3, .5, .25], [0, ry, 0]); add('box', [q[0], 2.45, q[1]], [.16, .22, 1.2], [.9, .78, .35], [0, ry, 0]); }
+    }
+    { // ponte de tábuas (o chão da faixa de terra já está em y=0)
+      const a0 = C.ri - 3, a1 = C.ro + 5, ry = Math.atan2(Vv[0], Vv[1]), ru = Math.atan2(U[0], U[1]);
+      for (let t = a0; t <= a1; t += .55) { const q = sp(t, 0, [C.x, C.z]); add('box', [q[0], .06, q[1]], [.48, .1, 5.1], PLK(shade([.5, .36, .2], .85 + hash2(t, 7.7) * .3)), [0, ry, 0]); }
+      for (const sd of [-1, 1]) { for (let t = a0; t <= a1; t += 2.2) { const q = sp(t, sd * 2.7, [C.x, C.z]); add('cyl6', [q[0], .55, q[1]], [.14, 1.1, .14], shade(WD, .8)); }
+        for (const y of [.5, .95]) { const q = sp((a0 + a1) / 2, sd * 2.7, [C.x, C.z]); add('box', [q[0], y, q[1]], [.08, .08, a1 - a0], shade(WD, .75), [0, ru, 0]); } }
+    }
+    clearing(C.sx, C.sz, 7.3, [.46, .4, .26], 21);
+    { const f = sp(-1.2, -2.4); campfire(f[0], f[1], .9); const t1 = sp(-4.8, 3.6), t2 = sp(-4.2, -6.2); tentA(t1[0], t1[1], f[0], f[1], [.55, .45, .3]); tentA(t2[0], t2[1], f[0], f[1], [.3, .5, .35]);
+      for (const a of [1.3, 3.5, 5.2]) { const q = [f[0] + Math.cos(a) * 2.2, f[1] + Math.sin(a) * 2.2]; add('cyl6', [q[0], .2, q[1]], [.4, 1.3, .4], [.36, .24, .13], [0, PI / 2 - a, PI / 2]); }
+      const fl = sp(2.2, 5.2); flagPole(fl[0], fl[1], 4.6, [.18, .5, .26], [.9, .85, .5]);
+      const cr = sp(2.4, -5.4); crates(cr[0], cr[1], 0.5); const br = sp(3.4, -4.6); barrel([br[0], .5, br[1]], 1, [.42, .27, .14]); obstacles.push({ x: br[0], z: br[1], r: .5 }); }
+    const dummy = (x, z, r) => { const Q = (a, y, b) => Q0(x, z, r, a, b, y), rr = [0, r, 0];
+      add('cyl6', Q(0, .9, 0), [.16, 1.8, .16], CLN(WOOD), rr); add('box', Q(0, 1.35, 0), [1.0, .1, .1], CLN(WOOD), rr);
+      add('cyl6', Q(0, 1.15, 0), [.66, .95, .5], CLN([.8, .68, .38]), rr); add('sphere', Q(0, 1.95, 0), [.5, .5, .5], CLN([.84, .74, .52]));
+      add('cyl', Q(0, 1.2, .3), [.54, .03, .54], CLN([.8, .15, .12]), [PI / 2, r, 0]); add('cyl', Q(0, 1.2, .31), [.28, .03, .28], CLN([.95, .92, .85]), [PI / 2, r, 0]);
+      obstacles.push({ x, z, r: .55 }); };
+    for (const [a, b] of [[6.4, -3.2], [7.6, 1.4], [5.6, 5.2], [9.4, -6.8]]) { const q = sp(a, b), r = Math.atan2(-U[1], -U[0]); dummy(q[0], q[1], r + PI / 2); }
+    for (let k = 0; k < 7; k++) { const a = C.ang + PI + (k - 3) * .38, r = Rf - 3.6, x = C.x + Math.cos(a) * r, z = C.z + Math.sin(a) * r; tree(x, z, k % 3 === 2 ? 'rock' : 'round', .9 + hash2(k, 8.1) * .5); }
+    for (let k = 0; k < 46; k++) { const a = hash2(k, 3.7) * PI * 2, r = C.ri + 1.5 + hash2(k, 9.3) * (C.ro - C.ri - 3), x = C.x + Math.cos(a) * r, z = C.z + Math.sin(a) * r;
+      if (coastD(x, z) > -2 || Math.abs((x - C.x) * -U[1] + (z - C.z) * U[0]) < 5.5) continue; add('cyl', [x, SEA_Y + .03, z], [.8 + hash2(k, 1.1) * .5, .03, .8 + hash2(k, 1.3) * .5], shade([.2, .5, .26], .8 + hash2(k, 6.6) * .4)); }
+    { const q = sp(C.ro + 6 - 0, 0, [C.x, C.z]), l = [q[0] + Vv[0] * 4.2, q[1] + Vv[1] * 4.2]; add('cyl6', [l[0], 1.1, l[1]], [.16, 2.2, .16], CLN(WOOD)); add('box', [l[0], 2.0, l[1]], [.1, .8, 1.9], CLN([.3, .5, .25]), [0, Math.atan2(-U[1], -U[0]) + PI / 2, 0]); add('box', [l[0], 2.0, l[1]], [.14, .3, 1.2], CLN([.9, .78, .35]), [0, Math.atan2(-U[1], -U[0]) + PI / 2, 0]); obstacles.push({ x: l[0], z: l[1], r: .4 }); }
+  }
   const exOK = (x, z, m) => { for (const e of EX) if (Math.abs(x - e[0]) < e[2] + m && Math.hypot(x - e[0], z - e[1]) < e[2] + m) return false; return true; };
   const okAt = (x, z, m) => coastD(x, z) > 5 + m && !inTownSq(x, z, 3 + m) && !inCamp(x, z, 3 + m) && roadDist(x, z) > ROAD_W + .8 + m && !inPond(x, z, 2 + m) && exOK(x, z, m);
   const scat = (zid, perHa, fn, m) => { const g = zgrid(), n = Math.round(perHa * (g.area[zid] || 0) / 1e4); m = m || 0; let k = 0, t = 0; while (k < n && t++ < n * 8) { const p = sampleZone(zid, rng); if (!p || !okAt(p[0], p[1], m)) continue; fn(p[0], p[1]); k++; } };
@@ -1035,7 +1225,14 @@ function buildWorld(R, obstacles) {
       }
     } }
 
-  const fin = () => { const w = { chunks: mb.meshes(R.gl), reg: 'all' }; w.mtn = { chunks: mt.meshes(R.gl) }; w.glow = { chunks: gl.meshes(R.gl) }; w.water = { chunks: wt.meshes(R.gl) }; return w; };
+  // passada 3: detalhe de chão em áreas grandes e lisas (pedrinhas, arbustos secos, montes de neve, cristais de gelo, cascalho de cinzas)
+  scat('dunes', 140, (x, z) => { const s = .5 + rng() * .7; add('sphere', [x, s * .12, z], [s, s * .45, s * .8], shade([.66, .54, .38], .85 + rng() * .3), [0, rng() * 3, 0]); if (rng() < .5) add('sphere', [x + s * .7, s * .08, z + s * .3], [s * .5, s * .3, s * .45], shade([.6, .5, .36], .9 + rng() * .2)); }, -1);
+  scat('dunes', 55, (x, z) => { for (let k = 0; k < 5; k++) { const a = rng() * PI * 2, h = .25 + rng() * .3; add('cone6', [x + Math.cos(a) * .22, h * .5, z + Math.sin(a) * .22], [.07, h, .07], shade([.55, .45, .22], .8 + rng() * .4), [rng() * .5 - .25, 0, rng() * .5 - .25]); } }, -1);
+  scat('tundra', 110, (x, z) => { const s = .45 + rng() * .6; add('sphere', [x, s * .1, z], [s * 1.2, s * .5, s], [.74, .84, .95], [0, rng() * 3, 0]); }, -1);
+  scat('tundra', 45, (x, z) => { for (let k = 0; k < 3; k++) { const h = .25 + rng() * .45; add('cone6', [x + (k - 1) * .16, h * .5, z + (rng() - .5) * .2], [.12, h, .12], [.62, .8, .95], [rng() * .3 - .15, 0, rng() * .3 - .15]); } }, -1);
+  scat('ashlands', 170, (x, z) => { const s = .3 + rng() * .5; add('sphere', [x, s * .12, z], [s, s * .5, s * .8], shade([.22, .19, .2], .8 + rng() * .5), [0, rng() * 3, 0]); }, -1);
+
+  const fin = () => { const w = { chunks: mb.meshes(R.gl), reg: 'all' }; w.mtn = { chunks: mt.meshes(R.gl) }; w.glow = { chunks: gl.meshes(R.gl) }; w.water = { chunks: wt.meshes(R.gl) }; w.ao = { chunks: ao.meshes(R.gl) }; return w; };
   const wm = fin(); wm.regs = [wm]; wm.spin = spins;
   { // mar: disco plano que acompanha a câmera (o shader de água faz as ondinhas; a neblina esconde a borda)
     const P = [], N = [], C = [], I = [], RS = [0, 6, 14, 26, 44, 70, 105, 150, 210, 290, 380, 470], SEG = 64;

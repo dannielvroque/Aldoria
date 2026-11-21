@@ -71,6 +71,59 @@ function mkCloth(n) {
   for (let k = 0; k < n; k++) { const m = M.part([(k + .5) / n, 0, 0], [0, 0, 0], [0, 0, 0], [1 / n, 1, .04]); b.merge(box, m, k ? [1, -1, 1] : W3); }
   return b;
 }
+
+/* ===== Loft orgânico: uma malha contínua por seções (anéis) ao longo de uma espinha, no lugar de várias esferas sobrepostas =====
+   pts: [x, y, z, rx, ry] por ponto de controle (rx = meia-largura lateral, ry = meia-altura/profundidade); a espinha é suavizada (Catmull-Rom) e a seção é uma elipse
+   com pontas arredondadas. o: sides (10), sub (3 amostras entre pontos), flat (0..1 achata o lado de baixo, p.ex. barriga), up (vetor de referência da seção),
+   tone(nx, ny, nz, px, py, pz) -> escalar ou [r, g, b] que multiplica a cor da peça por vértice (barriga mais clara, patas escuras, focinho claro...).
+   Normais suaves (acumuladas dos triângulos, todos virados para fora). Devolve um MB (p, n, c, i); a cor base é branca e a peça multiplica pela cor dela. */
+function mkLoft(pts, o) {
+  o = o || {};
+  const sides = o.sides || 10, sub = o.sub || 3, flat = o.flat || 0, tone = o.tone, n = pts.length, at = i => pts[Math.max(0, Math.min(n - 1, i))];
+  const cr = (a, b, c, d, t) => .5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
+  const nrm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const cross = (a, c) => [a[1] * c[2] - a[2] * c[1], a[2] * c[0] - a[0] * c[2], a[0] * c[1] - a[1] * c[0]];
+  const S = [];
+  for (let i = 0; i < n - 1; i++) for (let k = 0; k < sub; k++) { const t = k / sub, s = []; for (let q = 0; q < 5; q++) s.push(cr(at(i - 1)[q], at(i)[q], at(i + 1)[q], at(i + 2)[q], t)); S.push(s); }
+  S.push(pts[n - 1].slice(0, 5));
+  const m = S.length, ch = [pts[n - 1][0] - pts[0][0], pts[n - 1][1] - pts[0][1], pts[n - 1][2] - pts[0][2]];
+  const U = o.up || (Math.abs(ch[1]) > .75 * Math.hypot(ch[0], ch[1], ch[2]) ? [0, 0, 1] : [0, 1, 0]);
+  const frame = i => { const a = S[Math.max(0, i - 1)], c = S[Math.min(m - 1, i + 1)], T = nrm([c[0] - a[0], c[1] - a[1], c[2] - a[2]]); let X = cross(U, T); if (Math.hypot(X[0], X[1], X[2]) < 1e-3) X = cross([1, 0, 0], T); X = nrm(X); return { T, X, Y: cross(T, X) }; };
+  const F = S.map((_, i) => frame(i)), rings = [];
+  const CAPS = [1.25, .85, .45];
+  const cap = (i, sgn) => CAPS.map(ph => { const s = S[i], f = F[i], r = (s[3] + s[4]) / 2, d = sgn * r * Math.sin(ph); return { C: [s[0] + f.T[0] * d, s[1] + f.T[1] * d, s[2] + f.T[2] * d], X: f.X, Y: f.Y, rx: s[3] * Math.cos(ph), ry: s[4] * Math.cos(ph) }; });
+  rings.push(...cap(0, -1));
+  for (let i = 0; i < m; i++) rings.push({ C: S[i].slice(0, 3), X: F[i].X, Y: F[i].Y, rx: S[i][3], ry: S[i][4] });
+  rings.push(...cap(m - 1, 1).reverse());
+  const P = [], Cc = [], R = rings.length, tri = [], ref = [];
+  for (let k = 0; k < R; k++) {
+    const r = rings[k];
+    for (let j = 0; j < sides; j++) {
+      const a = j / sides * Math.PI * 2, x = Math.cos(a); let y = Math.sin(a); if (flat && y < 0) y *= 1 - flat;
+      const p = [r.C[0] + r.X[0] * r.rx * x + r.Y[0] * r.ry * y, r.C[1] + r.X[1] * r.rx * x + r.Y[1] * r.ry * y, r.C[2] + r.X[2] * r.rx * x + r.Y[2] * r.ry * y];
+      P.push(p);
+      let col = [1, 1, 1];
+      if (tone) { const nv = nrm([r.X[0] * x + r.Y[0] * Math.sin(a), r.X[1] * x + r.Y[1] * Math.sin(a), r.X[2] * x + r.Y[2] * Math.sin(a)]), t = tone(nv[0], nv[1], nv[2], p[0], p[1], p[2]); col = typeof t === 'number' ? [t, t, t] : t; }
+      Cc.push(col);
+    }
+  }
+  const pa = rings[0], pz = rings[R - 1], sA = S[0], sZ = S[m - 1], fA = F[0], fZ = F[m - 1], rA = (sA[3] + sA[4]) / 2, rZ = (sZ[3] + sZ[4]) / 2;
+  P.push([sA[0] - fA.T[0] * rA, sA[1] - fA.T[1] * rA, sA[2] - fA.T[2] * rA]); Cc.push(tone ? (() => { const t = tone(-fA.T[0], -fA.T[1], -fA.T[2], sA[0], sA[1], sA[2]); return typeof t === 'number' ? [t, t, t] : t; })() : [1, 1, 1]);
+  P.push([sZ[0] + fZ.T[0] * rZ, sZ[1] + fZ.T[1] * rZ, sZ[2] + fZ.T[2] * rZ]); Cc.push(tone ? (() => { const t = tone(fZ.T[0], fZ.T[1], fZ.T[2], sZ[0], sZ[1], sZ[2]); return typeof t === 'number' ? [t, t, t] : t; })() : [1, 1, 1]);
+  const iA = R * sides, iZ = iA + 1;
+  for (let k = 0; k < R - 1; k++) for (let j = 0; j < sides; j++) { const j2 = (j + 1) % sides, a = k * sides + j, b = k * sides + j2, c = (k + 1) * sides + j2, d = (k + 1) * sides + j; tri.push([a, b, c], [a, c, d]); ref.push(rings[k].C, rings[k].C); }
+  for (let j = 0; j < sides; j++) { const j2 = (j + 1) % sides; tri.push([iA, j, j2]); ref.push(pa.C); tri.push([iZ, (R - 1) * sides + j, (R - 1) * sides + j2]); ref.push(pz.C); }
+  const N = P.map(() => [0, 0, 0]), out = new MB();
+  tri.forEach((t, q) => {
+    let [a, b, c] = t; const A = P[a], B = P[b], C = P[c], u = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], v = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+    let nn = cross(u, v); const g = [(A[0] + B[0] + C[0]) / 3 - ref[q][0], (A[1] + B[1] + C[1]) / 3 - ref[q][1], (A[2] + B[2] + C[2]) / 3 - ref[q][2]];
+    if (nn[0] * g[0] + nn[1] * g[1] + nn[2] * g[2] < 0) { nn = [-nn[0], -nn[1], -nn[2]]; [b, c] = [c, b]; }
+    for (const id of [a, b, c]) { N[id][0] += nn[0]; N[id][1] += nn[1]; N[id][2] += nn[2]; }
+    out.i.push(a, b, c);
+  });
+  P.forEach((p, i) => out.v(p, nrm(N[i]), Cc[i]));
+  return out;
+}
 function registerExtraMeshes(R) {
   R.bm.flame = mkFlame(5); R.bm.cloth = mkCloth(5);
   R.bm.ring = mkTorus(36, 8, .5, .035); R.mesh.ring = new Mesh(R.gl, R.bm.ring);

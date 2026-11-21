@@ -5,7 +5,7 @@ const UI = (() => {
   const st = { menu: false, death: false, panel: null, npc: null, msg: null, confirmDel: false, hasSave: false };
   const MM = 150;                     // tamanho do minimapa (px CSS)
   const ZCOL = { town: '#8d7c52', field: '#4d7a3a', forest: '#2c5a44', ruins: '#5b4a70', oasis: '#a08a55', dunes: '#c49a52', frostv: '#8a97ab', tundra: '#b9cbe0', forge: '#5a4748', ashlands: '#3a2424' };
-  const NPC_IC = { quest: '🔮', shop: '💰', smith: '⚒️', jewel: '💎', portal: '🌀', story: '📖', trainer: '📚', bank: '🗝️', armor: '🧵', weapon: '🗡️', stable: '🐴' };
+  const NPC_IC = { enc: '❗', quest: '🔮', shop: '💰', smith: '⚒️', jewel: '💎', portal: '🌀', story: '📖', trainer: '📚', bank: '🗝️', armor: '🧵', weapon: '🗡️', stable: '🐴' };
   const STORY_IDLE = { roderic: 'Mantenha a espada afiada. Aldoria conta com você.', selene: 'Os livros antigos guardam mais segredos do que as pessoas imaginam.', elric: 'Cuidado com as teias negras. A floresta não perdoa descuidos.' };
   const NPC_HI = {
     quest: 'Que os ventos de Aldoria guiem seus passos, viajante.',
@@ -20,7 +20,7 @@ const UI = (() => {
     stable: 'Montaria bem alimentada corre o dobro. Quantas rações vai querer?',
   };
   const WIC = { vanguard: '🗡️', arcanist: '🔮', huntress: '🏹', tamer: '🪄' };
-  const SLOT_IC = cls => ({ w: WIC[cls] || '🗡️', h: '⛑️', a: '🛡️', l: '👖', b: '🥾', c: '💍' });
+  const SLOT_IC = cls => ({ w: WIC[cls] || '🗡️', h: '⛑️', a: '👕', l: '👖', g: '🧤', b: '🥾', c: '💍' });
   const WT_IC = { sword: '🗡️', daggers: '🔪', axe: '🪓', staff: '🪄', wand: '✨', orb: '🔮', tome: '📕', bow: '🏹', longbow: '🏹', compbow: '🏹', crossbow: '🎯', scepter: '🔱', totem: '🗿' };
   const iconOf = (it, ic) => it.slot === 'w' && it.wt && WT_IC[it.wt] ? WT_IC[it.wt] : ic[it.slot];
   const BAG = 24;
@@ -62,6 +62,7 @@ const UI = (() => {
     if (it.hp != null) o.push(['Vida', 'Vida', Math.round(it.hp * m)]);
     if (it.spd != null) o.push(['Velocidade', 'Vel', +(it.spd * 100).toFixed(1), '%']);
     if (it.crit != null) o.push(['Crítico', 'Crít', +(it.crit * 100).toFixed(1), '%']);
+    if (it.dodge != null) o.push(['Esquiva', 'Esq', +(it.dodge * 100).toFixed(1), '%']);
     if (it.mp != null) o.push(['Mana', 'Mana', Math.round(it.mp * m)]);
     return o;
   }
@@ -72,8 +73,12 @@ const UI = (() => {
     const a = istats(it), b = istats(eq);
     return a.length ? a[0][2] - ((b.find(x => x[0] === a[0][0]) || [0, 0, 0])[2]) : null;
   }
+  const DLV = L => dispLv(L, G.player ? G.player.tier : 0), ELV = () => effLv(G.player.lvl, G.player.tier); // nível do conteúdo na escala da fase / nível efetivo do jogador
+  const noUse = it => { const p = G.player; return !!p && ((it.cls && it.cls !== p.cls) || (it.tierReq | 0) > p.tier || effLv(p.lvl, p.tier) < itemReqLvl(it, p.tier)); }; // ainda não dá para equipar
   function itemTip(it, eq, equipped) {
-    const L = [`${itemName(it)} (${RARITY[it.rar].n})`, `${SLOTS[it.slot]} · Nv ${it.lvl}`, `Classe: ${TIERS[it.tierReq | 0]}${(it.tierReq | 0) > ((G.player && G.player.tier) | 0) ? ' (não pode equipar)' : ''}`];
+    const L = [`${itemName(it)} (${RARITY[it.rar].n})`, `${SLOTS[it.slot]} · Nv ${dispLv(it.lvl, it.tierReq | 0)}`, `Fase: ${TIERS[it.tierReq | 0]}${(it.tierReq | 0) > ((G.player && G.player.tier) | 0) ? ' (não pode equipar)' : ''}`];
+    if (it.cls && CLASSES[it.cls]) L.push(`Classe: ${CLASSES[it.cls].name}${G.player && it.cls !== G.player.cls ? ' (não pode equipar)' : ''}`);
+    { const rq = itemReqLvl(it, G.player ? G.player.tier : 0); if (G.player && ELV() < rq) L.push(`Requer nível ${dispLv(rq, it.tierReq | 0)} (você: ${G.player.lvl}) (não pode equipar)`); }
     const e = eq ? istats(eq) : [];
     istats(it).forEach(s => {
       let line = `${s[0]} ${s[2]}${s[3] || ''}`;
@@ -87,7 +92,7 @@ const UI = (() => {
     if (!equipped && !eq) L.push('Nada equipado neste espaço.');
     if (!equipped && eq) L.push(`Comparado a: ${itemName(eq)}`);
     L.push(`Valor de venda: ${itemValue(it)} ouro`);
-    L.push(equipped ? 'Clique para desequipar · botão direito: opções' : 'Clique para equipar · botão direito: opções');
+    L.push(equipped ? 'Clique para desequipar · botão direito: opções' : (st.side === 'smith' || st.side === 'jewel') ? 'Clique para escolher · botão direito: opções' : 'Clique para pegar e mover · Shift+clique: equipar · botão direito: opções');
     return L.join('\n');
   }
 
@@ -117,9 +122,10 @@ const UI = (() => {
       <button data-a="p-inv" title="Inventário [I]">🎒</button>
       <button data-a="p-quest" title="Missões [Q]">📜</button>
       <button data-a="p-char" title="Personagem [C]">👤</button>
+      <button data-a="p-lv" title="Níveis e regiões [B]">📊</button>
       <button data-a="p-look" title="Montarias [H]">🐎</button>
       <button data-a="p-auto" title="Automático [T]">🤖</button>
-      <button data-a="mute" title="Som [M]">🔊</button>
+      <button data-a="mute" title="Som [N]">🔊</button>
       <button data-a="pause" title="Menu / Pausa [Esc]">☰</button>
     </div>
     <div class="qt glass off"><div class="qt-h">Missão</div><div class="qt-n"></div><div class="qt-p"></div></div>
@@ -140,6 +146,7 @@ const UI = (() => {
 <div class="panel off" id="p-look"><div class="ph"><h2>🐎 Montarias</h2><kbd>H</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel off" id="p-pause"><div class="ph"><h2>⏸ Pausa</h2><kbd>Esc</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel off" id="p-auto"><div class="ph"><h2>🤖 Automático</h2><kbd>T</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
+<div class="panel lv off" id="p-lv"><div class="ph"><h2>📊 Níveis e Regiões</h2><kbd>B</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel tree off" id="p-tree"><div class="ph"><h2>🌳 Árvore de Habilidades</h2><kbd>V</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button></div></div><div class="map-side"></div></div></div></div>
 <div class="panel dlg off" id="p-dlg"><div class="ph"><div class="npc-ic"></div><div class="npc-id"><h2></h2><small></small></div><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div><div class="pf-foot"><button class="btn" data-a="close">Despedir-se</button></div></div>
@@ -147,14 +154,14 @@ const UI = (() => {
 <div class="menu off"></div>
 <div class="create off"></div>`;
     ['pf', 'tf', 'tr', 'sb', 'log', 'labels', 'floats', 'toast', 'banner', 'death', 'menu', 'create'].forEach(k => E[k] = root.querySelector('.' + k));
-    ['inv', 'char', 'quest', 'auto', 'look', 'pause', 'dlg', 'map', 'tree'].forEach(k => { E['p_' + k] = root.querySelector('#p-' + k); E['b_' + k] = E['p_' + k].querySelector('.pb'); });
+    ['inv', 'char', 'quest', 'auto', 'look', 'pause', 'dlg', 'map', 'tree', 'lv'].forEach(k => { E['p_' + k] = root.querySelector('#p-' + k); E['b_' + k] = E['p_' + k].querySelector('.pb'); });
     const q = (s, r) => (r || root).querySelector(s);
     E.pfIc = q('.pf-ic'); E.pfName = q('.pf-name'); E.pfTier = q('.pf-tier'); E.pfLv = q('.pf-lv'); E.pfGold = q('.pf-gold');
     E.mf = document.createElement('div'); E.mf.className = 'mf glass off'; q('.pf').after(E.mf);
     E.hp = q('.pf .bar.hp i'); E.hpT = q('.pf .bar.hp span'); E.mp = q('.pf .bar.mp i'); E.mpT = q('.pf .bar.mp span'); E.xp = q('.pf .bar.xp i'); E.evbar = q('.evbar'); E.evtoast = q('.evtoast'); E.hud = q('.hud');
     E.tfName = q('.tf-name'); E.tfIc = q('.tf-ic'); E.tfLv = q('.tf-lv'); E.tfHp = q('.tf .bar i'); E.tfHpT = q('.tf .bar span');
     E.zone = q('.zone'); E.qt = q('.qt'); E.qtN = q('.qt-n'); E.qtP = q('.qt-p'); E.mute = q('[data-a=mute]');
-    E.btn = { inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]') };
+    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]') };
     E.badge = q('.auto-badge'); E.qa = q('.qarrow'); E.qaAr = q('.qa-ar'); E.qaD = q('.qa-d');
     E.npcIc = q('.npc-ic'); E.npcN = q('.npc-id h2'); E.npcR = q('.npc-id small');
     ctx = q('.mm canvas').getContext('2d');
@@ -174,7 +181,8 @@ const UI = (() => {
     E.slots.forEach(s => { s.$cdv = s.querySelector('.cdv'); s.$cdt = s.querySelector('.cdt'); s.$mpc = s.querySelector('.mpc'); s.$ic = s.querySelector('.ic'); s.$qty = s.querySelector('.qty'); });
 
     buildMenu();
-    [E.sb, q('.btns'), E.badge, E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    [E.sb, q('.btns'), E.badge, E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    WIN_KEYS.forEach(k => { E['p_' + k].addEventListener('pointerdown', () => winFront(k), true); E['p_' + k].querySelector('.ph').addEventListener('pointerdown', ev => winDrag(k, ev)); });
   }
 
   function buildMenu() {
@@ -182,7 +190,7 @@ const UI = (() => {
       <div class="menu-crest">⚜</div>
       <h1>Aldoria</h1><div class="sub">Uma saga de ação nas terras esquecidas</div>
       <div class="menu-act"></div>
-      <div class="keys"><span><kbd>Clique esq.</kbd> mover / atacar</span><span><kbd>Clique dir.</kbd> girar câmera</span><span><kbd>Roda</kbd> zoom</span><span><kbd>1–5</kbd> habilidades</span><span><kbd>6</kbd><kbd>7</kbd> poções</span><span><kbd>I</kbd><kbd>C</kbd><kbd>Q</kbd> painéis</span><span><kbd>X</kbd> montaria</span><span><kbd>F</kbd> falar</span></div>
+      <div class="keys"><span><kbd>Clique esq.</kbd> mover / atacar</span><span><kbd>Clique dir.</kbd> girar câmera</span><span><kbd>Roda</kbd> zoom</span><span><kbd>1–5</kbd> habilidades</span><span><kbd>6</kbd><kbd>7</kbd> poções</span><span><kbd>I</kbd><kbd>C</kbd><kbd>V</kbd><kbd>M</kbd><kbd>B</kbd> janelas (várias, arrastáveis)</span><span><kbd>X</kbd> montaria</span><span><kbd>F</kbd> falar</span></div>
     </div>`;
     E.menuAct = E.menu.querySelector('.menu-act');
   }
@@ -275,22 +283,66 @@ const UI = (() => {
   }
 
   /* ---------- painéis ---------- */
-  const panelKeys = ['inv', 'char', 'quest', 'auto', 'look', 'pause', 'dlg', 'map', 'tree'];
-  function showPanel(name) {
-    if (name !== 'dlg') st.side = null;
-    panelKeys.forEach(k => setVis(E['p_' + k], k === name || (k === 'inv' && name === 'dlg' && !!st.side)));
-    setCls(root, 'side', name === 'dlg' && !!st.side);
-    if (name !== 'inv' && !st.side && st.cm) cmClose();
-    st.panel = name;
-    ['inv', 'quest', 'char', 'auto', 'look'].forEach(k => setCls(E.btn[k], 'on', k === name));
-    if (name) refreshPanels();
+  /* janelas flutuantes: várias abertas ao mesmo tempo, arrastáveis pelo título. Modais (diálogo de NPC e pausa) ficam por cima.
+     st.wins = janelas abertas (a última fica na frente); st.modal = 'dlg' | 'pause' | null; st.panel = o que está mais à frente (compatibilidade). */
+  const WIN_KEYS = ['inv', 'char', 'quest', 'auto', 'look', 'tree', 'map', 'lv'], panelKeys = WIN_KEYS.concat(['pause', 'dlg']);
+  const WIN_BTN = ['inv', 'quest', 'char', 'auto', 'look', 'lv'];
+  st.wins = []; st.modal = null; st.wpos = {};
+  const winSide = k => k === 'inv' && st.modal === 'dlg' && !!st.side; // Equipamento encaixado ao lado do diálogo (posição pelo CSS)
+  function winPlace(k) { // posição em px (guardada); na primeira vez, cascata a partir do centro
+    const el = E['p_' + k], R = root.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    let P = st.wpos[k];
+    if (!P) { const n = Math.max(0, st.wins.indexOf(k)); P = st.wpos[k] = { x: (R.width - w) / 2 + (n % 5) * 26 - 52, y: (R.height - h) / 2 + (n % 5) * 26 - 52 }; }
+    P.x = Math.max(0, Math.min(R.width - w, P.x)); P.y = Math.max(0, Math.min(R.height - h, P.y)); // a janela inteira fica na tela
+    el.style.left = P.x + 'px'; el.style.top = P.y + 'px';
   }
-  const togglePanel = name => { if (st.menu || st.death) return; showPanel(st.panel === name ? null : name); if (st.panel !== 'dlg') st.msg = null; };
+  function winSync() {
+    panelKeys.forEach(k => {
+      const w = WIN_KEYS.includes(k), on = w ? st.wins.includes(k) || winSide(k) : k === st.modal, el = E['p_' + k];
+      setVis(el, on);
+      const free = w && on && !winSide(k); setCls(el, 'win', free);
+      if (free) { winPlace(k); el.style.zIndex = 14 + st.wins.indexOf(k); }
+      else if (w) { el.style.left = ''; el.style.top = ''; el.style.zIndex = ''; }
+    });
+    setCls(root, 'side', st.modal === 'dlg' && !!st.side);
+    st.panel = st.modal || st.wins[st.wins.length - 1] || null;
+    WIN_BTN.forEach(k => setCls(E.btn[k], 'on', st.wins.includes(k)));
+  }
+  addEventListener('resize', () => { if (st.wins.length) winSync(); });
+  function winFront(k) { const i = st.wins.indexOf(k); if (i < 0 || i === st.wins.length - 1) return; st.wins.splice(i, 1); st.wins.push(k); st.wins.forEach((n, j) => { E['p_' + n].style.zIndex = 14 + j; }); st.panel = st.modal || k; }
+  function winDrag(k, ev) {
+    if (ev.button || ev.target.closest('button') || winSide(k)) return;
+    const P = st.wpos[k]; if (!P) return; const x0 = ev.clientX, y0 = ev.clientY, px = P.x, py = P.y;
+    const mv = e => { P.x = px + e.clientX - x0; P.y = py + e.clientY - y0; winPlace(k); }, up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); ev.preventDefault();
+  }
+  function modalClose() { carryCancel(); st.msg = null; st.npc = null; st.jw = null; st.sm = null; st.side = null; cmClose(); st.modal = null; }
+  function showPanel(name) { // abre (traz à frente) ou, com null, fecha tudo
+    const was = st.panel, fresh = WIN_KEYS.includes(name) && !st.wpos[name];
+    if (name === null) { if (st.modal || st.wins.length) { carryCancel(); cmClose(); } st.wins = []; st.modal = null; st.side = null; }
+    else if (name === 'dlg' || name === 'pause') { st.modal = name; if (name !== 'dlg') st.side = null; }
+    else { const i = st.wins.indexOf(name); if (i >= 0) st.wins.splice(i, 1); st.wins.push(name); }
+    if (st.cm && !st.wins.includes('inv') && !st.side) cmClose();
+    winSync();
+    if (st.panel) { refreshPanels(); if (fresh) delete st.wpos[name]; winSync(); } // 2ª passada: o conteúdo já está montado e a janela tem o tamanho final
+    if (WIN_KEYS.includes(name) && Game.mainEv) Game.mainEv('open:' + name);
+    if (st.panel !== was && Game.sound) Game.sound(st.panel ? 'open' : 'close', { force: true });
+  }
+  function winClose(k) {
+    if (k === 'dlg' || k === 'pause') modalClose();
+    else { st.wins = st.wins.filter(x => x !== k); if (k === 'inv') { carryCancel(); cmClose(); } }
+    winSync(); if (Game.sound) Game.sound('close', { force: true }); refreshPanels();
+  }
+  const togglePanel = name => {
+    if (st.menu || st.death) return;
+    if (st.modal) { modalClose(); winSync(); }
+    if (st.wins.includes(name)) winClose(name); else showPanel(name);
+  };
 
   /* janela de Equipamento (estilo clássico): espaços em volta do retrato, mochila em grade, ouro na base.
      Com Guarda/Ferreiro/Joalheiro aberto (st.side) os cliques guardam no baú ou escolhem o item do serviço. */
   const SIL = '<svg class="sil" viewBox="0 0 100 160"><path d="M50 6c10 0 17 8 17 18s-7 19-17 19-17-9-17-19 7-18 17-18zM28 48h44c9 0 15 6 17 14l8 40c1 5-6 7-8 2l-9-30-2 28 4 48c0 6-9 7-10 1l-8-44h-6l-8 44c-1 6-10 5-10-1l4-48-2-28-9 30c-2 5-9 3-8-2l8-40c2-8 8-14 17-14z"/></svg>';
-  const EQ_POS = { h: [0, 0], a: [0, 1], l: [0, 2], w: [2, 0], c: [2, 1], b: [2, 2] };
+  const EQ_POS = { h: [0, 0], a: [0, 1], l: [0, 2], g: [0, 3], w: [2, 0], c: [2, 1], b: [2, 2] };
   function sideAct(it, eqSlot) { // ação do clique conforme o serviço aberto ao lado
     const sd = st.side;
     if (sd === 'smith') return ['sm-it', (st.sm && st.sm.it) === it.id];
@@ -298,7 +350,7 @@ const UI = (() => {
     if (sd === 'bank' && !eqSlot) return ['bank-put', false];
     return [eqSlot ? 'unequip' : 'equip', false];
   }
-  const plusB = it => it.plus ? `<em class="pl">+${it.plus}</em>` : '';
+  const plusB = it => it.plus ? `<em class="pl${it.plus >= 10 ? ' anc' : ''}">+${it.plus}</em>` : '';
   function renderInv(G) {
     const p = G.player, eq = p.eq || {}, ic = SLOT_IC(p.cls), tab = st.invTab || 'bag';
     let l = '<div class="eqbox">';
@@ -308,20 +360,20 @@ const UI = (() => {
         l += `<div class="es has${sel ? ' sel' : ''}" style="${pos};--rc:${rcol(it)}" data-a="${a}" data-s="${s}" data-id="${it.id}" data-cm="${it.id}" data-drag="eq" draggable="true" title="${esc(itemTip(it, null, true))}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}<small>${SLOTS[s]}</small></div>`; }
       else l += `<div class="es" style="${pos}" data-drop="${s}"><span class="ei dim">${ic[s]}</span><small>${SLOTS[s]}</small></div>`;
     }
-    l += `<div class="portrait" style="grid-column:2;grid-row:1/4">${SIL}<span class="pic">${WIC[p.cls] || '🗡️'}</span><b>${esc(p.name || CLASSES[p.cls].name)}</b><small>${esc(TIERS[p.tier] || '')} · Nv ${p.lvl}</small></div>`;
+    l += `<div class="portrait" style="grid-column:2;grid-row:1/4"><canvas class="pv" width="420" height="560" title="Prévia do personagem equipado. Arraste para girar."></canvas><b>${esc(p.name || CLASSES[p.cls].name)}</b><small>${esc(TIERS[p.tier] || '')} · Nv ${p.lvl}</small></div>`;
     { const mid = p.lastMount, M_ = mid && MOUNTS[mid], lv = M_ ? Game.mountLv(mid) : 0;
       l += M_ ? `<div class="es has mnt" style="grid-column:2;grid-row:4" data-a="p-look" title="${esc(M_.n + ' · Nível ' + lv + '\n' + mountBonusTxt(M_, lv) + '\nClique: abrir Montarias [H]')}"><span class="ei">${M_.ic}</span><em class="pl">Nv${lv}</em><small>Montaria</small></div>`
         : `<div class="es mnt" style="grid-column:2;grid-row:4" data-a="p-look"><span class="ei dim">🐎</span><small>Montaria</small></div>`; }
     l += '</div>';
     let g = '';
     if (tab === 'bag') {
-      const n = Math.max(BAG, p.inv.length);
+      const n = Math.max(BAG, p.inv.length), slots = fillPos(p.inv, n);
       for (let i = 0; i < n; i++) {
-        const it = p.inv[i];
-        if (!it) { g += '<div class="bi empty"></div>'; continue; }
+        const it = slots[i];
+        if (!it) { g += `<div class="bi empty" data-zone="bag" data-slot="${i}"></div>`; continue; }
         const e = eq[it.slot], d = cmpDelta(it, e), [a, sel] = sideAct(it, null);
         const arrow = d == null ? '<i class="ar new">●</i>' : d > 0 ? '<i class="ar up">▲</i>' : d < 0 ? '<i class="ar dn">▼</i>' : '';
-        g += `<div class="bi it r${it.rar}${sel ? ' sel' : ''}" data-a="${a}" data-id="${it.id}" data-cm="${it.id}" data-drag="bag" draggable="true" title="${esc(itemTip(it, e, false))}" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}${arrow}</div>`;
+        g += `<div class="bi it r${it.rar}${sel ? ' sel' : ''}${noUse(it) ? ' nouse' : ''}${st.carry && st.carry.id === it.id ? ' carry' : ''}" data-zone="bag" data-slot="${i}" data-a="${a}" data-id="${it.id}" data-cm="${it.id}" data-drag="bag" draggable="true" title="${esc(itemTip(it, e, false))}" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}${arrow}</div>`;
       }
       let c = `<div class="bi stk pot" title="Poção de Vida [6]"><span class="ei">❤️</span><s class="q">${p.pots.hp}</s></div><div class="bi stk pot" title="Poção de Mana [7]"><span class="ei">💙</span><s class="q">${p.pots.mp}</s></div><div class="bi stk" title="Ração de viagem (montaria)"><span class="ei">🌾</span><s class="q">${p.feed | 0}</s></div>`;
       const mb = {}; (p.mbox || []).forEach((id, i) => { (mb[id] = mb[id] || []).push(i); });
@@ -335,12 +387,13 @@ const UI = (() => {
     const tabs = `<div class="itabs"><button class="${tab === 'bag' ? 'on' : ''}" data-a="itab" data-k="bag">Mochila <small>${p.inv.length}/${BAG}</small></button><button class="${tab === 'mat' ? 'on' : ''}" data-a="itab" data-k="mat">Materiais</button></div>`;
     const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : 'Clique ou arraste para equipar · botão direito: opções.';
     setBody(E.b_inv, `<div class="eqw">${l}${tabs}${g}<div class="foot-note">${hint}</div><div class="igold"><span>🪙</span><b>${fmt(p.gold)}</b><small>ouro</small></div></div>`);
+    { const cv = E.b_inv.querySelector('canvas.pv'); if (cv && Game.portrait) { if (st.pvYaw == null) st.pvYaw = .6; Game.portrait(cv, st.pvYaw); } }
   }
   function renderChar(G) {
     const p = G.player, s = G.stats || {}, c = CLASSES[p.cls];
-    const need = p.lvl >= MAXLV ? 0 : xpNeed(p.lvl);
+    const need = p.lvl >= lvCap(p.tier) ? 0 : xpPlayer(p.lvl, p.tier);
     const row = (k, v) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`;
-    let h = `<div class="ch-head"><div class="ch-ic">${ART.cls(p.cls)}</div><div><h3>${esc(p.name || c.name)}</h3><div class="role">${esc(c.name)} · ${esc(TIERS[p.tier])} · Nível ${p.lvl}${p.lvl >= MAXLV ? ' (máx.)' : ''}</div><div class="role">${esc(c.role)}</div></div></div>`;
+    let h = `<div class="ch-head"><div class="ch-ic">${ART.cls(p.cls)}</div><div><h3>${esc(p.name || c.name)}</h3><div class="role">${esc(c.name)} · ${esc(TIERS[p.tier])} · Nível ${p.lvl}${p.lvl >= lvCap(p.tier) ? ' (máx.)' : ''}</div><div class="role">${esc(c.role)}</div></div></div>`;
     h += '<div class="stats">';
     h += row('Experiência', need ? `${fmt(p.xp)} / ${fmt(need)}` : 'Máximo');
     h += row('Classe', esc(TIERS[p.tier]) + ' · poder ×' + tmul(p.tier)) + row('Ataque', fmt(s.atk || 0)) + row('Defesa', fmt(s.def || 0)) + row('Crítico', pc(s.crit || 0)) + row('Esquiva', pc(s.dodge || 0)) + row('Vel. de ataque', '×' + (s.aspd || 1).toFixed(2));
@@ -354,7 +407,7 @@ const UI = (() => {
       const A = ATTRS[k];
       h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${A.d}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
     }
-    h += `</div><button class="btn ghost mini" data-a="attr-reset" title="Devolve todos os pontos">↺ Redistribuir (💰 ${fmt(50 * p.lvl)})</button>`;
+    h += `</div><button class="btn ghost mini" data-a="attr-reset" title="Devolve todos os pontos">↺ Redistribuir (💰 ${fmt(50 * Math.round(ELV()))})</button>`;
     h += `<div class="dim pad">Habilidades: tecla <kbd>V</kbd></div>`;
     setBody(E.b_char, h);
   }
@@ -379,6 +432,7 @@ const UI = (() => {
     h += '<button class="btn primary" data-a="close">▶ Continuar jogando</button>';
     h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b> <small>[G]</small></button>`;
     h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'} <small>[N]</small></button>`;
+    { const V = Game.getVol ? Game.getVol() : {}; h += '<div class="mixer">' + [['master', '🔊 Geral'], ['sfx', '⚔ Efeitos'], ['amb', '🌿 Ambiente'], ['music', '🎵 Música']].map(([k, n]) => `<label><span>${n}</span><input type="range" min="0" max="100" value="${Math.round((V[k] == null ? 1 : V[k]) * 100)}" data-vol="${k}"></label>`).join('') + '</div>'; }
     h += '<button class="btn" data-a="tomenu">🏠 Salvar e voltar ao menu inicial</button></div>';
     h += '<div class="au-intro">O progresso é salvo automaticamente a cada poucos segundos e ao voltar ao menu.</div>';
     setBody(E.b_pause, h);
@@ -386,7 +440,7 @@ const UI = (() => {
   const rgbs = c => `rgb(${c.map(v => Math.round(v * 255)).join(',')})`;
   function renderLook(G) {
     const p = G.player;
-    let h = `<div class="au-intro">Equipe uma montaria para ganhar bônus. <kbd>X</kbd> monta/desmonta e você pode atacar montado.<br>Energia: <b>${Math.round(p.mst == null ? 100 : p.mst)}/${Game.mstMax()}</b> · Rações: <b>${p.feed || 0}</b> (compre com o Cavalariço)<br>Montarias caem de monstros (raro) e de chefes; ganham XP quando você vence lutas montado ou cavalga. Nível máx. ${MOUNT_MAXLV}: mais velocidade, energia e bônus.</div>`;
+    let h = `<div class="au-intro">Montarias que caem entram aqui na hora: use <b>Equipar</b> para ganhar o bônus (inteiro montado, metade desmontado) e <kbd>X</kbd> para montar/desmontar (dá para atacar montado). Cada uma <b>evolui sozinha</b> com XP (barra abaixo); uma montaria repetida dá um nível.<br>Energia: <b>${Math.round(p.mst == null ? 100 : p.mst)}/${Game.mstMax()}</b> · Rações: <b>${p.feed || 0}</b> (compre com o Cavalariço)<br>Montarias caem de monstros (raro) e de chefes; ganham XP quando você vence lutas montado ou cavalga. Nível máx. ${MOUNT_MAXLV}: mais velocidade, energia e bônus.</div>`;
     h += '<div class="shop">';
     for (const id in MOUNTS) {
       const m = MOUNTS[id], own = p.mounts.includes(id), on = p.mount === id;
@@ -413,12 +467,12 @@ const UI = (() => {
     const M = G.main; if (!M) return '';
     const s = MAIN[M.i];
     if (!s) return '<div class="qc done"><div class="qc-h"><b>Crônicas de Aldoria</b><span class="badge done">Concluída</span></div><div class="qc-t">Você completou toda a história principal. Aldoria agradece, herói.</div></div>';
-    const c = CHAP[s.ch], tg = stepGoal(s), pr = Math.min(M.prog, tg), open = G.player.lvl >= s.lvl;
+    const c = CHAP[s.ch], tg = stepGoal(s), pr = Math.min(M.prog, tg), open = ELV() >= s.lvl;
     const steps = MAIN.filter(x => x.ch === s.ch), k = steps.indexOf(s);
-    let h = `<div class="qc main ${open ? 'active' : 'locked'}"><div class="qc-h"><b>${esc(c.n)}</b><span class="badge ${open ? 'active' : 'locked'}">Nv ${c.lv[0]}–${c.lv[1]}</span></div>`;
+    let h = `<div class="qc main ${open ? 'active' : 'locked'}"><div class="qc-h"><b>${esc(c.n)}</b><span class="badge ${open ? 'active' : 'locked'}">Nv ${DLV(c.lv[0])}–${DLV(c.lv[1])}</span></div>`;
     if (!compact && k === 0 && M.prog === 0) h += `<div class="qc-t story">${esc(c.intro)}</div>`;
     h += `<div class="qc-step">Etapa ${k + 1} de ${steps.length}: <b>${esc(stepTitle(s))}</b></div><div class="qc-t">${esc(s.t)}</div>`;
-    if (!open) h += `<div class="qc-go">Disponível no nível ${s.lvl}.</div>`;
+    if (!open) h += `<div class="qc-go">Disponível no nível ${DLV(s.lvl)}.</div>`;
     else if (tg > 1) h += `<div class="bar xp q"><i style="width:${(pr / tg * 100).toFixed(0)}%"></i><span>${pr} / ${tg}${s.item ? ' ' + esc(s.item) : ''}</span></div>`;
     if (open && s.k === 'talk') h += `<div class="qc-go">${esc(stepLine(s))}.</div>`;
     const r = stepReward(s); h += `<div class="qc-r">Recompensa: ✨ ${fmt(r.xp)} XP &nbsp; 💰 ${fmt(r.gold)}${k === steps.length - 1 ? ` &nbsp; + bônus do capítulo (💰 ${fmt(c.rew.gold)} e item ${RARITY[c.rew.item].n})` : ''}</div>`;
@@ -432,14 +486,14 @@ const UI = (() => {
       h += mainBlock(G, false);
       const done = (G.main && G.main.chaps) || [];
       h += '<h3>Capítulos</h3>';
-      for (const c of CHAPTERS) h += `<div class="chap${done.includes(c.id) ? ' ok' : ''}"><b>${esc(c.n)}</b><small>Níveis ${c.lv[0]}–${c.lv[1]}${done.includes(c.id) ? ' · ✔ concluído' : ''}</small></div>`;
+      for (const c of CHAPTERS) h += `<div class="chap${done.includes(c.id) ? ' ok' : ''}"><b>${esc(c.n)}</b><small>Níveis ${DLV(c.lv[0])}–${DLV(c.lv[1])}${done.includes(c.id) ? ' · ✔ concluído' : ''}</small></div>`;
     } else if (tab === 'side') {
       h += '<div class="au-intro">Missões dos Anciões. A evolução de classe (nível 50 + ouro) fica no fim desta janela.</div>';
       QUESTS.forEach((q, i) => {
         const s = G.quests[q.id] || { state: 'locked', prog: 0 }, tg = qTarget(q);
         const pr = s.state === 'ready' || s.state === 'done' ? tg : Math.min(s.prog || 0, tg);
         h += `<div class="qc ${s.state}"><div class="qc-h"><b>${i + 1}. ${esc(q.n)}</b><span class="badge ${s.state}">${STATE_N[s.state] || s.state}</span></div>`;
-        if (s.state === 'locked') h += `<div class="qc-t dim">Requer nível ${q.lvl}${i ? ' e a missão anterior concluída' : ''}.</div>`;
+        if (s.state === 'locked') h += `<div class="qc-t dim">Requer nível ${DLV(q.lvl)}${i ? ' e a missão anterior concluída' : ''}.</div>`;
         else {
           h += `<div class="qc-t">${esc(q.t)}</div>`;
           if (s.state === 'active' || s.state === 'ready') h += `<div class="bar xp q"><i style="width:${(pr / tg * 100).toFixed(0)}%"></i><span>${pr} / ${tg}</span></div>`;
@@ -464,8 +518,8 @@ const UI = (() => {
       const R = G.rec || { ach: [] };
       h += `<div class="au-intro">${R.ach.length} de ${ACHIEVEMENTS.length} conquistas desbloqueadas.</div><div class="achs">`;
       for (const a of ACHIEVEMENTS) {
-        const ok = R.ach.includes(a.id), v = a.k === 'lvl' ? G.player.lvl : a.k === 'chap' ? (G.main ? G.main.chaps.length : 0) : a.k === 'bossU' ? R.bossU.length : a.k === 'regions' ? R.regions.length : (R[a.k] || 0);
-        h += `<div class="ach${ok ? ' ok' : ''}"><span>${ok ? '🏆' : '🔒'}</span><div><b>${esc(a.n)}</b><small>${esc(a.t)}${a.rew ? ' · 💰 ' + fmt(a.rew) : ''}</small>${ok ? '' : `<div class="bar xp q"><i style="width:${Math.min(100, v / a.n_ * 100).toFixed(0)}%"></i><span>${fmt(Math.min(v, a.n_))} / ${fmt(a.n_)}</span></div>`}</div></div>`;
+        const ok = R.ach.includes(a.id), tg = a.k === 'lvl' ? DLV(a.n_) : a.n_, v = a.k === 'lvl' ? G.player.lvl : a.k === 'chap' ? (G.main ? G.main.chaps.filter(k => k !== 'c0').length : 0) : a.k === 'bossU' ? R.bossU.length : a.k === 'regions' ? R.regions.length : (R[a.k] || 0);
+        h += `<div class="ach${ok ? ' ok' : ''}"><span>${ok ? '🏆' : '🔒'}</span><div><b>${esc(a.n)}</b><small>${esc(a.k === 'lvl' ? 'Alcance o nível ' + tg : a.t)}${a.rew ? ' · 💰 ' + fmt(a.rew) : ''}</small>${ok ? '' : `<div class="bar xp q"><i style="width:${Math.min(100, v / tg * 100).toFixed(0)}%"></i><span>${fmt(Math.min(v, tg))} / ${fmt(tg)}</span></div>`}</div></div>`;
       }
       h += '</div>';
     }
@@ -474,35 +528,57 @@ const UI = (() => {
 
 
 
+  /* ---------- níveis e regiões (B): uma aba por fase, com a faixa de nível de cada lugar na escala daquela fase ---------- */
+  function renderLv(G) {
+    const p = G.player, cur = st.lvTab != null ? st.lvTab : (p.tier | 0), cap = lvCap(cur), mine = cur === (p.tier | 0);
+    const D = L => dispLv(L, cur), gr = L => 'grau ' + gradeOfLvl(L, cur);
+    let h = '<div class="tabs">' + TIERS.map((n, i) => `<button class="tab${i === cur ? ' on' : ''}" data-a="lvtab" data-id="${i}">${esc(n)}${i === (p.tier | 0) ? ' ●' : ''}</button>`).join('') + '</div>';
+    h += `<div class="lv-intro">Fase <b class="gold">${esc(TIERS[cur])}</b>: níveis 1 a ${cap}.${mine ? ' Você está no nível <b class="gold">' + p.lvl + '</b>.' : ''} A cada nova fase você volta ao nível 1, mas o mundo é o mesmo: só muda a escala dos níveis.</div>`;
+    const rows = [];
+    if (cur === 0) CAMP.lv.forEach((L, i) => rows.push({ lo: i ? D(CAMP.lv[i - 1]) + 1 : 1, hi: i < 2 ? D(CAMP.lv[i + 1]) - 1 : D(CAMP.endLv), n: ZN.camp.name + ' · nível ' + (i + 1), sub: ['Perto do portão (tutorial)', 'Meio da ilha', 'Fundo da ilha'][i] + ' · monstros de nível ' + D(L), mobs: MOBS.camp.map(m => m.n).join(', '), g: 'grau 0' }));
+    for (const z of ZONES) if (z.lv && z.id !== 'camp') rows.push({ lo: D(z.lv[0]), hi: D(z.lv[1]), n: z.name, sub: REG[z.reg].n, mobs: (MOBS[z.id] || []).map(m => m.n).join(', ') + (ELITES[z.id] ? ' · ★ ' + ELITES[z.id].map(m => m.n).join(', ') : ''), g: gr(z.lv[0]) + (gradeOfLvl(z.lv[1], cur) !== gradeOfLvl(z.lv[0], cur) ? '–' + gradeOfLvl(z.lv[1], cur) : '') });
+    rows.sort((a, b) => a.lo - b.lo || a.hi - b.hi);
+    const here = (r) => mine && p.lvl >= r.lo && p.lvl <= r.hi;
+    h += '<h3>Onde treinar</h3><div class="lv-t">';
+    for (const r of rows) h += `<div class="lv-r${here(r) ? ' on' : ''}"><b class="lv-n">${r.lo}–${r.hi}</b><div><b>${esc(r.n)}</b><small>${esc(r.sub)} · equipamento ${r.g}</small><small class="mobs">${esc(r.mobs)}</small></div></div>`;
+    h += '</div>';
+    const bs = Object.values(BOSSES).slice().sort((a, b) => a.lvl - b.lvl);
+    h += '<h3>Chefes</h3><div class="lv-t">' + bs.map(b => `<div class="lv-r"><b class="lv-n">${D(b.lvl)}</b><div><b>${esc(b.n)}</b><small>${esc(ZN[b.zone].name)}</small></div></div>`).join('') + '</div>';
+    const vs = VILLAGES.filter(v => v.lvl > 1).slice().sort((a, b) => a.lvl - b.lvl);
+    h += '<h3>Cidades e postos</h3><div class="lv-t">' + vs.map(v => `<div class="lv-r"><b class="lv-n">${D(v.lvl)}+</b><div><b>${esc(v.n)}</b><small>${esc(REG[v.reg].n)}${isTown(v) ? ' · cidade' : ' · posto'}</small></div></div>`).join('') + '</div>';
+    setBody(E.b_lv, h);
+  }
+
   /* ---------- árvore de habilidades (V) ---------- */
   function renderTree(G) {
     const p = G.player, c = CLASSES[p.cls], S = c.skills;
     const cols = [['Básicas', 'Nível 1', [0, 1]], ['Aprendiz', 'Níveis 3 e 6', [2, 3]], ['Veterano', 'Nível 15', [5]], ['Mestre', 'Nível 20', [4]], ['Lendária', 'Nível 40 · ' + TIERS[1], [6]]];
     const node = i => {
-      const k = S[i], L = p.sk[i] || 0, req = SK_LEARN[i], can = (k.tier || 0) <= p.tier && p.lvl >= Math.max(req.lvl, k.lvl || 0);
+      const k = S[i], L = p.sk[i] || 0, req = SK_LEARN[i], can = (k.tier || 0) <= p.tier && ELV() >= Math.max(req.lvl, k.lvl || 0);
       const stt = L ? (L >= SK_MAX ? 'max' : 'on') : can ? 'can' : 'lk'; // 'off' esconderia o nó (#ui .off)
       const e = skEff(k, L || 1), kn = i < 5 ? i + 1 : i + 3;
-      return `<div class="tn ${stt}" title="${esc(k.n + ' [' + kn + '] — ' + k.d + '\n' + e.mp + ' ' + resName(p.cls).toLowerCase() + ' · recarga ' + k.cd + ' s')}"><span class="tn-ic">${L ? k.ic : can ? k.ic : '🔒'}</span><b>${esc(k.n)}</b><small class="tn-d">${esc(k.d)}</small><small>${L ? 'Nível ' + L + '/' + SK_MAX : can ? 'Disponível no Mestre · 💰 ' + fmt(req.price) : (k.tier || 0) > p.tier ? 'Requer ' + TIERS[k.tier] : 'Requer nível ' + Math.max(req.lvl, k.lvl || 0)}</small><div class="tn-bar"><i style="width:${L / SK_MAX * 100}%"></i></div>${L && L < SK_MAX && p.sp > 0 ? `<button class="btn mini" data-a="sklv" data-i="${i}">+1</button>` : ''}</div>`;
+      return `<div class="tn ${stt}" title="${esc(k.n + ' [' + kn + '] — ' + k.d + '\n' + e.mp + ' ' + resName(p.cls).toLowerCase() + ' · recarga ' + k.cd + ' s')}"><span class="tn-ic">${L ? k.ic : can ? k.ic : '🔒'}</span><b>${esc(k.n)}</b><small class="tn-d">${esc(k.d)}</small><small>${L ? 'Nível ' + L + '/' + SK_MAX : can ? 'Disponível no Mestre · ✨ ' + req.pts + ' pts' : (k.tier || 0) > p.tier ? 'Requer ' + TIERS[k.tier] : 'Requer nível ' + Math.max(req.lvl, k.lvl || 0)}</small><div class="tn-bar"><i style="width:${L / SK_MAX * 100}%"></i></div>${L && L < SK_MAX && p.sp > 0 ? `<button class="btn mini" data-a="sklv" data-i="${i}">+1</button>` : ''}</div>`;
     };
-    let h = `<div class="au-intro">${esc(c.name)} · <b class="gold">${p.sp || 0} pontos de habilidade</b> (1 por nível). Cada nível da habilidade dá +${Math.round(SK_STEP * 100)}% de efeito e um pouco mais de custo de mana. Aprenda novas habilidades com um <b>Mestre de Habilidades</b> nas vilas.</div><div class="tree-w">`;
+    let h = `<div class="au-intro">${esc(c.name)} · <b class="gold">${p.sp || 0} pontos de habilidade</b> (~${(SK_PTS_LEVEL * (MAXLV - 1) / Math.max(1, lvCap(p.tier) - 1)).toFixed(1).replace('.', ',')} por nível). Cada nível da habilidade dá +${Math.round(SK_STEP * 100)}% de efeito e um pouco mais de custo de mana. Habilidades são aprendidas com um <b>Mestre de Habilidades</b> (nas vilas) e o nível delas fica limitado pelo seu nível (nível da habilidade ≤ ${skCap(ELV())} agora).</div><div class="tree-w">`;
     cols.forEach(([n, sub, ids], j) => { h += `<div class="tc"><div class="tc-h"><b>${n}</b><small>${sub}</small></div>${ids.map(node).join('')}</div>`; if (j < cols.length - 1) h += '<div class="tarrow">➜</div>'; });
     h += '</div>';
-    h += `<button class="btn ghost mini" data-a="sk-reset" title="Devolve os pontos de habilidade">↺ Redistribuir habilidades (💰 ${fmt(40 * p.lvl)})</button>`;
+    h += `<button class="btn ghost mini" data-a="sk-reset" title="Devolve os pontos de habilidade">↺ Redistribuir habilidades (💰 ${fmt(40 * Math.round(ELV()))})</button>`;
     setBody(E.p_tree.querySelector('.pb'), h);
   }
 
   /* ---------- mapa do mundo (M) ---------- */
-  const ZLV = { town: 'Seguro', oasis: 'Seguro', frostv: 'Seguro', forge: 'Seguro' };
-  const zlv = z => ZLV[z.id] || (z.lv ? 'Nv ' + z.lv[0] + '–' + z.lv[1] : '');
-  const REG_LV = { aldoria: 'Níveis 1–50 (campos, floresta e ruínas)', desert: 'Níveis 26–40', snow: 'Níveis 37–50', volcano: 'Níveis 48–60' };
+  const ZLV = { camp: 'Nv 1–29 · treino', town: 'Seguro', oasis: 'Seguro', frostv: 'Seguro', forge: 'Seguro' };
+  const zlv = z => ZLV[z.id] || (z.lv ? 'Nv ' + DLV(z.lv[0]) + '–' + DLV(z.lv[1]) : '');
+  const REG_LV = { aldoria: 'Níveis 1–50 (treino, campos, floresta e ruínas)', desert: 'Níveis 26–40', snow: 'Níveis 37–50', volcano: 'Níveis 48–60' };
   function objectivePos(G) {
     const s = G.main && MAIN[G.main.i];
-    if (!s || G.player.lvl < s.lvl) { // sem passo da história: missão ativa (monstro mais próximo da zona dela)
+    if (!s || ELV() < s.lvl) { // sem passo da história: missão ativa (monstro mais próximo da zona dela)
       const q = QUESTS.find(q => G.quests[q.id] && G.quests[q.id].state === 'active' && q.zone); if (!q) return null;
       const p = G.player; let best = null, bd = 1e9;
       for (const m of G.mobs) if (!m.dead && !m.boss && m.zone === q.zone) { const d = Math.hypot(m.x - p.x, m.z - p.z); if (d < bd) { bd = d; best = m; } }
       return best ? [best.x, best.z, q.n] : null;
     }
+    if (s.k === 'do') return null;
     if (s.k === 'explore') return [s.x, s.z, s.place];
     if (s.k === 'talk') { const n = NPCS.find(x => x.id === s.npc); return n ? [n.x, n.z, n.n] : null; }
     if (s.k === 'boss') { const b = BOSS_SPOT[s.boss]; return b ? [b[0], b[1], BOSSES[s.boss].n] : null; }
@@ -615,7 +691,7 @@ const UI = (() => {
     st.mapC = [G.player.x, G.player.z]; if (st.mapK < MAP_FIT() * 4) st.mapK = MAP_FIT() * 4; st.mapView = 'free'; mapClamp();
   }
   let mapRaf = 0;
-  const mapReq = () => { if (mapRaf) return; mapRaf = requestAnimationFrame(() => { mapRaf = 0; if (typeof G !== 'undefined' && st.panel === 'map') renderMap(G); }); };
+  const mapReq = () => { if (mapRaf) return; mapRaf = requestAnimationFrame(() => { mapRaf = 0; if (typeof G !== 'undefined' && st.wins.includes('map')) renderMap(G); }); };
   function mapEvents(cv) {
     if (cv._ev) return; cv._ev = 1; let drag = null;
     const sc = () => cv.width / cv.getBoundingClientRect().width;
@@ -627,7 +703,7 @@ const UI = (() => {
   }
   /* ponto do mundo sob (clientX, clientY) no mapa M aberto, ou null (usado pelo teleporte do painel do administrador) */
   function mapToWorld(cx, cy) {
-    if (st.panel !== 'map' || !st.mapK) return null;
+    if (!st.wins.includes('map') || !st.mapK) return null;
     const cv = E.p_map.querySelector('.map-c'), r = cv.getBoundingClientRect(); if (!r.width) return null;
     const s = cv.width / r.width, mx = (cx - r.left) * s, my = (cy - r.top) * s;
     if (mx < 0 || my < 0 || mx > cv.width || my > cv.height) return null;
@@ -635,7 +711,8 @@ const UI = (() => {
   }
   /* ícones do mapa: desenhados em px do canvas; u = px do canvas por px CSS (os mesmos no mapa M, na legenda e no minimapa) */
   const MI = {
-    town(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 11, 0, 7); c.fillStyle = '#f4dc94'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#3a2508'; c.stroke();
+    enc(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 9.5, 0, 7); c.fillStyle = '#ffb02e'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#4a2a05'; c.stroke(); c.fillStyle = '#3a1d02'; c.fillRect(-1.6, -6, 3.2, 7.5); c.beginPath(); c.arc(0, 4.6, 1.9, 0, 7); c.fill(); c.restore(); },
+        town(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 11, 0, 7); c.fillStyle = '#f4dc94'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#3a2508'; c.stroke();
       c.fillStyle = '#4a3010'; c.fillRect(-6.5, -2, 13, 7.5); c.fillRect(-6.5, -6.5, 3.4, 4.6); c.fillRect(-1.7, -6.5, 3.4, 4.6); c.fillRect(3.1, -6.5, 3.4, 4.6); c.fillStyle = '#f4dc94'; c.fillRect(-1.6, 1.2, 3.2, 4.3); c.restore(); },
     post(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 8.5, 0, 7); c.fillStyle = '#e8c48a'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#3a2508'; c.stroke();
       c.beginPath(); c.moveTo(-5.5, 4); c.lineTo(0, -5.5); c.lineTo(5.5, 4); c.closePath(); c.fillStyle = '#5a3612'; c.fill(); c.beginPath(); c.moveTo(0, 4); c.lineTo(0, -1); c.strokeStyle = '#e8c48a'; c.lineWidth = 1.4; c.stroke(); c.restore(); },
@@ -737,7 +814,9 @@ const UI = (() => {
     const POI = '600 # system-ui, sans-serif', SERIF = '700 # Georgia, serif';
     for (const l of LANDMARKS) { if (/Lagoa/.test(l.n)) add('lake', l.x, l.z, 7, { t: l.n, pr: 45, fs: 12, font: POI, col: '#cfeeff', bg: 1 }); else add('mark', l.x, l.z, 5, { t: l.n, pr: 40, fs: 12, font: POI, col: '#f1e2bd', bg: 1 }); }
     for (const s of SITES) { const lair = s.k === 'lair'; add(lair ? 'lair' : 'dungeon', s.x, s.z, 10, { t: s.n, pr: lair ? 66 : 70, fs: 12.5, font: POI, col: lair ? '#ffe7a0' : '#c4f3ff', bg: 1 }); }
-    for (const id in BOSS_SPOT) { const b = BOSSES[id], dead = G.mobs.some(m => m.id === id && m.dead); add('boss', BOSS_SPOT[id][0], BOSS_SPOT[id][1], 11, { t: b.n, sub: 'Nv ' + b.lvl + (dead ? ' · derrotado' : ''), subc: dead ? '#aaa' : '#ff9d8a', pr: 75, fs: 12.5, font: POI, col: dead ? '#bbb' : '#ffc4b8', bg: 1, edge: 'rgba(255,120,100,.4)' }, dead); }
+    for (const n of G.npcs || []) if (n.kind === 'enc') add('enc', n.x, n.z, 10, { t: n.n, sub: n.role, subc: '#ffd27a', pr: 80, fs: 12, font: POI, col: '#ffe7b0', bg: 1 });
+    if (G.encSpot) add('enc', G.encSpot.x, G.encSpot.z, 9, { t: (G.encSpot.n || 'Tesouro') + '?', pr: 78, fs: 12, font: POI, col: '#ffe7b0', bg: 1 });
+    for (const id in BOSS_SPOT) { const b = BOSSES[id], dead = G.mobs.some(m => m.id === id && m.dead); add('boss', BOSS_SPOT[id][0], BOSS_SPOT[id][1], 11, { t: b.n, sub: 'Nv ' + DLV(b.lvl) + (dead ? ' · derrotado' : ''), subc: dead ? '#aaa' : '#ff9d8a', pr: 75, fs: 12.5, font: POI, col: dead ? '#bbb' : '#ffc4b8', bg: 1, edge: 'rgba(255,120,100,.4)' }, dead); }
     for (const v of VILLAGES) { const big = isTown(v), pv = zoom >= 5; // de perto o portal aparece no lugar certo
       if (pv) add('portal', v.portal[0], v.portal[1], 6);
       add(big ? 'town' : 'post', v.cx, v.cz, big ? 12 : 9, { t: v.n, pr: big ? 92 : 86, fs: big ? 14 : 12.5, font: SERIF, col: '#fff1cc', bg: 1 }); }
@@ -794,9 +873,9 @@ const UI = (() => {
     setText(E.npcN, n.n); setText(E.npcR, n.role); setText(E.npcIc, NPC_IC[id] || '🙂');
     let h = '';
     { const s = G.main && MAIN[G.main.i];
-      if (s && s.k === 'talk' && s.npc === nid && p.lvl >= s.lvl) h += `<div class="story-d"><div class="sd-t">📖 ${esc(CHAP[s.ch].n)}</div><div class="say">“${esc(s.say)}”</div><button class="btn primary" data-a="story" data-id="${nid}">Continuar a história ▸</button></div>`;
+      if (s && s.k === 'talk' && s.npc === nid && ELV() >= s.lvl) h += `<div class="story-d"><div class="sd-t">📖 ${esc(CHAP[s.ch].n)}</div><div class="say">“${esc(s.say)}”</div><button class="btn primary" data-a="story" data-id="${nid}">Continuar a história ▸</button></div>`;
       else if (id === 'story') h += `<div class="say">“${esc(STORY_IDLE[nid] || 'Volte quando precisar de mim.')}”</div>`; }
-    if (id !== 'story') h += `<div class="say">“${esc(NPC_HI[id] || '')}”</div>`;
+    if (id !== 'story' && id !== 'enc') h += `<div class="say">“${esc(NPC_HI[id] || '')}”</div>`;
     if (id === 'quest') {
       h += '<h3>Missões</h3>';
       let any = false, nextLocked = null, done = 0;
@@ -812,30 +891,36 @@ const UI = (() => {
         if (s.state === 'ready') h += `<button class="btn primary" data-a="turnin" data-id="${q.id}">Entregar</button>`;
         h += '</div>';
       });
-      if (!any) h += `<div class="dim pad">${nextLocked ? `Volte quando alcançar o nível ${nextLocked.lvl} para a missão “${esc(nextLocked.n)}”.` : 'Você cumpriu todas as minhas missões, herói.'}</div>`;
-      else if (nextLocked) h += `<div class="dim pad">Próxima: “${esc(nextLocked.n)}” (nível ${nextLocked.lvl}).</div>`;
+      if (!any) h += `<div class="dim pad">${nextLocked ? `Volte quando alcançar o nível ${DLV(nextLocked.lvl)} para a missão “${esc(nextLocked.n)}”.` : 'Você cumpriu todas as minhas missões, herói.'}</div>`;
+      else if (nextLocked) h += `<div class="dim pad">Próxima: “${esc(nextLocked.n)}” (nível ${DLV(nextLocked.lvl)}).</div>`;
       if (done) h += `<div class="dim pad">${done} de ${QUESTS.length} missões concluídas.</div>`;
       const ev = (Game.canEvolve && Game.canEvolve()) || {};
       h += '<h3>Evolução</h3>';
       if (ev.nextTier == null || !TIERS[ev.nextTier]) h += `<div class="dim pad">${esc(ev.reason || 'Você alcançou o ápice da evolução.')}</div>`;
       else {
         const lab = 'Evoluir para ' + TIERS[ev.nextTier];
-        h += `<div class="dim pad">Evolução em 4 etapas: ${TIERS.map((t, i) => esc(t) + ' (×' + TMUL[i] + ')').join(' → ')}. Requer nível ${MAXLV} e ouro. Ao evoluir você volta ao nível 1, sem nada equipado: equipamento e mochila vão para o baú da conta. Você mantém ouro, montarias, habilidades aprendidas (voltam ao nível 1), história e conquistas; pontos de habilidade e de atributo zeram. Recebe o kit inicial do novo tier, seus stats base são multiplicados, os monstros ficam à sua altura e os presentes dos níveis 16 e 26 voltam a valer.</div>`;
+        h += `<div class="dim pad">Evolução em 4 etapas: ${TIERS.map((t, i) => esc(t) + ' (×' + TMUL[i] + ')').join(' → ')}. Requer nível ${lvCap(p.tier)} e ouro. Ao evoluir você volta ao nível 1 e a fase muda; os pontos de atributo e de habilidade voltam ao início (habilidades aprendidas voltam ao nível 1). Você mantém ouro, itens (equipados e na mochila), montarias, história e conquistas. Não recebe equipamento nem presentes: dropar, farmar e comprar são com você.</div>`;
         const cost = ev.cost ? (typeof ev.cost === 'number' ? ` · 💰 ${fmt(ev.cost)}` : ` · ${esc(ev.cost)}`) : '';
         h += `<div class="evo"><div>${esc(TIERS[p.tier])} → <b class="gold">${esc(TIERS[ev.nextTier])}</b>${cost}</div>`;
         if (!ev.ok && ev.reason) h += `<div class="dim">${esc(ev.reason)}</div>`;
         h += `<button class="btn primary" data-a="evolve"${ev.ok ? '' : ' disabled'}>${lab}</button></div>`;
       }
+    } else if (id === 'enc') {
+      const d = Game.encDialog(nid) || { say: 'O viajante já seguiu o seu caminho.', opts: [] };
+      h += `<div class="say">“${esc(d.say)}”</div><div class="enc-o">` + d.opts.map(o => `<button class="btn${o.pri ? ' primary' : ''}" data-a="enc" data-id="${nid}" data-k="${o.k}"${o.dis ? ' disabled' : ''}>${esc(o.t)}</button>`).join('') + '</div>';
     } else if (id === 'trainer') {
       const c = CLASSES[p.cls];
-      h += `<h3>Habilidades de ${esc(c.name)} <small>💰 ${fmt(p.gold)}</small></h3><div class="shop">`;
+      h += `<h3>Habilidades de ${esc(c.name)} <small>✨ ${p.sp || 0} pontos de habilidade</small></h3><div class="shop">`;
       c.skills.forEach((k, i) => {
-        const L = p.sk[i] || 0, req = SK_LEARN[i], need = Math.max(req.lvl, k.lvl || 0), tierOk = (k.tier || 0) <= p.tier, ok = tierOk && p.lvl >= need;
-        h += `<div class="shop-r"><span class="it-ic">${k.ic}</span><div class="it-t"><b>${esc(k.n)}</b><small>${esc(k.d)}${L ? ' · Nível ' + L : ''}</small></div>`;
-        h += L ? '<span class="dim">Aprendida</span>' : !tierOk ? `<span class="dim">Requer ${TIERS[k.tier]}</span>` : !ok ? `<span class="dim">Nível ${need}</span>` : `<button class="btn primary" data-a="learn" data-i="${i}"${p.gold < req.price ? ' disabled' : ''}>Aprender<small>💰 ${fmt(req.price)}</small></button>`;
+        const L = p.sk[i] || 0, req = SK_LEARN[i], need = Math.max(req.lvl, k.lvl || 0), tierOk = (k.tier || 0) <= p.tier, ok = tierOk && ELV() >= need, sp = p.sp || 0;
+        h += `<div class="shop-r"><span class="it-ic">${k.ic}</span><div class="it-t"><b>${esc(k.n)}</b><small>${esc(k.d)}${L ? ' · Nível ' + L + '/' + SK_MAX : ''}</small></div>`;
+        if (!L) h += !tierOk ? `<span class="dim">Requer ${TIERS[k.tier]}</span>` : !ok ? `<span class="dim">Nível ${DLV(need)}</span>` : `<button class="btn primary" data-a="learn" data-i="${i}"${sp < req.pts ? ' disabled' : ''}>Aprender<small>✨ ${req.pts}</small></button>`;
+        else if (L >= SK_MAX) h += '<span class="dim">Nível máximo</span>';
+        else if (L >= skCap(ELV())) h += `<span class="dim" title="A habilidade já pode ser usada; este é o nível do personagem para subi-la de nível">Próximo nível da habilidade:<br>personagem nv ${DLV(L * 5)}</span>`;
+        else h += `<button class="btn" data-a="sklv" data-i="${i}"${sp < skRaiseCost(L) ? ' disabled' : ''}>Subir para Nv ${L + 1}<small>✨ ${skRaiseCost(L)}</small></button>`;
         h += '</div>';
       });
-      h += `</div><div class="dim pad">Suba o nível das habilidades com pontos de habilidade no painel <kbd>C</kbd> ou na árvore <kbd>V</kbd>.</div>`;
+      h += `</div><div class="dim pad">Você ganha ${SK_PTS_LEVEL} pontos por nível. Aprender gasta pontos (${SK_LEARN.map(q => q.pts).join('/')}); subir de nível custa 1 ponto até o Nv 4, 2 até o Nv 7 e 3 depois. O nível da habilidade não passa de 1 + (seu nível ÷ 5).</div>`;
     } else if (id === 'armor' || id === 'weapon') {
       const list = Game.shopStock(id), ic = SLOT_IC(p.cls);
       h += `<h3>${id === 'weapon' ? 'Armas' : 'Roupas e armaduras'} <small>💰 ${fmt(p.gold)} · comuns, sem refino</small></h3><div class="shop">`;
@@ -852,14 +937,14 @@ const UI = (() => {
     } else if (id === 'bank') {
       const A = Game.account(), B = A ? A.bank : { items: [], gold: 0 }, ic = SLOT_IC(p.cls), PG = 40;
       const mx = Math.max(120, B.max | 0, B.items.length), np = Math.max(1, Math.ceil(mx / PG)), pg = Math.min(st.bp | 0, np - 1);
-      let g = '';
+      let g = ''; const slots = fillPos(B.items, mx);
       for (let i = pg * PG; i < (pg + 1) * PG; i++) {
-        const it = B.items[i];
+        const it = slots[i];
         if (i >= mx) g += '<div class="bi lock"></div>';
-        else if (!it) g += '<div class="bi empty"></div>';
-        else g += `<div class="bi it r${it.rar}" data-a="bank-take" data-id="${it.id}" data-drag="bank" draggable="true" title="${esc(itemTip(it, p.eq[it.slot], false).split('\n').slice(0, -1).join('\n') + '\nClique para retirar')}" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}</div>`;
+        else if (!it) g += `<div class="bi empty" data-zone="bank" data-slot="${i}"></div>`;
+        else g += `<div class="bi it r${it.rar}${noUse(it) ? ' nouse' : ''}${st.carry && st.carry.id === it.id ? ' carry' : ''}" data-zone="bank" data-slot="${i}" data-a="bank-take" data-id="${it.id}" data-drag="bank" draggable="true" title="${esc(itemTip(it, p.eq[it.slot], false).split('\n').slice(0, -1).join('\n') + '\nClique para pegar e mover · Shift+clique: retirar')}" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}</div>`;
       }
-      h += `<div class="bankw"><div class="bpages">${Array.from({ length: np }, (_, i) => `<button class="${i === pg ? 'on' : ''}" data-a="bank-page" data-n="${i}">${i + 1}</button>`).join('')}<small>${B.items.length}/${mx} · clique para retirar</small></div><div class="bag bankg" data-drop="bank">${g}</div>`;
+      h += `<div class="bankw"><div class="bpages">${Array.from({ length: np }, (_, i) => `<button class="${i === pg ? 'on' : ''}" data-a="bank-page" data-n="${i}">${i + 1}</button>`).join('')}<small>${B.items.length}/${mx} · clique para pegar e mover</small></div><div class="bag bankg" data-drop="bank">${g}</div>`;
       const Bt = (n, lab, dis) => `<button class="btn" data-a="bank-gold" data-n="${n}"${dis ? ' disabled' : ''}>${lab}</button>`;
       h += `<div class="bgold"><div class="igold"><span>💰</span><b>${fmt(B.gold)}</b><small>ouro no baú</small></div><div class="bg-r"><span>Guardar</span>${Bt(100, '100', p.gold < 100)}${Bt(1000, '1.000', p.gold < 1000)}${Bt(p.gold, 'Tudo', p.gold <= 0)}</div><div class="bg-r"><span>Retirar</span>${Bt(-100, '100', B.gold < 100)}${Bt(-1000, '1.000', B.gold < 1000)}${Bt(-B.gold, 'Tudo', B.gold <= 0)}</div></div></div>`;
     } else if (id === 'shop') {
@@ -877,13 +962,23 @@ const UI = (() => {
         h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
       });
       h += '</div>';
+    } else if (nid === 'selene') { // Refinador: fundir peças iguais em Ancient
+      const ic = SLOT_IC(p.cls), groups = {};
+      for (const it of p.inv) if ((it.plus | 0) >= PLUS_MAX && (it.plus | 0) < ANCIENT_MAX) (groups[fuseKey(it)] = groups[fuseKey(it)] || []).push(it);
+      h += `<h3>Fundir em Ancient <small>💰 ${fmt(p.gold)}</small></h3><div class="dim pad">Junte <b>2 peças iguais</b> (mesmo item e mesmo refino) <b>na mochila</b>: <b>2× +9 → +10 Ancient</b> (grátis) e <b>2× +10 → +11 Ancient</b> (💰 ${fmt(FUSE_GOLD)}). As duas viram uma só.</div><div class="shop">`;
+      let any = 0;
+      for (const k in groups) { const gl = groups[k]; if (gl.length < 2) continue; any = 1; gl.sort((a, b) => b.rar - a.rar || ((b.adds || []).length - (a.adds || []).length)); const A = gl[0], B = gl[1], cost = A.plus >= 10 ? FUSE_GOLD : 0;
+        h += `<div class="shop-r"><span class="it-ic">${iconOf(A, ic)}</span><div class="it-t"><b>${esc(itemName(A))}</b><small>2 peças iguais → +${A.plus + 1} Ancient${cost ? ' · 💰 ' + fmt(cost) : ' · grátis'}</small></div><button class="btn primary" data-a="fuse" data-ia="${A.id}" data-ib="${B.id}"${p.gold < cost ? ' disabled' : ''}>Fundir<small>+${A.plus} → +${A.plus + 1}</small></button></div>`; }
+      const solo = p.inv.filter(it => (it.plus | 0) >= PLUS_MAX && (it.plus | 0) < ANCIENT_MAX && groups[fuseKey(it)].length < 2);
+      if (!any) h += `<div class="dim pad">Nenhum par disponível.${solo.length ? ' Você tem ' + solo.length + ' peça(s) +9/+10 sem par igual: ' + solo.map(it => esc(itemName(it))).join(', ') + '.' : ' Refine peças até +9 com o Ferreiro e junte duas iguais.'}</div>`;
+      h += '</div>';
     } else if (id === 'smith') {
       const ic = SLOT_IC(p.cls), f = st.sm && st.sm.it != null ? Game.findItem(st.sm.it) : null, it = f && f.it;
-      h += `<h3>Refino de equipamentos <small>💰 ${fmt(p.gold)} · máx. +10</small></h3>`;
+      h += `<h3>Refino de equipamentos <small>💰 ${fmt(p.gold)} · até +9 · Ancient (+10/+11) com o Refinador</small></h3>`;
       if (!it) h += '<div class="dim pad">◂ Escolha um item <b>equipado</b> ou da <b>mochila</b> na janela de Equipamento ao lado.</div>';
       else {
         h += `<div class="jw-box sm-box"><div class="sm-h"><span class="es has" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}</span><div><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${f.eq ? 'Equipado · ' : 'Mochila · '}${SLOTS[it.slot]} · ${istr(it)}</small></div></div>`;
-        if (it.plus >= 10) h += '<small class="gold">Refino máximo</small></div>';
+        if (it.plus >= PLUS_MAX) h += `<small class="gold">${it.plus >= 10 ? 'Ancient: não refina mais' : 'Refino máximo no Ferreiro (+9). Para +10 Ancient, junte 2 peças +9 iguais com o Refinador.'}</small></div>`;
         else { const cost = enhCost(it); h += `<small>Chance de sucesso: <b>${Math.round(enhChance(it.plus) * 100)}%</b> · Custo: 💰 ${fmt(cost)}<br>Se falhar, só o ouro é perdido.</small></div><button class="btn primary" data-a="enh" data-id="${it.id}"${p.gold < cost ? ' disabled' : ''}>Refinar<small>+${it.plus} → +${it.plus + 1}</small></button>`; }
       }
     } else if (id === 'jewel') {
@@ -898,15 +993,15 @@ const UI = (() => {
         h += `<div class="jw-box"><b style="color:${rcol(sel)}">${esc(itemName(sel))}</b><small>${(sel.adds || []).map(a => '✦ ' + esc(addTxt(a))).join('<br>') || 'Sem adicionais'}</small>`;
         if (full) h += '<small>Este item já tem o máximo de adicionais.</small></div>';
         else {
-          h += `<small>${stn ? 'Resultado: ✦ ' + esc(addTxt({ k: stn.k, v: addVal(stn.k, sel.grade) })) + '<br>' : ''}Chance de sucesso: <b>${Math.round(jewelChance(sel) * 100)}%</b> · Custo: 💰 ${fmt(cost)}<br>A pedra é consumida mesmo se falhar.</small></div>`;
+          h += `<small>${stn ? 'Resultado: ✦ ' + esc(addTxt({ k: stn.k, v: addVal(stn.k, pgOf(sel)) })) + '<br>' : ''}Chance de sucesso: <b>${Math.round(jewelChance(sel) * 100)}%</b> · Custo: 💰 ${fmt(cost)}<br>A pedra é consumida mesmo se falhar.</small></div>`;
           h += `<button class="btn primary" data-a="jw-go"${!stn || !(M[J.st] > 0) || p.gold < cost ? ' disabled' : ''}>Engastar pedra</button>`;
         }
       }
     } else if (id === 'portal') {
       h += '<h3>Destinos <small>💰 ' + fmt(p.gold) + '</small></h3><div class="shop">';
       for (const v of portalDests(n.vil || 'aldoria')) {
-        const lock = p.lvl < v.lvl, poor = p.gold < v.price;
-        h += `<div class="shop-r"><span class="it-ic">🌀</span><div class="it-t"><b>${esc(v.n)}</b><small>${esc(REG[v.reg].n)} · Nível ${v.lvl}+</small></div><button class="btn${lock || poor ? '' : ' primary'}" data-a="tp" data-id="${v.id}"${lock || poor ? ' disabled' : ''}>${lock ? 'Nv ' + v.lvl : v.price ? 'Viajar<small>💰 ' + fmt(v.price) + '</small>' : 'Viajar<small>grátis</small>'}</button></div>`;
+        const lock = ELV() < v.lvl, poor = p.gold < v.price;
+        h += `<div class="shop-r"><span class="it-ic">🌀</span><div class="it-t"><b>${esc(v.n)}</b><small>${esc(REG[v.reg].n)} · Nível ${DLV(v.lvl)}+</small></div><button class="btn${lock || poor ? '' : ' primary'}" data-a="tp" data-id="${v.id}"${lock || poor ? ' disabled' : ''}>${lock ? 'Nv ' + DLV(v.lvl) : v.price ? 'Viajar<small>💰 ' + fmt(v.price) + '</small>' : 'Viajar<small>grátis</small>'}</button></div>`;
       }
       h += '</div>';
 
@@ -917,27 +1012,31 @@ const UI = (() => {
 
   function refreshPanels() {
     if (typeof G === 'undefined' || !G.player || !st.panel) return;
-    if (st.panel === 'inv') renderInv(G);
-    else if (st.panel === 'char') renderChar(G);
-    else if (st.panel === 'quest') renderQuest(G);
-    else if (st.panel === 'map') renderMap(G);
-    else if (st.panel === 'tree') renderTree(G);
-    else if (st.panel === 'auto') renderAuto(G);
-    else if (st.panel === 'look') renderLook(G);
-    else if (st.panel === 'pause') renderPause(G);
-    else if (st.panel === 'dlg') { renderDlg(G); if (st.side) renderInv(G); }
+    const on = k => st.wins.includes(k);
+    if (on('inv') || (st.modal === 'dlg' && st.side)) renderInv(G);
+    if (on('char')) renderChar(G);
+    if (on('quest')) renderQuest(G);
+    if (on('map')) renderMap(G);
+    if (on('tree')) renderTree(G);
+    if (on('auto')) renderAuto(G);
+    if (on('look')) renderLook(G);
+    if (on('lv')) renderLv(G);
+    if (st.modal === 'pause') renderPause(G);
+    else if (st.modal === 'dlg') renderDlg(G);
   }
 
   /* ---------- ações (cliques delegados) ---------- */
   function act(a, d) {
     let r;
     switch (a) {
-      case 'close': closeAll(); return;
+      case 'close': if (d && d._k) winClose(d._k); else closeAll(); return;
       case 'p-inv': togglePanel('inv'); return;
       case 'p-char': togglePanel('char'); return;
       case 'p-quest': togglePanel('quest'); return;
       case 'p-auto': togglePanel('auto'); return;
       case 'p-look': togglePanel('look'); return;
+      case 'p-lv': togglePanel('lv'); return;
+      case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
       case 'pause': showPanel('pause'); return;
       case 'gfx': Game.cycleQuality(); refreshPanels(); return;
       case 'tomenu': Game.toMenu(); return;
@@ -996,8 +1095,10 @@ const UI = (() => {
       case 'tp': r = Game.teleport(d.id); break;
       case 'buy': r = Game.buy(d.k, +d.n); break;
       case 'enh': r = Game.enhance(d.id ? +d.id : d.s); break;
+      case 'fuse': r = Game.fuseItems(d.ia, d.ib); break;
       case 'accept': r = Game.acceptQuest(d.id); break;
       case 'story': Game.storyTalk(d.id); refreshPanels(); return;
+      case 'enc': Game.encAct(d.id, d.k); refreshPanels(); return;
       case 'daily': Game.claimDaily(d.id); refreshPanels(); return;
       case 'qtab': st.qtab = d.id; refreshPanels(); return;
       case 'sklv': Game.raiseSkill(+d.i); return;
@@ -1025,7 +1126,17 @@ const UI = (() => {
   function hideMenu() { st.menu = false; root.classList.remove('in-menu'); setVis(E.menu, false); }
   function showDeath() { st.death = true; showPanel(null); setVis(E.death, true); }
   function hideDeath() { st.death = false; setVis(E.death, false); }
-  function closeAll() { st.msg = null; st.npc = null; st.jw = null; st.sm = null; st.side = null; cmClose(); showPanel(null); }
+  /* item "na mão" (mover itens): o fantasma segue o cursor */
+  const carryItem = () => { const c = st.carry; if (!c) return null; const A = Game.account(); return G.player.inv.find(x => x.id === c.id) || (A && A.bank.items.find(x => x.id === c.id)) || null; };
+  function carryRender(ev) {
+    let g = root.querySelector('.carry-ghost'); const it = carryItem();
+    if (!it) { if (g) g.remove(); st.carry = null; return; }
+    if (!g) { g = document.createElement('div'); root.appendChild(g); }
+    g.className = 'bi it carry-ghost r' + it.rar; g.style.setProperty('--rc', rcol(it)); g.innerHTML = `<span class="ei">${iconOf(it, SLOT_IC(G.player.cls))}</span>${plusB(it)}`;
+    if (ev) { g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px'; }
+  }
+  function carryCancel() { if (!st.carry) return; st.carry = null; carryRender(); refreshPanels(); }
+  function closeAll() { modalClose(); showPanel(null); }
   /* menu de contexto dos itens (botão direito no inventário) */
   const shopNear = () => { const p = G.player; return NPCS.some(n => n.kind === 'shop' && Math.hypot(n.x - p.x, n.z - p.z) < 8); };
   function cmRender() {
@@ -1110,7 +1221,7 @@ const UI = (() => {
   /* seta de missão: gira em volta do personagem apontando para o objetivo atual da história, com a distância */
   function updateArrow(G) {
     const ob = st.obj, p = G.player, el = E.qa;
-    if (!ob || st.panel || G.dead || G.state !== 'play') { setVis(el, false); return; }
+    if (!ob || st.modal || G.dead || G.state !== 'play') { setVis(el, false); return; }
     const dx = ob[0] - p.x, dz = ob[1] - p.z, d = Math.hypot(dx, dz);
     const a = d >= 12 && project(G.vp, p.x, .1, p.z), b = a && project(G.vp, p.x + dx / d * 4, .1, p.z + dz / d * 4);
     if (!b) { setVis(el, false); return; }
@@ -1169,6 +1280,7 @@ const UI = (() => {
     }
     const icon = (kind, x, y, s, a) => { c.save(); c.translate(x, y); c.scale(s, s); MI[kind](c, 0, 0, u, a); c.restore(); };
     for (const q of SITES) { if (far(q.x, q.z)) continue; const [x, y] = pt(q.x, q.z); icon(q.k === 'lair' ? 'lair' : 'dungeon', x, y, .55); }
+    if (G.encSpot && !far(G.encSpot.x, G.encSpot.z)) { const [x, y] = pt(G.encSpot.x, G.encSpot.z); icon('enc', x, y, .5); }
     for (const m of G.mobs || []) {
       if (m.dead || far(m.x, m.z)) continue;
       const [x, y] = pt(m.x, m.z);
@@ -1178,6 +1290,7 @@ const UI = (() => {
     for (const n of G.npcs || []) {
       if (far(n.x, n.z)) continue;
       const [x, y] = pt(n.x, n.z), r = 2.6 * u;
+      if (n.kind === 'enc') { icon('enc', x, y, .5); continue; }
       c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath();
       c.fillStyle = '#ffe27a'; c.fill(); c.lineWidth = .6 * u; c.strokeStyle = '#3a2508'; c.stroke();
     }
@@ -1196,11 +1309,11 @@ const UI = (() => {
     const cls = CLASSES[p.cls];
     for (let i = 0; i < cls.skills.length; i++) {
       const s = E.slots[i < 5 ? i : i + 2], k = cls.skills[i]; if (!s) continue;
-      const learned = !!(p.sk && p.sk[i]), lock = !learned || (k.tier || 0) > p.tier || (k.lvl || 0) > p.lvl, cd = lock ? 0 : (p.cd[i] || 0), kn = i < 5 ? i + 1 : i + 3;
+      const learned = !!(p.sk && p.sk[i]), lock = !learned || (k.tier || 0) > p.tier || (k.lvl || 0) > ELV(), cd = lock ? 0 : (p.cd[i] || 0), kn = i < 5 ? i + 1 : i + 3;
       const key = p.cls + (lock ? 'L' : '') + (p.sk ? p.sk[i] : 0);
       if (s._cls !== key) {
         s._cls = key; s.$ic.textContent = k.ic; setText(s.$mpc, k.mp || '');
-        s.title = !learned ? `${k.n} [${kn}]\nNão aprendida: fale com um Mestre de Habilidades.` : lock ? `${k.n} [${kn}]\nBloqueada: requer ${k.lvl && k.lvl > p.lvl ? 'nível ' + k.lvl : TIERS[k.tier] || 'evolução'}.`
+        s.title = !learned ? `${k.n} [${kn}]\nNão aprendida: fale com um Mestre de Habilidades.` : lock ? `${k.n} [${kn}]\nBloqueada: requer ${k.lvl && k.lvl > ELV() ? 'nível ' + DLV(k.lvl) : TIERS[k.tier] || 'evolução'}.`
           : `${k.n} Nv ${p.sk[i]} [${kn}]\n${k.d}\n${resName(p.cls)}: ${skEff(k, p.sk[i]).mp || 0} · Recarga: ${k.cd}s`;
       }
       setCls(s, 'lock', lock);
@@ -1220,8 +1333,8 @@ const UI = (() => {
     }
     const M = G.main, s = M && MAIN[M.i];
     let k = '';
-    if (s && G.player.lvl >= s.lvl) { const tg = stepGoal(s); k += `<div class="qt-m"><small>📖 História</small><b>${esc(stepTitle(s))}</b><span>${esc(tg > 1 ? stepLine(s) + ' — ' + Math.min(M.prog, tg) + '/' + tg : stepLine(s))}</span></div>`; }
-    else if (s) k += `<div class="qt-m dim"><small>📖 História</small><b>Próxima etapa no nível ${s.lvl}</b></div>`;
+    if (s && ELV() >= s.lvl) { const tg = stepGoal(s); k += `<div class="qt-m"><small>📖 História</small><b>${esc(stepTitle(s))}</b><span>${esc(tg > 1 ? stepLine(s) + ' — ' + Math.min(M.prog, tg) + '/' + tg : stepLine(s))}</span></div>`; }
+    else if (s) k += `<div class="qt-m dim"><small>📖 História</small><b>Próxima etapa no nível ${DLV(s.lvl)}</b></div>`;
     if (cur) { const [q, qs] = cur, tg = qTarget(q); k += `<div class="qt-s${qs.state === 'ready' ? ' ready' : ''}"><small>📜 Secundária</small><b>${esc(q.n)}</b><span>${qs.state === 'ready' ? 'Pronta! Fale com um Ancião.' : (q.boss ? BOSSES[q.boss].n + ': ' : 'Progresso: ') + Math.min(qs.prog || 0, tg) + '/' + tg}</span></div>`; }
     else if (avail) k += `<div class="qt-s ready"><small>📜 Secundária</small><b>${esc(avail.n)}</b><span>Nova missão: fale com um Ancião.</span></div>`;
     if (G.daily) { const rd = G.daily.list.filter(d => d.done && !d.claimed).length; if (rd) k += `<div class="qt-s ready"><small>📅 Diários</small><span>${rd} desafio(s) pronto(s) — abra Missões (Q)</span></div>`; }
@@ -1234,7 +1347,7 @@ const UI = (() => {
     setW(E.hp, p.hp / maxHp * 100); setText(E.hpT, `${Math.ceil(p.hp)} / ${Math.round(maxHp)}`);
     setCls(E.mp.parentNode, 'fury', !!c.res); if (E.mp.parentNode.title !== resName(p.cls)) E.mp.parentNode.title = resName(p.cls);
     setW(E.mp, p.mp / maxMp * 100); setText(E.mpT, `${Math.floor(p.mp)} / ${Math.round(maxMp)}`);
-    setW(E.xp, p.lvl >= MAXLV ? 100 : p.xp / xpNeed(p.lvl) * 100);
+    setW(E.xp, p.lvl >= lvCap(p.tier) ? 100 : p.xp / xpPlayer(p.lvl, p.tier) * 100);
     setText(E.pfGold, '💰 ' + fmt(p.gold));
     setCls(E.hp.parentNode, 'low', p.hp / maxHp < .25);
     { const mid = p.lastMount, M_ = mid && MOUNTS[mid], mx = Game.mstMax(), en = (p.mst == null ? mx : p.mst) / mx * 100, lv = M_ ? Game.mountLv(mid) : 1, mr = M_ && p.mlv && p.mlv[mid], mxp = lv >= MOUNT_MAXLV ? 100 : (mr ? mr.xp : 0) / mountXpNeed(lv) * 100;
@@ -1252,7 +1365,7 @@ const UI = (() => {
     setVis(E.tf, !!t);
     if (t) {
       { const k = t.id + (t.boss ? 'b' : ''); if (E.tfIc._k !== k) { E.tfIc._k = k; E.tfIc.innerHTML = ART.mob(t.id, t.boss); } }
-      setText(E.tfName, (t.boss ? '👑 ' : '') + t.name); setText(E.tfLv, 'Nv ' + t.lvl);
+      setText(E.tfName, (t.boss ? '👑 ' : '') + t.name); setText(E.tfLv, 'Nv ' + DLV(t.lvl));
       setW(E.tfHp, t.hp / t.maxHp * 100); setText(E.tfHpT, `${Math.ceil(t.hp)} / ${Math.round(t.maxHp)}`);
       setCls(E.tf, 'boss', t.boss);
     }
@@ -1273,7 +1386,7 @@ const UI = (() => {
     setCls(E.btn.char, 'pulse', !!(G.player && G.player.ap > 0));
     if (!E.pf || st.menu || !G || !G.player) return;
     const t = now();
-    if (t - lastHeavy > 100) { lastHeavy = t; st.obj = G.state === 'play' ? objectivePos(G) : null; heavy(G); if (st.panel === 'map') renderMap(G); }
+    if (t - lastHeavy > 100) { lastHeavy = t; st.obj = G.state === 'play' ? objectivePos(G) : null; heavy(G); if (st.wins.includes('map')) renderMap(G); }
     if (G.vp) { updateLabels(G); updateFloats(G); updateArrow(G); }
   }
 
@@ -1283,14 +1396,29 @@ const UI = (() => {
     build();
     const size = () => { W = root.clientWidth || innerWidth; H = root.clientHeight || innerHeight; };
     size(); addEventListener('resize', size);
+    /* mover itens: clique PEGA o item (ele flutua no cursor), clique em outro espaço da mochila/baú SOLTA ou TROCA, clique no boneco equipa;
+       Shift+clique faz a ação rápida de antes (equipar/guardar/retirar); Esc ou botão direito cancela. Com Ferreiro/Joalheiro abertos o clique só escolhe o item. */
+    root.addEventListener('click', ev => {
+      const T = ev.target; if (!T.closest) return; const cell = T.closest('.bi[data-zone]'), eqb = T.closest('.eqbox'), c = st.carry;
+      if (c) {
+        const it = carryItem();
+        if (cell && it) { ev.stopPropagation(); ev.preventDefault(); st.carry = null; carryRender(); if (cell.dataset.zone === c.from && +cell.dataset.slot === it.pos) refreshPanels(); else Game.itemMove(c.from, c.id, cell.dataset.zone, +cell.dataset.slot); return; }
+        if (eqb && it) { ev.stopPropagation(); ev.preventDefault(); if (c.from !== 'bag') { toast('Leve o item do baú para a mochila antes de equipar.'); return; } st.carry = null; carryRender(); Game.equip(c.id); return; }
+        return; // abas, páginas e botões seguem normalmente; o item continua na mão
+      }
+      if (cell && cell.dataset.id && !ev.shiftKey && st.side !== 'smith' && st.side !== 'jewel') { ev.stopPropagation(); ev.preventDefault(); st.carry = { id: +cell.dataset.id, from: cell.dataset.zone }; carryRender(ev); refreshPanels(); }
+    }, true);
+    window.addEventListener('mousemove', ev => { if (st.carry) { const g = root.querySelector('.carry-ghost'); if (g) { g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px'; } } });
     root.addEventListener('click', ev => {
       const t = ev.target.closest('[data-a]');
       if (!t || t.disabled || !root.contains(t)) return;
+      { const pn = t.closest('.panel'); if (pn && t.dataset.a === 'close') t.dataset._k = pn.id.slice(2); }
       act(t.dataset.a, t.dataset);
     });
     root.addEventListener('contextmenu', ev => {
+      if (st.carry) { ev.preventDefault(); carryCancel(); return; }
       const t = ev.target.closest('[data-cm]');
-      if (!t || !root.contains(t) || !(st.panel === 'inv' || st.side) || !t.closest('#p-inv')) { cmClose(); return; }
+      if (!t || !root.contains(t) || !(st.wins.includes('inv') || st.side) || !t.closest('#p-inv')) { cmClose(); return; }
       ev.preventDefault();
       const rr = root.getBoundingClientRect(); st.cm = { id: +t.dataset.cm, x: ev.clientX - rr.left, y: ev.clientY - rr.top, ask: false }; cmRender();
     }, true);
@@ -1298,27 +1426,41 @@ const UI = (() => {
     root.addEventListener('dragstart', ev => { const t = ev.target.closest && ev.target.closest('[data-drag]'); if (!t) return; st.drag = { id: +t.dataset.id, from: t.dataset.drag, s: t.dataset.s }; cmClose(); try { ev.dataTransfer.setData('text/plain', t.dataset.id); ev.dataTransfer.effectAllowed = 'move'; } catch (e) { } });
     root.addEventListener('dragover', ev => { if (st.drag && ev.target.closest && ev.target.closest('.eqbox,[data-drop]')) ev.preventDefault(); });
     root.addEventListener('drop', ev => {
-      const D = st.drag; st.drag = null; if (!D) return; ev.preventDefault(); const t = ev.target;
+      const D = st.drag; st.drag = null; if (!D) return; ev.preventDefault(); const t = ev.target, cell = t.closest && t.closest('.bi[data-zone]');
+      if (cell && (D.from === 'bag' || D.from === 'bank')) { Game.itemMove(D.from, D.id, cell.dataset.zone, +cell.dataset.slot); return; }
       if (D.from === 'bag' && t.closest('.eqbox')) Game.equip(D.id);
       else if (D.from === 'bag' && t.closest('[data-drop=bank]')) Game.bankPut(D.id);
       else if (t.closest('[data-drop=bag]')) { if (D.from === 'eq') Game.unequip(D.s); else if (D.from === 'bank') Game.bankTake(D.id); }
     });
     root.addEventListener('dragend', () => { st.drag = null; });
+    // prévia 3D do personagem na janela de Equipamento: gira devagar; arraste para girar à mão
+    root.addEventListener('pointerdown', ev => { const cv = ev.target.closest && ev.target.closest('canvas.pv'); if (cv) { st.pvDrag = { x: ev.clientX, y0: st.pvYaw || 0 }; ev.preventDefault(); } }, true);
+    window.addEventListener('pointermove', ev => { if (st.pvDrag) st.pvYaw = st.pvDrag.y0 + (ev.clientX - st.pvDrag.x) * .012; });
+    window.addEventListener('pointerup', () => { st.pvDrag = null; });
+    setInterval(() => {
+      const cv = document.querySelector('canvas.pv'); if (!cv || !cv.offsetParent || document.hidden || !Game.portrait) return;
+      if (!st.pvDrag) st.pvYaw = (st.pvYaw || 0) + .035;
+      try { Game.portrait(cv, st.pvYaw); } catch (e) { }
+    }, 70);
     root.addEventListener('mousedown', ev => { if (st.cm && !ev.target.closest('.ctxm')) cmClose(); }, true);
-    root.addEventListener('input', ev => { const t = ev.target; if (!t.dataset || !t.dataset.ci) return; if (t.dataset.ci === 'cr') Game.createSet('hcx', t.value); else Game.setLook('hcx', t.value); });
+    root.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('button, .btn, .bi, .es') && Game.sound) Game.sound('click', { force: true }); }, true);
+    root.addEventListener('input', ev => { const t = ev.target; if (t.dataset && t.dataset.vol) { Game.setVol(t.dataset.vol, t.value / 100); return; } if (!t.dataset || !t.dataset.ci) return; if (t.dataset.ci === 'cr') Game.createSet('hcx', t.value); else Game.setLook('hcx', t.value); });
     addEventListener('keydown', ev => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey || st.menu) return;
       const k = ev.key.toLowerCase();
-      if (k === 'escape') { if (st.panel) closeAll(); else if (!st.death && typeof G !== 'undefined' && G.state === 'play') showPanel('pause'); ev.preventDefault(); return; }
+      if (k === 'escape' && st.carry) { carryCancel(); ev.preventDefault(); return; }
+      if (ev.target && /^(input|textarea|select)$/i.test(ev.target.tagName)) return;
+      if (k === 'escape') { if (st.modal) { modalClose(); winSync(); } else if (st.wins.length) winClose(st.wins[st.wins.length - 1]); else if (!st.death && typeof G !== 'undefined' && G.state === 'play') showPanel('pause'); ev.preventDefault(); return; }
       if (st.death || ev.repeat) return;
       if (k === 'i') togglePanel('inv');
       else if (k === 'c') togglePanel('char');
       else if (k === 'q') togglePanel('quest');
       else if (k === 't') togglePanel('auto');
       else if (k === 'h') togglePanel('look');
+      else if (k === 'b') togglePanel('lv');
       else if (k === 'n') Game.toggleMute();
       else if (k === 'v') togglePanel('tree');
-      else if (k === 'm') { if (st.panel !== 'map' && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
+      else if (k === 'm') { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
     });
     showPanel(null);
   }
@@ -1333,7 +1475,7 @@ const UI = (() => {
   return {
     init, showMenu, hideMenu, showCreate, hideCreate, syncCreate, update, log, float, toast, bigToast, setEvents, levelUp, refreshPanels,
     openDialog, closeAll, showDeath, hideDeath, mapToWorld,
-    isBlocking: () => st.menu || st.death || !!st.panel,
-    paused: () => st.panel === 'pause',
+    isBlocking: () => st.menu || st.death || !!st.modal,
+    paused: () => st.modal === 'pause',
   };
 })();

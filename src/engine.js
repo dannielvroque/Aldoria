@@ -140,7 +140,7 @@ function mkSphere(seg, rings) {
 
 class Mesh {
   constructor(gl, mb) {
-    this.gl = gl; this.n = mb.i.length;
+    this.gl = gl; this.n = mb.i.length; this.mb = mb;
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
     const buf = (data, loc) => {
       const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
@@ -154,14 +154,31 @@ class Mesh {
   }
 }
 
+/* malha com pele para a junção de peças (R.parts em cache): cada peça do modelo é um "osso" (índice em aJ, peso 1); até 48 por malha */
+class BatchMesh {
+  constructor(gl, m) {
+    this.gl = gl; this.n = m.i.length; this.bufs = [];
+    this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
+    const buf = (data, loc, size, type) => {
+      const b = gl.createBuffer(); this.bufs.push(b); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, type, false, 0, 0);
+    };
+    buf(new Float32Array(m.p), 0, 3, gl.FLOAT); buf(new Float32Array(m.n), 1, 3, gl.FLOAT); buf(new Float32Array(m.c), 2, 3, gl.FLOAT);
+    buf(new Uint8Array(m.j), 3, 4, gl.UNSIGNED_BYTE); buf(new Float32Array(m.w), 4, 4, gl.FLOAT);
+    const ib = gl.createBuffer(); this.bufs.push(ib); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(m.i), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+  }
+  dispose() { const gl = this.gl; gl.deleteVertexArray(this.vao); for (const b of this.bufs) gl.deleteBuffer(b); this.bufs = []; }
+}
+
 /* ===== Shaders ===== */
 const VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNor; layout(location=2) in vec3 aCol;
 layout(location=3) in vec4 aJ; layout(location=4) in vec4 aWt;
-uniform mat4 uVP; uniform mat4 uM; uniform mat4 uLP; uniform float uTime; uniform float uDetail; uniform float uSkin; uniform mat4 uBones[24];
+uniform mat4 uVP; uniform mat4 uM; uniform mat4 uLP; uniform float uTime; uniform float uDetail; uniform float uSkin; uniform mat4 uBones[48];
 out vec3 vN; out vec3 vC; out vec3 vW; out vec4 vL; out vec3 vP;
 void main(){ vec4 lp=vec4(aPos,1.0); vec3 ln=aNor; vP=aPos*length(uM[0].xyz);
-  if(uSkin>0.5){ mat4 sk=uBones[int(aJ.x)]*aWt.x+uBones[int(aJ.y)]*aWt.y+uBones[int(aJ.z)]*aWt.z+uBones[int(aJ.w)]*aWt.w; lp=sk*lp; ln=mat3(sk)*aNor; }
+  if(uSkin>0.5){ mat4 sk=uBones[int(aJ.x)]*aWt.x+uBones[int(aJ.y)]*aWt.y+uBones[int(aJ.z)]*aWt.z+uBones[int(aJ.w)]*aWt.w; lp=sk*lp; ln=mat3(sk)*aNor; vP*=length(sk[0].xyz); }
   vec4 w=uM*lp;
   if(uDetail>0.5&&uDetail<1.5){ vec3 ac=abs(aCol); float g=step(1.1*max(ac.r,ac.b),ac.g)*step(-0.00001,aCol.r); float a=sqrt(max(w.y-0.1,0.0))*0.042*g;
     w.x+=sin(uTime*1.7+w.x*0.31+w.z*0.27)*a; w.z+=cos(uTime*1.3+w.z*0.33-w.x*0.21)*a*0.7; w.y+=sin(uTime*2.3+w.x*0.5)*a*0.12; }
@@ -175,7 +192,7 @@ in vec3 vN; in vec3 vC; in vec3 vW; in vec4 vL; in vec3 vP; out vec4 o;
 uniform vec3 uTint; uniform float uEmis; uniform float uAlpha; uniform float uDetail;
 uniform vec3 uLight; uniform vec3 uCam; uniform vec3 uFog; uniform float uFogD;
 uniform vec3 uSun; uniform vec3 uAmbT; uniform vec3 uAmbB; uniform float uShOn; uniform float uShTx; uniform float uTime;
-uniform float uRough; uniform float uMetal; uniform vec3 uTop; uniform float uWet; uniform float uFx;
+uniform float uRough; uniform float uMetal; uniform vec3 uTop; uniform float uWet; uniform float uFx; uniform vec3 uRim;
 uniform sampler2DShadow uSh;
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -197,13 +214,25 @@ void main(){
   vec3 fn=normalize(cross(dFdx(vW),dFdy(vW))); if(dot(fn,n)<0.0) fn=-fn; if(uDetail>0.5) n=fn;
   float ndl=max(dot(n,-uLight),0.0);
   // cor por vértice com bandeiras no sinal: r<0 = peça de cenário 'limpa' (sem rocha/manchas), r<0 e g<0 = alvenaria (blocos), r<0 e b<0 = tábuas
-  float pf=step(vC.r,-0.00001), pm=pf*step(vC.g,-0.00001), pw=pf*step(vC.b,-0.00001);
-  vec3 albedo=abs(vC)*uTint;
+  float tf=step(3.0,vC.r); vec3 vcl=vec3(vC.r-4.0*tf,vC.g,vC.b); // tf=1: terreno (world.js ground() soma 4 ao canal r): sem rachaduras/estratos de rocha
+  float pf=step(vcl.r,-0.00001), pm=pf*step(vcl.g,-0.00001), pw=pf*step(vcl.b,-0.00001);
+  float ps=pm*pw; pm*=1.0-ps; pw*=1.0-ps; // r<0,g<0,b<0 = telhado de telhas (SHG em world.js)
+  vec3 albedo=abs(vcl)*uTint;
+  float lv=0.0, emL=0.0; // lava: terreno laranja saturado vira lava de borda nítida e brilho animado (só Alta)
+  if(uFx>0.5&&tf>0.5){ float lm=albedo.r-albedo.g*1.7-albedo.b*0.6; lv=smoothstep(0.04,0.12,lm); }
   float bh=0.0, bk=1.0; float bf=1.0-smoothstep(14.0,40.0,length(vW-uCam));
   if(uDetail>0.5){
     vec2 uv=abs(n.y)>0.5?vW.xz:vec2(vW.x+vW.z,vW.y);
     float d=vn(uv*1.3)*0.55+vn(uv*4.3)*0.45;
     albedo*=mix(0.80+0.40*d,0.95+0.10*d,pf);
+    if(ps>0.5){ // telhas em fileiras escalonadas: eixo horizontal perpendicular à normal, linhas por altura na inclinação
+      vec2 nx=vec2(-n.z,n.x); float nl=length(nx); nx=nl>0.001?nx/nl:vec2(1.0,0.0);
+      float rowH=0.3*max(sqrt(max(1.0-n.y*n.y,0.0)),0.35);
+      vec2 q=vec2(dot(vW.xz,nx)/0.5,vW.y/rowH); q.x+=floor(q.y)*0.5; vec2 f=fract(q), id=floor(q);
+      float fade=1.0-smoothstep(25.0,60.0,length(vW-uCam));
+      float tl=smoothstep(0.0,0.07,min(f.x,1.0-f.x))*smoothstep(0.0,0.2,f.y);
+      albedo*=mix(1.0,(0.66+0.34*tl)*(0.9+0.2*h21(id)),fade);
+    }
     if(pm+pw>0.5){ // alvenaria/tábuas: juntas regulares em coordenadas do mundo
       vec2 q=abs(n.y)>0.5?vW.xz:vec2(abs(n.x)>abs(n.z)?vW.z:vW.x,vW.y);
       vec2 cs=pm>0.5?vec2(0.9,0.45):vec2(9.0,0.3); q/=cs; q.x+=floor(q.y)*0.5; vec2 f=fract(q), id=floor(q);
@@ -230,8 +259,8 @@ void main(){
     float hn=vn(uv*6.0);
     // rocha: estratos, rachaduras e manchas
     float rr=abs(vn(uv*2.6+vn(uv*5.0)*1.3)*2.0-1.0);
-    float crack=(1.0-smoothstep(0.0,0.05+fwidth(rr)*2.5,rr))*(1.0-smoothstep(8.0,30.0,length(vW-uCam)));
-    float strat=vn(vec2(uv.x*2.0,uv.y*9.0+uv.x*1.5));
+    float crack=(1.0-smoothstep(0.0,0.05+fwidth(rr)*2.5,rr))*(1.0-smoothstep(8.0,30.0,length(vW-uCam)))*(1.0-tf);
+    float strat=mix(vn(vec2(uv.x*2.0,uv.y*9.0+uv.x*1.5)),0.5,tf);
     float hr=vn(uv*5.0)*0.5+strat*0.3+(1.0-crack)*0.6;
     albedo*=mix(1.0,(0.8+0.34*strat)*(1.0-0.22*crack),rk);
     bh+=(gm*hg*0.03*(1.0-pf)+sd*hs*0.03*(1.0-pf)+sn*hn*0.025*(1.0-pf)+rk*hr*0.06)*bf;
@@ -253,6 +282,7 @@ void main(){
     albedo*=0.9+0.2*og;
     bh=og*0.0015*(1.0-smoothstep(8.0,24.0,length(vW-uCam))); bk=0.6;
   }
+  if(lv>0.0){ float nz=vn(vW.xz*2.2+uTime*0.12); albedo=mix(albedo,vec3(1.0,0.5,0.1)*(0.7+0.5*nz),lv); emL=lv*(0.75+0.5*vn(vW.xz*3.0-uTime*0.25)); bh=mix(bh,-0.01,lv); }
   if(uFx>0.5){
     vec3 dpx=dFdx(vW), dpy=dFdy(vW); float dhx=dFdx(bh), dhy=dFdy(bh);
     vec3 r1=cross(dpy,n), r2=cross(n,dpx); float det=dot(dpx,r1);
@@ -298,16 +328,18 @@ void main(){
   vec3 diff=albedo*(1.0-metal*0.5)*(uSun*tb*1.05+amb*1.05);
   // brilho estilizado (faixa única)
   float hl=(world?smoothstep(0.955,0.975,ndh):smoothstep(0.88,0.99,ndh))*ndl*sh*(0.12+metal*1.1+(1.0-rough)*0.4);
-  vec3 lit=diff+uSun*hl*0.9*mix(vec3(1.0),albedo,metal)+albedo*uEmis*1.5;
+  vec3 lit=diff+uSun*hl*0.9*mix(vec3(1.0),albedo,metal)+albedo*uEmis*1.5+vec3(1.0,0.42,0.08)*emL*1.25;
   // reflexo (só água / chão molhado)
   vec3 Rv=reflect(-V,n); float ry=Rv.y;
   vec3 sky=ry>0.0?mix(uFog,uTop,pow(clamp(ry,0.0,1.0),0.5)):mix(uFog,uAmbB*0.7,clamp(-ry*1.6,0.0,1.0));
-  float fe=0.04+0.96*pow(1.0-ndv,5.0);
-  float envK=world?(uWet*0.9*(n.y>0.9?1.0:0.4)):(rough<0.12?1.0:0.0);
-  lit+=sky*fe*(1.0-rough*0.5)*envK*(0.35+0.65*sh)*1.2;
+  float f0=mix(0.04,0.5,metal), fe=f0+(1.0-f0)*pow(1.0-ndv,5.0);
+  float envK=world?(uWet*0.9*(n.y>0.9?1.0:0.4)):max(rough<0.12?1.0:0.0,metal*0.85); // metal reflete o céu/chão, tingido pela cor do metal
+  lit+=sky*mix(vec3(1.0),albedo*1.6,metal)*fe*(1.0-rough*0.5)*envK*(0.35+0.65*sh)*1.2;
   // contorno de luz em faixa
   float back=pow(max(dot(V,uLight),0.0),2.0);
   lit+=smoothstep(0.62,0.7,1.0-ndv)*(uAmbT*0.1+uSun*back*0.28)*(0.4+0.6*sh);
+  // rim por objeto (R.setRim): cor×intensidade independente da luz, só em personagens; separa jogador, alvo, elites e chefes do fundo e alimenta o bloom
+  if(!world) lit+=uRim*pow(1.0-ndv,3.0);
   // linhas de tinta nas arestas
   float ed=length(fwidth(fn));
   lit*=1.0-0.4*smoothstep(0.55,1.1,ed);
@@ -320,10 +352,17 @@ void main(){
   o=vec4(lit,uAlpha);
 }`;
 const VS_D = `#version 300 es
-layout(location=0) in vec3 aPos; layout(location=3) in vec4 aJ; layout(location=4) in vec4 aWt; uniform mat4 uVP; uniform mat4 uM; uniform float uSkin; uniform mat4 uBones[24];
+layout(location=0) in vec3 aPos; layout(location=3) in vec4 aJ; layout(location=4) in vec4 aWt; uniform mat4 uVP; uniform mat4 uM; uniform float uSkin; uniform mat4 uBones[48];
 void main(){ vec4 lp=vec4(aPos,1.0); if(uSkin>0.5){ mat4 sk=uBones[int(aJ.x)]*aWt.x+uBones[int(aJ.y)]*aWt.y+uBones[int(aJ.z)]*aWt.z+uBones[int(aJ.w)]*aWt.w; lp=sk*lp; } gl_Position=uVP*uM*lp; }`;
 const FS_D = `#version 300 es
 precision mediump float; void main(){}`;
+/* oclusão de contato estática (world.js aoFor): discos escuros com opacidade em vertex.r, sem luz, desenhados com blending sobre o chão */
+const VS_AO = `#version 300 es
+layout(location=0) in vec3 aPos; layout(location=2) in vec3 aCol; uniform mat4 uVP; out float vA; out vec3 vW;
+void main(){ vA=aCol.r; vW=aPos; gl_Position=uVP*vec4(aPos,1.0); }`;
+const FS_AO = `#version 300 es
+precision highp float; in float vA; in vec3 vW; uniform vec3 uCam; uniform float uK; out vec4 o;
+void main(){ float f=1.0-smoothstep(45.0,75.0,length(vW.xz-uCam.xz)); o=vec4(0.0,0.0,0.0,vA*uK*f); }`;
 const VS_Q = `#version 300 es
 out vec2 uv; void main(){ vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2)); uv=p; gl_Position=vec4(p*2.0-1.0,0.0,1.0); }`;
 const FS_SKY = `#version 300 es
@@ -419,8 +458,9 @@ class Renderer {
       const u = {}; for (const n of names) u[n] = gl.getUniformLocation(p, n); return { p, u };
     };
     this.P = {
-      main: prog(VS, FS, ['uVP', 'uM', 'uLP', 'uTint', 'uEmis', 'uAlpha', 'uDetail', 'uTime', 'uSkin', 'uBones', 'uRough', 'uMetal', 'uTop', 'uWet', 'uFx', 'uLight', 'uCam', 'uFog', 'uFogD', 'uSun', 'uAmbT', 'uAmbB', 'uShOn', 'uShTx', 'uSh']),
+      main: prog(VS, FS, ['uVP', 'uM', 'uLP', 'uTint', 'uEmis', 'uAlpha', 'uDetail', 'uTime', 'uSkin', 'uBones', 'uRough', 'uMetal', 'uTop', 'uWet', 'uFx', 'uLight', 'uCam', 'uFog', 'uFogD', 'uSun', 'uAmbT', 'uAmbB', 'uShOn', 'uShTx', 'uSh', 'uRim']),
       depth: prog(VS_D, FS_D, ['uVP', 'uM', 'uSkin', 'uBones']),
+      ao: prog(VS_AO, FS_AO, ['uVP', 'uCam', 'uK']),
       sky: prog(VS_Q, FS_SKY, ['uIV', 'uCam', 'uFog', 'uTop', 'uSunDir', 'uSun', 'uDisc', 'uStars', 'uTime', 'uCloud']),
       bright: prog(VS_Q, FS_BRIGHT, ['uT', 'uTx']),
       blur: prog(VS_Q, FS_BLUR, ['uT', 'uDir']),
@@ -558,7 +598,7 @@ class Renderer {
     gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniformMatrix4fv(u.uLP, false, this.lp);
     gl.uniform3fv(u.uCam, cam); gl.uniform3fv(u.uFog, fog); gl.uniform1f(u.uFogD, fogD);
     gl.uniform3fv(u.uLight, dir); gl.uniform3fv(u.uSun, sun); gl.uniform3fv(u.uAmbT, ambT); gl.uniform3fv(u.uAmbB, ambB);
-    gl.uniform1f(u.uTime, e.t || 0); gl.uniform3fv(u.uTop, top); gl.uniform1f(u.uWet, e.wet || 0); gl.uniform1f(u.uFx, this.qi >= 2 ? 1 : 0); gl.uniform1f(u.uShOn, this.shOn ? 1 : 0); gl.uniform1f(u.uShTx, 1 / this.shSize);
+    gl.uniform1f(u.uTime, e.t || 0); gl.uniform3fv(u.uTop, top); gl.uniform1f(u.uWet, e.wet || 0); gl.uniform1f(u.uFx, this.qi >= 2 ? 1 : 0); gl.uniform1f(u.uShOn, this.shOn ? 1 : 0); gl.uniform1f(u.uShTx, 1 / this.shSize); gl.uniform3f(u.uRim, 0, 0, 0);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.shTex); gl.uniform1i(u.uSh, 0);
   }
   /* ---- pós-processamento: bloom + tone mapping + vinheta ---- */
@@ -606,6 +646,61 @@ class Renderer {
     if (mesh.chunks) { if (mesh.vao && mesh.n) this.draw1(mesh, model, tint, emis, alpha, detail, rough, metal); for (const c of mesh.chunks) if (this.chunkVis(c)) this.draw1(c, model, tint, emis, alpha, detail, rough, metal); return; }
     this.draw1(mesh, model, tint, emis, alpha, detail, rough, metal);
   }
+  /* rim das próximas peças de personagem: cor [r,g,b] já multiplicada pela intensidade; setRim(0,0,0) desliga. Só no passe principal */
+  setRim(r, g, b) { if (this.pass !== 'shadow') this.gl.uniform3f(this.u.uRim, r, g, b); }
+  /* prévia de personagem num canvas 2D (janela de Equipamento, ui.js): desenha fora do quadro num alvo HDR, passa o pós do jogo (FS_POST: ACES, cor, contorno de tinta; sem bloom)
+     para um alvo RGBA8 e copia para o canvas. Chamar só entre quadros. draw() desenha com R.parts/R.draw; o = {eye, at, fov, bg, exp} */
+  renderPortrait(cv, draw, o) {
+    const gl = this.gl, W = cv.width, H = cv.height; o = o || {};
+    let pv = this.pv;
+    if (!pv || pv.w !== W || pv.h !== H) {
+      if (pv) { gl.deleteTexture(pv.s.t); gl.deleteFramebuffer(pv.s.f); gl.deleteRenderbuffer(pv.d); gl.deleteTexture(pv.o.t); gl.deleteFramebuffer(pv.o.f); }
+      const s = this.tex(W, H), d = gl.createRenderbuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, d); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, W, H);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, s.f); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, d);
+      const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+      pv = this.pv = { w: W, h: H, s, d, o: { t, f }, buf: new Uint8Array(W * H * 4), img: new ImageData(W, H) };
+    }
+    const prevF = gl.getParameter(gl.FRAMEBUFFER_BINDING), prevV = gl.getParameter(gl.VIEWPORT), prevPass = this.pass, prevSB = this.softBox, prevSh = this.shOn;
+    const bg = o.bg || [.05, .06, .09], P = this.P, u = P.main.u, eye = o.eye || [0, 1.5, 4.6];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pv.s.f); gl.viewport(0, 0, W, H);
+    gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.enable(gl.CULL_FACE); gl.disable(gl.BLEND);
+    gl.useProgram(P.main.p);
+    gl.uniformMatrix4fv(u.uVP, false, M.mul(M.persp(o.fov || .6, W / H, .3, 60), M.lookAt(eye, o.at || [0, 1.15, 0], [0, 1, 0]))); gl.uniformMatrix4fv(u.uLP, false, M.id());
+    gl.uniform3fv(u.uCam, eye); gl.uniform3fv(u.uFog, bg); gl.uniform1f(u.uFogD, 0);
+    gl.uniform3fv(u.uLight, V.norm([-.5, -.6, -.62])); gl.uniform3f(u.uSun, 1.05, .96, .85); gl.uniform3f(u.uAmbT, .62, .66, .78); gl.uniform3f(u.uAmbB, .4, .34, .3);
+    gl.uniform1f(u.uTime, 0); gl.uniform3f(u.uTop, .4, .55, .85); gl.uniform1f(u.uWet, 0); gl.uniform1f(u.uFx, this.qi >= 1 ? 1 : 0);
+    gl.uniform1f(u.uShOn, 0); gl.uniform1f(u.uShTx, 1 / this.shSize); gl.uniform3f(u.uRim, 0, 0, 0);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.shTex); gl.uniform1i(u.uSh, 0);
+    this.pass = 'main'; this.shOn = false; this.softBox = true;
+    draw();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pv.o.f); gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
+    const Q = P.post, pu = Q.u; gl.useProgram(Q.p);
+    for (let i = 0; i < 3; i++) { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, pv.s.t); }
+    gl.uniform1i(pu.uS, 0); gl.uniform1i(pu.uB0, 1); gl.uniform1i(pu.uB1, 2); gl.uniform1f(pu.uBloom, 0); gl.uniform1f(pu.uExp, o.exp || 1);
+    gl.uniform2f(pu.uTx, 1 / W, 1 / H); gl.uniform3f(pu.uSunS, .5, .5, 0);
+    gl.bindVertexArray(this.quad); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, pv.buf);
+    gl.bindVertexArray(null); gl.bindFramebuffer(gl.FRAMEBUFFER, prevF); gl.viewport(prevV[0], prevV[1], prevV[2], prevV[3]);
+    gl.activeTexture(gl.TEXTURE0); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+    this.pass = prevPass; this.softBox = prevSB; this.shOn = prevSh;
+    const dd = pv.img.data, row = W * 4; for (let y = 0; y < H; y++) dd.set(pv.buf.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+    cv.getContext('2d').putImageData(pv.img, 0, 0);
+  }
+  /* AO estático do cenário (w.ao): depois do mundo opaco; Baixa não desenha. k = opacidade máxima */
+  drawAO(w, vp, cam, k) {
+    if (!w || !w.chunks || this.pass === 'shadow' || this.qi < 1) return;
+    const gl = this.gl, A = this.P.ao;
+    gl.useProgram(A.p); gl.uniformMatrix4fv(A.u.uVP, false, vp); gl.uniform3fv(A.u.uCam, cam); gl.uniform1f(A.u.uK, k == null ? 1 : k);
+    gl.enable(gl.BLEND); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-2, -2);
+    for (const c of w.chunks) if (this.chunkVis(c)) { gl.bindVertexArray(c.vao); gl.drawElements(gl.TRIANGLES, c.n, gl.UNSIGNED_INT, 0); }
+    gl.disable(gl.POLYGON_OFFSET_FILL); gl.enable(gl.CULL_FACE); gl.depthMask(true); gl.disable(gl.BLEND);
+    gl.useProgram(this.P.main.p);
+  }
   /* peças giratórias do cenário (pás de moinho): {mesh, p:[x,y,z], yaw, w (rad/s), ph}; gira em torno do eixo Z local */
   drawSpin(list, tint, emis, alpha, detail, rough, metal) {
     const t = this.time || 0, cam = this.cullCam, f = this.shFocus;
@@ -636,7 +731,52 @@ class Renderer {
     if (t) { gl.disable(gl.BLEND); gl.depthMask(true); if (this.add) gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); }
   }
   /* desenha um modelo composto de partes: {m,p,s,o,r,c,sw,at,e,ph} */
+  /* junção de peças: um modelo em cache (parts._c, marcado em models.js) vira poucas malhas com pele (agrupadas por emissão, rugosidade e metal; até 48 peças cada).
+     As matrizes de osso são as mesmas que o desenho peça a peça calculava (balanço sw, ataque at, flutuar bob, bater fl); as estáticas são calculadas uma vez.
+     R.noBatch = true volta ao desenho antigo (comparação de imagem). A malha é por estado de softBox (caixas suaves em personagens). */
+  batchOf(parts) {
+    const soft = this.softBox ? 1 : 0, key = soft ? '_bs' : '_bh';
+    if (parts[key]) return parts[key];
+    const gl = this.gl, groups = new Map();
+    parts.forEach((q, i) => {
+      const eV = q.e ? Math.min(1, +q.e || 1) * .9 : 0, k = eV + '|' + (q.rg == null ? 'n' : q.rg) + '|' + (q.mt || 0);
+      let g = groups.get(k); if (!g) groups.set(k, g = { e: eV, rg: q.rg, mt: q.mt, idx: [] }); g.idx.push(i);
+    });
+    const out = [];
+    for (const g of groups.values()) for (let s0 = 0; s0 < g.idx.length; s0 += 48) {
+      const ids = g.idx.slice(s0, s0 + 48), P = [], N = [], C = [], I = [], J = [], W = [];
+      ids.forEach((pi, bi) => {
+        const q = parts[pi], name = (q.m === 'box' && soft && !q.sharp) ? 'sbox' : q.m, src = q.g || this.mesh[name].mb, b0 = P.length / 3, c = q.c; // q.g = geometria própria (loft)
+        for (let k = 0; k < src.p.length; k += 3) { P.push(src.p[k], src.p[k + 1], src.p[k + 2]); N.push(src.n[k], src.n[k + 1], src.n[k + 2]); C.push(src.c[k] * c[0], src.c[k + 1] * c[1], src.c[k + 2] * c[2]); J.push(bi, 0, 0, 0); W.push(1, 0, 0, 0); }
+        for (const x of src.i) I.push(x + b0);
+      });
+      const mesh = new BatchMesh(gl, { p: P, n: N, c: C, i: I, j: J, w: W }); mesh.bones = new Float32Array(ids.length * 16);
+      out.push({ mesh, ids, dyn: ids.map(pi => !!(parts[pi].sw || parts[pi].at || parts[pi].bob || parts[pi].fl)), e: g.e, rg: g.rg, mt: g.mt, init: false });
+    }
+    parts[key] = out; const L = this.batches || (this.batches = []); L.push(parts);
+    if (L.length > 160) { const o = L.shift(); for (const k2 of ['_bs', '_bh']) if (o[k2]) { for (const G of o[k2]) G.mesh.dispose(); o[k2] = null; } } // FIFO: libera a GPU dos modelos mais antigos (variações de equipamento/aparência)
+    return out;
+  }
+  partsBatch(parts, base, tint, emis, alpha, anim) {
+    for (const G of this.batchOf(parts)) {
+      const bn = G.mesh.bones, ids = G.ids;
+      for (let k = 0; k < ids.length; k++) {
+        if (G.init && !G.dyn[k]) continue;
+        const q = parts[ids[k]]; let rx = q.r ? q.r[0] : 0, rz = q.r ? q.r[2] : 0; const ry = q.r ? q.r[1] : 0; let p = q.p;
+        if (anim) {
+          if (q.sw) rx += Math.sin(anim.t * 9 + (q.ph || 0)) * q.sw * anim.amp;
+          if (q.at) rx -= Math.sin(anim.atk * Math.PI) * q.at;
+          if (q.bob) p = [p[0], p[1] + Math.sin(anim.t * 5) * q.bob, p[2]];
+          if (q.fl) rz += Math.sin(anim.t * 7 + (q.ph || 0)) * q.fl * (.7 + .3 * anim.amp);
+        }
+        bn.set(M.part(p, [rx, ry, rz], q.o || [0, 0, 0], q.s), k * 16);
+      }
+      G.init = true;
+      this.draw1(G.mesh, base, tint, G.e ? Math.max(emis || 0, G.e) : emis, alpha, 0, G.rg, G.mt);
+    }
+  }
   parts(parts, base, tint, emis, alpha, anim) {
+    if (parts._c && !this.noBatch) return this.partsBatch(parts, base, tint, emis, alpha, anim);
     for (const q of parts) {
       let rx = q.r ? q.r[0] : 0, rz = q.r ? q.r[2] : 0; const ry = q.r ? q.r[1] : 0;
       let p = q.p;
@@ -648,7 +788,7 @@ class Renderer {
       }
       const m = M.mul(base, M.part(p, [rx, ry, rz], q.o || [0, 0, 0], q.s));
       const c = q.c;
-      this.draw((q.m === 'box' && this.softBox && !q.sharp) ? this.mesh.sbox : this.mesh[q.m], m, [c[0] * tint[0], c[1] * tint[1], c[2] * tint[2]], q.e ? Math.max(emis || 0, .9) : emis, alpha, 0, q.rg, q.mt);
+      this.draw(q.g ? (q.g._m || (q.g._m = new Mesh(this.gl, q.g))) : (q.m === 'box' && this.softBox && !q.sharp) ? this.mesh.sbox : this.mesh[q.m], m, [c[0] * tint[0], c[1] * tint[1], c[2] * tint[2]], q.e ? Math.max(emis || 0, Math.min(1, +q.e || 1) * .9) : emis, alpha, 0, q.rg, q.mt);
     }
   }
 }

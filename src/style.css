@@ -513,6 +513,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
 em.pl { position: absolute; top: 2px; right: 4px; font: 700 11px var(--sans); font-style: normal; color: #ffe08a; text-shadow: 0 1px 2px #000, 0 0 3px #000; z-index: 2; }
 .portrait { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 4px; border-radius: 8px; background: radial-gradient(ellipse at 50% 35%, rgba(217, 180, 90, .2), transparent 70%); overflow: hidden; }
 .portrait .sil { position: absolute; top: 2px; height: 150px; fill: rgba(217, 180, 90, .13); stroke: rgba(217, 180, 90, .35); stroke-width: 1; }
+.portrait canvas.pv { position: absolute; top: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; aspect-ratio: 3 / 4; cursor: grab; border-radius: 8px; -webkit-mask-image: radial-gradient(ellipse 62% 64% at 50% 48%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 62% 64% at 50% 48%, #000 62%, transparent 100%); } .portrait canvas.pv:active { cursor: grabbing; }
+.portrait b, .portrait small { position: absolute; left: 0; right: 0; text-align: center; background: rgba(8, 6, 4, .62); text-shadow: 0 1px 2px #000; }
+.portrait b { bottom: 15px; padding-top: 2px; border-radius: 0; } .portrait small { bottom: 0; padding-bottom: 2px; border-radius: 0 0 8px 8px; }
 .portrait .pic { position: absolute; top: 62px; font-size: 30px; filter: drop-shadow(0 0 6px rgba(255, 210, 120, .6)); }
 .portrait b { font: 600 13px var(--serif); color: var(--gold); z-index: 1; } .portrait small { font-size: 10.5px; color: var(--mut); z-index: 1; }
 .itabs { display: flex; gap: 4px; border-bottom: 1px solid rgba(184, 145, 63, .45); }
@@ -562,3 +565,31 @@ em.pl { position: absolute; top: 2px; right: 4px; font: 700 11px var(--sans); fo
 .shop-r.lockd { opacity: .65; }
 @media (max-width: 1000px) { #ui.side #p-dlg { left: 10px; transform: translate(0, -50%); width: calc(100% - 460px); } }
 .mf-h b { flex: 1; min-width: 0; } .mf-h .mlv { flex: none; margin: 0; }
+.enc-o { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; } .enc-o .btn { text-align: left; }
+.mixer { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.04); }
+.mixer label { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px; font-size: 12.5px; color: var(--mut, #b8ab94); }
+.mixer input[type=range] { width: 100%; accent-color: #d9b45a; }
+/* item que o personagem ainda não pode equipar (classe, fase ou nível) */
+.bi.nouse{opacity:.5;filter:saturate(.45);box-shadow:inset 0 0 0 1px #b4443c}
+.bi.nouse:hover{opacity:.8}
+/* mover itens: item na mão */
+.carry-ghost{position:fixed;z-index:99999;pointer-events:none;transform:translate(-50%,-50%) scale(1.08);box-shadow:0 6px 18px #000a;opacity:.92}
+.bi.carry{opacity:.3}
+.bi.empty[data-zone]:hover{box-shadow:inset 0 0 0 1px #e8c76a88}
+/* refino Ancient (+10 e +11) */
+.pl.anc{background:linear-gradient(135deg,#ffd866,#ff9a3c);color:#2a1600;text-shadow:none;box-shadow:0 0 6px #ffb347}
+
+/* ---------- janelas flutuantes (várias abertas, arrastáveis pelo título) ---------- */
+.panel.win { transform: none; animation: winin .16s ease-out; }
+@keyframes winin { from { opacity: 0; } }
+.panel.win .ph { cursor: move; user-select: none; touch-action: none; }
+.panel.win .ph .x { cursor: pointer; }
+#p-pause { z-index: 30; }
+#p-lv { width: 580px; }
+.lv-intro { font-size: 12.5px; color: var(--mut); margin-bottom: 6px; line-height: 1.4; }
+.lv-t { display: flex; flex-direction: column; gap: 5px; }
+.lv-r { display: flex; gap: 10px; align-items: flex-start; padding: 6px 9px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 220, 150, .1); }
+.lv-r.on { border-color: var(--gold); background: rgba(217, 180, 90, .14); }
+.lv-r small { display: block; font-size: 11px; color: var(--mut); }
+.lv-r small.mobs { color: #b9b2a0; }
+.lv-n { flex: none; min-width: 64px; font: 700 13px var(--serif); color: var(--gold); }

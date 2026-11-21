@@ -1,0 +1,116 @@
+{
+ "aldoria_praca_dia": {
+  "draw_calls": 1243,
+  "triangulos": 1398960,
+  "entropia": 4.59,
+  "dominante": 0.196,
+  "contraste": 100.5,
+  "bordas": 0.038,
+  "luma": 179.1
+ },
+ "aldoria_praca_noite": {
+  "entropia": 4.6,
+  "dominante": 0.178,
+  "contraste": 106.3,
+  "bordas": 0.04,
+  "luma": 132.5
+ },
+ "campo_dia": {
+  "draw_calls": 1515,
+  "triangulos": 1129226,
+  "entropia": 5.0,
+  "dominante": 0.166,
+  "contraste": 135.1,
+  "bordas": 0.038,
+  "luma": 158.6
+ },
+ "campo_noite": {
+  "entropia": 3.9,
+  "dominante": 0.332,
+  "contraste": 72.0,
+  "bordas": 0.02,
+  "luma": 118.8
+ },
+ "floresta_dia": {
+  "draw_calls": 1089,
+  "triangulos": 489898,
+  "entropia": 5.5,
+  "dominante": 0.155,
+  "contraste": 160.5,
+  "bordas": 0.031,
+  "luma": 144.5
+ },
+ "floresta_noite": {
+  "entropia": 5.16,
+  "dominante": 0.153,
+  "contraste": 101.7,
+  "bordas": 0.018,
+  "luma": 98.6
+ },
+ "ruinas_dia": {
+  "draw_calls": 616,
+  "triangulos": 540826,
+  "entropia": 3.73,
+  "dominante": 0.323,
+  "contraste": 88.5,
+  "bordas": 0.025,
+  "luma": 115.6
+ },
+ "ruinas_noite": {
+  "entropia": 4.12,
+  "dominante": 0.216,
+  "contraste": 72.3,
+  "bordas": 0.022,
+  "luma": 69.3
+ },
+ "deserto_dia": {
+  "draw_calls": 700,
+  "triangulos": 520294,
+  "entropia": 3.63,
+  "dominante": 0.291,
+  "contraste": 160.8,
+  "bordas": 0.019,
+  "luma": 193.7
+ },
+ "deserto_noite": {
+  "entropia": 2.71,
+  "dominante": 0.389,
+  "contraste": 39.0,
+  "bordas": 0.007,
+  "luma": 155.2
+ },
+ "picos_dia": {
+  "draw_calls": 603,
+  "triangulos": 322230,
+  "entropia": 3.85,
+  "dominante": 0.255,
+  "contraste": 101.4,
+  "bordas": 0.017,
+  "luma": 197.0
+ },
+ "picos_noite": {
+  "entropia": 4.29,
+  "dominante": 0.199,
+  "contraste": 120.5,
+  "bordas": 0.022,
+  "luma": 151.9
+ },
+ "cinzas_dia": {
+  "draw_calls": 563,
+  "triangulos": 295140,
+  "entropia": 4.67,
+  "dominante": 0.291,
+  "contraste": 85.1,
+  "bordas": 0.014,
+  "luma": 75.4
+ },
+ "cinzas_noite": {
+  "entropia": 4.87,
+  "dominante": 0.188,
+  "contraste": 72.2,
+  "bordas": 0.016,
+  "luma": 38.8
+ },
+ "_erros_console": [],
+ "_requisicoes_de_rede": []
+}

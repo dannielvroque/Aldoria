@@ -1,6 +1,8 @@
 'use strict';
 /* ===== Modelos 3D montados por código (low-poly, originais) ===== */
 const P = (m, p, s, c, x) => Object.assign({ m, p, s, c }, x || {});
+const HERO_D = .14; // alongamento das pernas de jogador/NPC (stretchLegs(a, .14)); as pernas em loft já nascem nessa proporção
+let LOFT_MODE = false; // ligado só ao montar monstros (mobParts): humanoid() usa membros em loft contínuo; jogador e NPCs seguem com as peças de revolução (stretchLegs, headScale e seatedParts dependem delas)
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
 const SKIN = [.93, .76, .6];
@@ -61,6 +63,14 @@ function humanoid(o) {
   // corpo orgânico: superfícies de revolução com seção elíptica (sem blocos)
   if (L) for (const s of [-1, 1]) {
     const ph = s < 0 ? 0 : PI, x = s * (F ? .15 : .16), K = { sw: .9, ph };
+    if (LOFT_MODE || o.loft) { // perna: coxa, canela e bota em lofts contínuos. Jogador/NPC (o.loft): já na proporção esticada (stretchLegs pula as peças `ns`) e etiquetadas para o cavaleiro sentado (seatedParts)
+      const hero = !!o.loft, Y = hero ? (.88 + HERO_D) / .88 : 1, hip = [x, .88 * Y, 0], T = hero ? { leg: 'thigh', ns: 1 } : {}, Cf = hero ? { leg: 'calf', ns: 1 } : {};
+      const yy = v => v * Y;
+      a.push(geoP(mkLoft([[x, yy(.93), 0, lw * .86, lw * .94], [x, yy(.74), .01, lw * .78, lw * .84], [x, yy(.56), -.005, lw * .64, lw * .7]], { sides: 8, sub: 3 }), o.pants, hip, Object.assign({}, K, T)));
+      a.push(geoP(mkLoft([[x, yy(.6), -.005, lw * .62, lw * .68], [x, yy(.44), -.01, lw * .55, lw * .6], [x, yy(.3), 0, lw * .5, lw * .54]], { sides: 8, sub: 3 }), shade(o.pants, .94), hip, Object.assign({}, K, Cf)));
+      a.push(geoP(mkLoft([[x, yy(.34), 0, lw * .53, lw * .57], [x, yy(.16), .01, lw * .55, lw * .53], [x, yy(.07), .12, lw * .52, lw * .36], [x, yy(.03), .26, lw * .42, lw * .22]], { sides: 8, sub: 2 }), o.boots, hip, Object.assign({}, K, Cf)));
+      continue;
+    }
     a.push(P('thigh', [x, .88, 0], [lw + .1, .5, lw + .11], o.pants, Object.assign({ o: [0, -.22, 0] }, K)));
     a.push(P('sphere', [x, .88, 0], [lw + .02, .1, lw + .03], shade(o.pants, .95), Object.assign({ o: [0, -.45, .02] }, K))); // joelho
     a.push(P('calf', [x, .88, 0], [lw + .03, .44, lw + .05], shade(o.pants, .92), Object.assign({ o: [0, -.64, -.01] }, K)));
@@ -79,6 +89,12 @@ function humanoid(o) {
   if (CURLOOK) hairParts(a, CURLOOK, hc); else if (o.hair) a.push(P('sphere', [0, 1.86, -.03], [.46, .34, .46], o.hair));
   for (const s of [-1, 1]) { // ombro, braço, antebraço e mão
     const ph = s < 0 ? PI : 0, K = { sw: .8, ph, at: s > 0 ? 1.5 : 0 }, sl = o.sleeve || o.top;
+    if (LOFT_MODE || o.loft) { // braço: ombro, braço e antebraço num loft contínuo; a mão segue como peça própria (stretchLegs sobe o pivô e a geometria vai junto)
+      const r1 = (aw + .12) / 2, r2 = (aw + .07) / 2, r3 = (aw + .03) / 2;
+      a.push(geoP(mkLoft([[s * .38, 1.58, 0, r1, r1], [s * .38, 1.42, 0, r1 * .92, r1 * .92], [s * .39, 1.22, .01, r2, r2], [s * .4, 1.0, .02, r3, r3]], { sides: 8, sub: 2 }), sl, [s * .38, 1.52, 0], K));
+      a.push(P('hand', [s * .38, 1.52, 0], [aw - .03, .17, aw - .05], SK, Object.assign({ o: [0, -.74, .01] }, K)));
+      continue;
+    }
     a.push(P('sphere', [s * .38, 1.55, 0], [aw + .1, aw + .08, aw + .1], sl, Object.assign({ o: [0, -.03, 0] }, K)));
     a.push(P('arm1', [s * .38, 1.52, 0], [aw + .08, .4, aw + .07], sl, Object.assign({ o: [0, -.2, 0] }, K)));
     a.push(P('arm2', [s * .38, 1.52, 0], [aw + .05, .33, aw + .04], shade(sl, .9), Object.assign({ o: [0, -.52, .01] }, K)));
@@ -105,15 +121,40 @@ function rotOff(d, r) {
 }
 const PA = (m, J, d, s, c, r, x) => P(m, J, s, c, Object.assign({ o: rotOff(d, r), r }, x));
 // paletas por grau: 0 pano, 1 couro, 2 aço, 3 rúnico, 4 ouro, 5 celeste
-const ARM_COL = [[.78, .72, .58], [.62, .42, .25], [.62, .66, .74], [.25, .62, .7], [.92, .74, .25], [.82, .9, 1]];
-const WPN_COL = [[.62, .52, .36], [.72, .74, .8], [.5, .68, .95], [.3, .85, .8], [.98, .82, .3], [.85, .95, 1]];
+/* cor da armadura por classe e grau: Vanguarda = aço, Arcanista = tecido azul/violeta, Caçadora = couro e verde, Invocador = peles e osso */
+const ARM_CLS_COL = {
+  vanguard: [[.52, .5, .5], [.58, .6, .66], [.7, .74, .82], [.3, .62, .7], [.92, .74, .25], [.82, .9, 1]],
+  arcanist: [[.8, .78, .9], [.5, .56, .9], [.42, .4, .85], [.25, .62, .9], [.9, .8, .45], [.9, .9, 1]],
+  huntress: [[.55, .45, .3], [.4, .55, .3], [.3, .5, .3], [.25, .62, .55], [.85, .7, .3], [.8, .95, .85]],
+  tamer: [[.6, .48, .32], [.7, .5, .3], [.55, .38, .25], [.6, .3, .7], [.92, .74, .25], [.95, .9, .8]],
+};
+const ARM_COL = [[.78, .72, .58], [.62, .42, .25], [.62, .66, .74], [.25, .62, .7], [.92, .74, .25], [.66, .76, .92]];
+const WPN_COL = [[.62, .52, .36], [.72, .74, .8], [.5, .68, .95], [.3, .85, .8], [.98, .82, .3], [.7, .84, .96]];
 const RAR_GLOW = [null, [.45, .9, .45], [.35, .65, 1], [.82, .42, 1], [1, .72, .22]];
 
 
 /* camada de estilo "dark fantasy": capa, ombreiras, detalhes dourados e adereços por classe */
+/* capa: 5 faixas que se abrem para baixo e para trás (cai como pano), com barra dourada; balança (bob) mais perto da barra */
+function capeParts(a, c, gold) {
+  for (let k = 0; k < 5; k++) {
+    const y = 1.5 - k * .24, w = .5 + k * .085, z = -.17 - k * .022 - (k > 2 ? (k - 2) * .02 : 0);
+    a.push(P('box', [0, y, z], [w, .27, .035], k % 2 ? shade(c, .92) : c, { r: [.07 * k, 0, 0], bob: .012 + k * .011 }));
+  }
+  a.push(P('box', [0, .3, -.3], [.92, .035, .04], gold, { r: [.3, 0, 0], bob: .06 }));
+}
+/* asas de penas (fase >= Ancestral): duas fileiras de penas alongadas em leque a partir das costas; batem de leve (fl) */
+function angelWings(a) {
+  for (const s of [-1, 1]) {
+    const sh = [s * .26, 1.5, -.24];
+    for (let row = 0; row < 2; row++) for (let k = 0; k < 6; k++) {
+      const ang = .12 + k * .17 + row * .08, L = (.62 + k * .075) * (row ? .78 : 1);
+      a.push(P('sphere', sh, [.2 - row * .03, L, .04], row ? [.66, .78, .95] : [.8, .88, .98], { e: .25, o: [0, L * .5, -row * .035], r: [0, 0, -s * ang], fl: s * .18 }));
+    }
+  }
+}
 function styleLayer(a, cls, ag, ac, hg, SKc, arl) {
   const gold = [.95, .78, .3], capeC = { vanguard: [.55, .1, .12], arcanist: [.14, .2, .62], huntress: [.13, .38, .2], tamer: [.4, .18, .6] }[cls] || [.4, .3, .3];
-  a.push(P('box', [0, 1.14, -.2], [.64, 1.0, .05], capeC, { bob: .025 }), P('box', [0, .52, -.22], [.78, .38, .05], shade(capeC, .85), { bob: .045 }), P('box', [0, .34, -.23], [.8, .04, .05], gold, { bob: .045 }));
+  capeParts(a, capeC, gold);
   for (const s of [-1, 1]) a.push(P('sphere', [s * .22, 1.58, -.12], [.09, .09, .06], gold));
   a.push(P('box', [0, .95, .17], [.17, .12, .05], gold), P('sphere', [0, .95, .2], [.07, .07, .04], [.3, .65, 1], { e: 1 }), P('box', [0, 1.57, 0], [.5, .05, .32], gold));
   const hood = (c) => { if (hg < 0) a.push(P('sphere', [0, 1.8, -.11], [.5, .5, .44], c), P('cone', [0, 1.78, -.3], [.3, .5, .3], c, { r: [-1.3, 0, 0] })); };
@@ -138,21 +179,36 @@ function styleLayer(a, cls, ag, ac, hg, SKc, arl) {
   }
 }
 
+/* ombreira de ouro por classe (graus altos e fases): aço (Vanguarda), manto de pano com friso (Arcanista), couro com pena (Caçadora), pele (Invocador) */
+function shoulderTrim(a, cls, big) {
+  const gold = [.95, .78, .3], k = big ? 1 : .8;
+  for (const s of [-1, 1]) {
+    if (cls === 'arcanist') a.push(P('sphere', [s * .38, 1.64, 0], [.3 * k, .1, .3 * k], [.3, .4, .85]), P('sphere', [s * .38, 1.6, 0], [.33 * k, .035, .33 * k], gold));
+    else if (cls === 'huntress') a.push(P('sphere', [s * .39, 1.63, 0], [.22 * k, .12, .26 * k], [.36, .24, .13]), P('cone', [s * .46, 1.8, -.04], [.06, .3, .06], [.9, .85, .6], { r: [0, 0, -s * .5] }));
+    else if (cls === 'tamer') a.push(P('sphere', [s * .4, 1.64, 0], [.3 * k, .17, .32 * k], [.92, .9, .82]), P('sphere', [s * .46, 1.7, .06], [.12, .1, .12], [.98, .97, .92]));
+    else a.push(P('sphere', [s * .42, 1.66, 0], [.38 * k, .26 * k, .38 * k], gold));
+  }
+}
 /* decoração da armadura: cada grau, raridade e nível de refino muda o visual */
-function armorDeco(a, ag, ac, rg, ap, arl) {
+function armorDeco(a, ag, ac, rg, ap, arl, cls) {
   if (ag < 0) return;
   if (ag >= 1) for (const s of [-1, 1]) a.push(P('sphere', [s * .4, 1.6, 0], [.28, .17, .3], ac, { rg: .4, mt: .7 })); // ombreiras
-  if (ag >= 2) a.push(P('sphere', [0, 1.33, .1], [.5, .52, .2], shade(ac, 1.15), { rg: .35, mt: .8 })); // placa frontal
+  if (ag >= 2) { // placa frontal: aço cheio (Vanguarda), faixa de pano (Arcanista), colete de couro (Caçadora), gola de pele (Invocador)
+    if (cls === 'arcanist') a.push(P('box', [0, 1.3, .15], [.3, .56, .05], shade(ac, 1.1), { rg: .35, mt: .3 }));
+    else if (cls === 'huntress') a.push(P('sphere', [0, 1.3, .1], [.42, .4, .13], shade(ac, 1.05), { rg: .35, mt: .5 }));
+    else if (cls === 'tamer') a.push(P('sphere', [0, 1.45, .08], [.52, .26, .2], [.92, .9, .82]));
+    else a.push(P('sphere', [0, 1.33, .1], [.5, .52, .2], shade(ac, 1.15), { rg: .35, mt: .8 }));
+  }
   if (ag >= 3) {
     a.push(P('cylh', [-.38, 1.52, 0], [.23, .2, .23], ac, { o: [0, -.52, .01], sw: .8, ph: PI, rg: .4, mt: .7 }));
     a.push(P('cylh', [.38, 1.52, 0], [.23, .2, .23], ac, { o: [0, -.52, .01], sw: .8, ph: 0, at: 1.5, rg: .4, mt: .7 })); // braceletes
     a.push(P('sphere', [0, 1.42, .2], [.14, .14, .1], rg || [.9, .3, .3], { e: 1 }));
   }
   if (ag >= 4) {
-    for (const s of [-1, 1]) a.push(P('sphere', [s * .42, 1.66, 0], [.38, .26, .38], [.95, .8, .3]));
+    shoulderTrim(a, cls, 1);
     a.push(P('box', [0, 1.15, -.19], [.5, .7, .06], shade(ac, .8)));
   }
-  if (ag >= 5) a.push(P('cyl', [0, .98, 0], [.78, .05, .78], [.85, .95, 1], { e: 1 }));
+  if (ag >= 5) a.push(P('cyl', [0, .98, 0], [.78, .05, .78], [.6, .8, 1], { e: .5 }));
   if (rg) { // raridade: frisos brilhantes
     for (const s of [-1, 1]) a.push(P('box', [s * .285, 1.25, 0], [.03, .62, .32], rg, { e: 1 }));
     a.push(P('box', [0, 1.62, 0], [.2, .05, .34], rg, { e: 1 }));
@@ -171,7 +227,7 @@ function armorDeco(a, ag, ac, rg, ap, arl) {
 /* capacete por classe e grau */
 function helmParts(a, cls, hg, C, rg) {
   if (hg < 0) return;
-  const hc = ARM_COL[hg];
+  const hc = (ARM_CLS_COL[cls] || ARM_COL)[hg];
   if (cls === 'arcanist') {
     const s = 1 + hg * .07;
     a.push(P('cyl', [0, 1.97, 0], [.78 * s, .06, .78 * s], shade(hc, .8)), P('cone', [0, 2.3 + hg * .03, -.02], [.5 * s, .8 * s, .5 * s], hc, { r: [-.12, 0, 0] }));
@@ -180,15 +236,15 @@ function helmParts(a, cls, hg, C, rg) {
   } else if (cls === 'huntress') {
     a.push(P('sphere', [0, 1.88, -.05], [.49, .4, .49], shade(hc, .85)), P('box', [0, 1.96, .17], [.4, .07, .1], hc));
     if (hg >= 2) a.push(P('cone', [.2, 2.12, -.1], [.07, .5, .07], [.9, .3, .3], { r: [0, 0, -.5] }));
-    if (hg >= 3) a.push(P('box', [0, 1.84, .22], [.34, .09, .06], [.1, .1, .12]));
+    if (hg >= 3) a.push(P('box', [0, 1.945, .21], [.42, .05, .06], shade(hc, .55), { rg: .4, mt: .6 })); // faixa da testa
   } else {
     a.push(P('sphere', [0, 1.88, -.05], [.5, .42, .5], hc), P('box', [0, 1.97, .15], [.46, .07, .12], shade(hc, .85)));
-    if (hg >= 2) a.push(P('box', [0, 1.78, .22], [.3, .08, .06], shade(hc, .35)));
+    if (hg >= 2) { a.push(P('box', [0, 1.77, .24], [.035, .15, .03], shade(hc, .85), { rg: .4, mt: .7 })); for (const sd of [-1, 1]) a.push(P('box', [sd * .262, 1.74, .0], [.03, .2, .22], shade(hc, .75), { rg: .4, mt: .7 })); } // protetor de nariz e bochechas (não cobre os olhos)
     if (cls === 'tamer' && hg >= 1) a.push(P('cone', [-.2, 2.12, 0], [.1, .3, .1], [.92, .9, .8], { r: [0, 0, .5] }), P('cone', [.2, 2.12, 0], [.1, .3, .1], [.92, .9, .8], { r: [0, 0, -.5] }));
     if (cls === 'vanguard' && hg >= 3) a.push(P('cone', [0, 2.22, -.02], [.14, .5, .14], C, { r: [-.3, 0, 0] }));
   }
   if (hg >= 4) { a.push(P('cyl', [0, 2.0, 0], [.52, .08, .52], [.95, .8, .3])); for (let k = 0; k < 5; k++) { const t = k / 5 * PI * 2; a.push(P('cone', [Math.sin(t) * .24, 2.1, Math.cos(t) * .24], [.07, .16, .07], [.95, .8, .3])); } }
-  if (hg >= 5) for (const s of [-1, 1]) a.push(P('box', [s * .3, 2.0, -.05], [.05, .5, .3], [.85, .92, 1], { e: 1, r: [0, 0, -s * .7] }));
+  if (hg >= 5) for (const s of [-1, 1]) a.push(P('box', [s * .3, 2.0, -.05], [.05, .5, .3], [.62, .78, .98], { e: .4, r: [0, 0, -s * .7] }));
 }
 /* armas presas à mão: cada peça é descrita no espaço da arma (origem = empunhadura, +Y = direção da lâmina/haste),
    inclinada para a frente (tx) e levada até a mão. Assim a arma acompanha o braço (andar/ataque) sem atravessar o corpo. */
@@ -326,6 +382,7 @@ function stretchLegs(a, d) {
   const k = (.88 + d) / .88;
   for (const q of a) {
     if (q.p[1] < .2 && !q.sw) continue; // aura/anéis no chão
+    if (q.ns) continue; // perna em loft: já na proporção final
     if (q.p[1] === .88 && Math.abs(q.p[0]) <= .2 && q.sw) { q.p = [q.p[0], .88 + d, q.p[2]]; if (q.o) q.o = [q.o[0], q.o[1] * k, q.o[2]]; q.s = [q.s[0], q.s[1] * k, q.s[2]]; }
     else if (q.gr) { q.p = [q.p[0], q.p[1] * k, q.p[2]]; q.s = [q.s[0], q.s[1] * k, q.s[2]]; }
     else q.p = [q.p[0], q.p[1] + d, q.p[2]];
@@ -334,28 +391,35 @@ function stretchLegs(a, d) {
 }
 function playerParts(cls, tier, wg, ag, o) {
   o = o || {};
-  const hg = o.hg == null ? -1 : o.hg, lg = o.lg == null ? -1 : o.lg, bg = o.bg == null ? -1 : o.bg, wt = o.wt || WTYPES[cls][0];
-  const key = [cls, tier, wg, ag, o.wr | 0, o.wp | 0, o.ar | 0, o.ap | 0, o.ac == null ? -1 : o.ac, o.cr | 0, hg, o.hr | 0, lg, bg, wt, o.look ? LOOK_KEYS.map(k => o.look[k]).join('.') : 'n'].join('_');
+  const hg = o.hg == null ? -1 : o.hg, lg = o.lg == null ? -1 : o.lg, bg = o.bg == null ? -1 : o.bg, gg = o.gg == null ? -1 : o.gg, wt = o.wt || WTYPES[cls][0];
+  const key = [cls, tier, wg, ag, o.wr | 0, o.wp | 0, o.ar | 0, o.ap | 0, o.ac == null ? -1 : o.ac, o.cr | 0, hg, o.hr | 0, lg, bg, gg, wt, o.look ? LOOK_KEYS.map(k => o.look[k]).join('.') : 'n'].join('_');
   if (playerCache[key]) return playerCache[key];
-  const C = CLASSES[cls].col, has = ag >= 0, ac = has ? ARM_COL[ag] : [.5, .45, .4];
+  const ACL = ARM_CLS_COL[cls] || ARM_COL, C = CLASSES[cls].col, has = ag >= 0, ac = has ? ACL[ag] : [.5, .45, .4];
   const wc = wg >= 0 ? WPN_COL[wg] : [.5, .35, .2], wp = o.wp | 0, k = wg >= 0 ? 1 + .08 * wg + .015 * wp : .72;
-  const wr = RAR_GLOW[o.wr | 0], ar = RAR_GLOW[o.ar | 0], hr = RAR_GLOW[o.hr | 0], wE = (wp >= 7 || wg === 5) ? 1 : 0;
+  const wr = RAR_GLOW[o.wr | 0], ar = RAR_GLOW[o.ar | 0], hr = RAR_GLOW[o.hr | 0], wE = (wp >= 7 || wg === 5) ? .35 : 0;
   const body = has ? mix(C, ac, .4) : shade(mix(C, [.55, .5, .44], .38), .92);
-  const pants = lg >= 0 ? shade(mix(C, ARM_COL[lg], .55), .62) : has ? shade(mix(C, ac, .3), .55) : shade(mix(C, [.4, .34, .3], .6), .6);
-  const boots = bg >= 0 ? shade(ARM_COL[bg], .62) : [.28, .2, .13];
+  const pants = lg >= 0 ? shade(mix(C, ACL[lg], .55), .62) : has ? shade(mix(C, ac, .3), .55) : shade(mix(C, [.4, .34, .3], .6), .6);
+  const boots = bg >= 0 ? shade(ACL[bg], .62) : [.28, .2, .13];
   let a; CURLOOK = o.look || null;
-  if (cls === 'vanguard') a = humanoid({ top: body, pants, boots, hair: [.25, .15, .1], belt: ac, sleeve: shade(body, .85) });
+  if (cls === 'vanguard') a = humanoid({ loft: 1, top: body, pants, boots, hair: [.25, .15, .1], belt: ac, sleeve: shade(body, .85) });
   else if (cls === 'arcanist') {
     const rb = has ? mix([.22, .3, .8], ac, .45) : [.42, .4, .5];
-    a = humanoid({ top: rb, pants: shade(rb, .6), boots, hair: [.9, .9, .95], sleeve: rb, belt: ac });
+    a = humanoid({ loft: 1, top: rb, pants: shade(rb, .6), boots, hair: [.9, .9, .95], sleeve: rb, belt: ac });
     a.push(P('robe', [0, .6, 0], [.84, 1.1, .8], rb, { gr: 1 }));
   } else if (cls === 'huntress') {
     const lt = has ? mix([.25, .55, .3], ac, .5) : [.4, .42, .32];
-    a = humanoid({ top: lt, pants, boots, hair: [.55, .25, .12], sleeve: shade(lt, .9), belt: ac });
+    a = humanoid({ loft: 1, top: lt, pants, boots, hair: [.55, .25, .12], sleeve: shade(lt, .9), belt: ac });
   } else {
     const tp = has ? mix([.5, .32, .16], ac, .45) : [.42, .34, .26], fr = has ? mix([.75, .5, .2], ac, .3) : [.55, .4, .25];
-    a = humanoid({ top: tp, pants, boots, hair: [.2, .12, .08], sleeve: tp, belt: ac });
+    a = humanoid({ loft: 1, top: tp, pants, boots, hair: [.2, .12, .08], sleeve: tp, belt: ac });
     a.push(P('sphere', [0, 1.55, 0], [.8, .3, .56], fr));
+  }
+  if (gg >= 0) { // luvas: punho e mão revestidos na cor do conjunto (aço para a Vanguarda), com friso dourado nos graus altos
+    const gc = shade(ACL[gg], .8), gm = cls === 'vanguard' ? .8 : .2;
+    for (const s of [-1, 1]) { const K = { sw: .8, ph: s < 0 ? PI : 0, at: s > 0 ? 1.5 : 0 };
+      a.push(P('cylh', [s * .38, 1.52, 0], [.2, .13, .2], gc, Object.assign({ o: [0, -.66, .01], rg: .4, mt: gm }, K)), P('hand', [s * .38, 1.52, 0], [.2, .2, .19], shade(ACL[gg], .95), Object.assign({ o: [0, -.75, .01], rg: .4, mt: gm }, K)));
+      if (gg >= 3) a.push(P('cylh', [s * .38, 1.52, 0], [.21, .03, .21], [.95, .8, .3], Object.assign({ o: [0, -.6, .01], mt: .9 }, K)));
+    }
   }
   CURLOOK = null;
   if (has) { // peitoral por classe
@@ -364,28 +428,25 @@ function playerParts(cls, tier, wg, ag, o) {
   // peças das pernas e pés
   for (const s of [-1, 1]) {
     const ph = s < 0 ? 0 : PI;
-    if (lg >= 2) a.push(P('thigh', [s * .16, .88, 0], [.32, .3, .33], ARM_COL[lg], { o: [0, -.26, .01], sw: .9, ph, rg: .4, mt: .7 }), P('sphere', [s * .16, .88, 0], [.2, .13, .2], ARM_COL[lg], { o: [0, -.45, .05], sw: .9, ph, rg: .4, mt: .7 }));
+    if (lg >= 2) a.push(P('thigh', [s * .16, .88, 0], [.32, .3, .33], ACL[lg], { o: [0, -.26, .01], sw: .9, ph, rg: .4, mt: .7 }), P('sphere', [s * .16, .88, 0], [.2, .13, .2], ACL[lg], { o: [0, -.45, .05], sw: .9, ph, rg: .4, mt: .7 }));
     if (lg >= 4) a.push(P('cylh', [s * .16, .88, 0], [.33, .06, .34], [.95, .8, .3], { o: [0, -.1, .01], sw: .9, ph, mt: .9 }));
-    if (bg >= 1) a.push(P('cylh', [s * .16, .88, 0], [.3, .08, .31], ARM_COL[bg], { o: [0, -.64, 0], sw: .9, ph, rg: .45, mt: .6 }));
+    if (bg >= 1) a.push(P('cylh', [s * .16, .88, 0], [.3, .08, .31], ACL[bg], { o: [0, -.64, 0], sw: .9, ph, rg: .45, mt: .6 }));
     if (bg >= 3) a.push(P('cylh', [s * .16, .88, 0], [.27, .03, .4], hr || [.4, .9, .9], { o: [0, -.885, .06], sw: .9, ph, e: 1 }));
   }
   helmParts(a, cls, hg, C, hr);
   weaponParts(a, cls, wt, wg, wc, wr, wE, k, has, ac, C, ar);
   styleLayer(a, cls, ag, ac, hg, o.look ? SKIN_TONES[o.look.sk] : SKIN, o.ar | 0);
-  armorDeco(a, ag, ac, ar, o.ap | 0, o.ar | 0);
+  armorDeco(a, ag, ac, ar, o.ap | 0, o.ar | 0, cls);
   if (o.ac != null && o.ac >= 0) a.push(P('sphere', [0, 1.5, .2], [.13, .13, .09], o.cr ? RAR_GLOW[o.cr] : WPN_COL[o.ac], { e: o.cr ? 1 : 0 })); // amuleto do acessório
   if (tier >= 1) {
-    a.push(P('sphere', [-.4, 1.62, 0], [.3, .2, .3], [.95, .8, .3]), P('sphere', [.4, 1.62, 0], [.3, .2, .3], [.95, .8, .3]));
+    shoulderTrim(a, cls, 0);
   }
   if (tier >= 2) {
-    for (const s of [-1, 1]) {
-      a.push(P('box', [s * .3, 1.55, -.25], [.15, 1.2, .5], [.85, .92, 1], { e: 1, o: [s * .45, .1, 0], r: [0, 0, -s * .6] }));
-      a.push(P('box', [s * .3, 1.35, -.25], [.12, .8, .45], [.7, .85, 1], { e: 1, o: [s * .35, -.1, 0], r: [0, 0, -s * 1.0] }));
-    }
-    a.push(P('cyl', [0, 2.35, 0], [.6, .05, .6], [1, .9, .4], { e: 1 }));
+    angelWings(a);
+    a.push(P('cyl', [0, 2.35, 0], [.6, .05, .6], [.95, .78, .3], { e: .7 }));
   }
   stretchLegs(a, .14); headScale(a, .82);
-  return playerCache[key] = a;
+  return playerCache[key] = keepParts(a);
 }
 
 const npcCache = {};
@@ -396,56 +457,57 @@ const NPC_LOOK = { // pele, cabelo, mulher?, barba
 };
 function npcParts(n) {
   if (npcCache[n.id]) return npcCache[n.id];
-  const L = NPC_LOOK[n.id] || [(n.id.length * 3) % 5, n.kind === 'quest' ? [.9, .9, .95] : [.3 + (n.id.length % 3) * .15, .2, .12], n.n.startsWith('Anciã') || n.n.startsWith('Curandeira') || n.n.startsWith('Mercadora') || n.n.startsWith('Ferreira') || n.n.startsWith('Guardiã') || n.n.startsWith('Erudita') || n.n.startsWith('Joalheira') ? 1 : 0, n.kind === 'smith' ? 5 : n.kind === 'quest' ? 3 : 0];
-  CURLOOK = { g: L[2], hs: L[2] ? (n.kind === 'heal' ? 2 : 1) : n.kind === 'quest' ? 0 : 0, hc: 0, hcx: '#' + L[1].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join(''), ec: 0, sk: L[0], bd: L[2] ? 0 : (L[3] || 0), fc: 0, b: n.kind === 'smith' ? 2 : 1 };
+  const K = n.kind === 'enc' ? n.style : n.kind; // encontros aleatórios reaproveitam o visual de outros tipos de NPC (cor própria)
+  const L = NPC_LOOK[n.id] || [(n.id.length * 3) % 5, K === 'quest' ? [.9, .9, .95] : [.3 + (n.id.length % 3) * .15, .2, .12], n.n.startsWith('Anciã') || n.n.startsWith('Curandeira') || n.n.startsWith('Mercadora') || n.n.startsWith('Ferreira') || n.n.startsWith('Guardiã') || n.n.startsWith('Erudita') || n.n.startsWith('Joalheira') ? 1 : 0, K === 'smith' ? 5 : K === 'quest' ? 3 : 0];
+  CURLOOK = { g: L[2], hs: L[2] ? (K === 'heal' ? 2 : 1) : K === 'quest' ? 0 : 0, hc: 0, hcx: '#' + L[1].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join(''), ec: 0, sk: L[0], bd: L[2] ? 0 : (L[3] || 0), fc: 0, b: K === 'smith' ? 2 : 1 };
   const c = n.col, dk = shade(c, .55), boots = [.25, .17, .1];
   let a;
-  if (n.kind === 'quest' || n.kind === 'heal' || n.id === 'selene') { // túnica longa até os tornozelos
-    a = humanoid({ top: c, pants: shade(c, .6), boots, sleeve: shade(c, .9), belt: n.kind === 'heal' ? [.9, .85, .7] : [.85, .7, .3] });
+  if (K === 'quest' || K === 'heal' || n.id === 'selene') { // túnica longa até os tornozelos
+    a = humanoid({ loft: 1, top: c, pants: shade(c, .6), boots, sleeve: shade(c, .9), belt: K === 'heal' ? [.9, .85, .7] : [.85, .7, .3] });
     a.push(P('robe', [0, .6, 0], [.8, 1.1, .76], shade(c, .92), { gr: 1 }));
-    a.push(P('cylh', [0, 1.0, 0], [.62, .08, .44], n.kind === 'heal' ? [.9, .85, .7] : [.85, .7, .3]));
+    a.push(P('cylh', [0, 1.0, 0], [.62, .08, .44], K === 'heal' ? [.9, .85, .7] : [.85, .7, .3]));
   } else {
-    a = humanoid({ top: c, pants: n.kind === 'portal' ? [.3, .3, .36] : dk, boots, sleeve: shade(c, .88), belt: [.35, .22, .12] });
+    a = humanoid({ loft: 1, top: c, pants: K === 'portal' ? [.3, .3, .36] : dk, boots, sleeve: shade(c, .88), belt: [.35, .22, .12] });
   }
   CURLOOK = null;
   const J = J_R;
-  if (n.kind === 'quest') { // cajado e manto
+  if (K === 'quest') { // cajado e manto
     a.push(P('box', [0, 1.14, -.2], [.62, 1.05, .05], shade(c, .7), { bob: .02 }));
     a.push(WP(1, 'cylh', [.03, .55, .07], [.08, 1.95, .08], [.5, .35, .2], .14), WP(1, 'sphere', [.03, 1.55, .07], [.24, .24, .24], [.6, .4, 1], .14, null, { e: 1 }));
   }
-  if (n.kind === 'heal') { a.push(P('sphere', [0, 1.98, -.02], [.5, .3, .48], [.95, .95, .9]), P('box', [0, 1.3, .2], [.06, .26, .02], [.9, .2, .2]), P('box', [0, 1.33, .205], [.2, .06, .02], [.9, .2, .2])); a.push(WP(-1, 'cylh', [0, .02, .05], [.18, .28, .18], [.55, .75, .55], 0)); }
-  if (n.kind === 'shop') { // avental, chapéu e bolsa de moedas
+  if (K === 'heal') { a.push(P('sphere', [0, 1.98, -.02], [.5, .3, .48], [.95, .95, .9]), P('box', [0, 1.3, .2], [.06, .26, .02], [.9, .2, .2]), P('box', [0, 1.33, .205], [.2, .06, .02], [.9, .2, .2])); a.push(WP(-1, 'cylh', [0, .02, .05], [.18, .28, .18], [.55, .75, .55], 0)); }
+  if (K === 'shop') { // avental, chapéu e bolsa de moedas
     a.push(P('box', [0, 1.0, .2], [.5, .8, .04], [.9, .86, .72]), P('cylh', [0, 1.98, -.02], [.7, .05, .7], [.45, .3, .15]), P('cylh', [0, 2.1, -.02], [.42, .24, .42], [.45, .3, .15]));
     a.push(P('sphere', [.32, .95, .1], [.18, .2, .16], [.6, .45, .2]), P('box', [0, 1.6, -.25], [.5, .55, .25], [.5, .35, .2]));
   }
-  if (n.kind === 'smith') { // avental de couro e martelo
+  if (K === 'smith') { // avental de couro e martelo
     a.push(P('box', [0, 1.05, .21], [.56, 1.0, .05], [.3, .2, .12]), P('box', [0, 1.5, .23], [.3, .12, .04], [.3, .2, .12]));
     a.push(WP(1, 'cylh', [0, .2, 0], [.07, .55, .07], [.35, .22, .12], .9), WP(1, 'box', [0, .5, 0], [.32, .16, .18], [.55, .55, .6], .9, null, { mt: .9, rg: .3 }));
   }
-  if (n.kind === 'portal') { // guardião: armadura e cajado arcano
+  if (K === 'portal') { // guardião: armadura e cajado arcano
     for (const s of [-1, 1]) a.push(P('sphere', [s * .4, 1.6, 0], [.3, .18, .32], [.6, .64, .72], { mt: .8, rg: .35 }));
     a.push(P('sphere', [0, 1.33, .1], [.52, .5, .2], [.6, .64, .72], { mt: .8, rg: .35 }), P('box', [0, 1.14, -.2], [.62, 1.05, .05], shade(c, .8), { bob: .02 }));
     a.push(WP(1, 'cylh', [.03, .55, .07], [.08, 1.95, .08], [.35, .35, .45], .14), WP(1, 'sphere', [.03, 1.58, .07], [.26, .26, .26], [.4, .8, 1], .14, null, { e: 1 }));
     a.push(P('cone', [0, 2.15, -.02], [.5, .55, .5], shade(c, .7)));
   }
-  if (n.kind === 'trainer') { // mestre: túnica longa, faixa e cajado de treino
+  if (K === 'trainer') { // mestre: túnica longa, faixa e cajado de treino
     a.push(P('robe', [0, .6, 0], [.8, 1.1, .76], shade(c, .9), { gr: 1 }), P('cylh', [0, 1.0, 0], [.62, .08, .44], [.95, .8, .3]));
     a.push(WP(1, 'cylh', [.03, .5, .07], [.07, 1.8, .07], [.4, .28, .15], .14), P('sphere', [0, 1.86, -.04], [.44, .2, .44], [.25, .2, .28]));
   }
-  if (n.kind === 'bank') { // guarda de carga: chapéu, chave grande e livro de registros
+  if (K === 'bank') { // guarda de carga: chapéu, chave grande e livro de registros
     a.push(P('cylh', [0, 1.98, -.02], [.62, .05, .62], [.25, .2, .14]), P('cylh', [0, 2.12, -.02], [.4, .28, .4], [.25, .2, .14]));
     a.push(WP(1, 'cylh', [0, .1, 0], [.05, .5, .05], [.95, .8, .3], .9), WP(1, 'ring', [0, .42, 0], [.18, .9, .18], [.95, .8, .3], .9, [PI / 2, 0, 0]));
     a.push(WP(-1, 'box', [0, .12, .12], [.3, .05, .24], [.35, .2, .1], .3));
   }
-  if (n.kind === 'armor') { // alfaiate: avental, fita métrica e rolo de tecido
+  if (K === 'armor') { // alfaiate: avental, fita métrica e rolo de tecido
     a.push(P('box', [0, 1.0, .2], [.48, .8, .04], [.85, .8, .7]), P('box', [0, 1.5, .19], [.06, .5, .02], [.95, .85, .3]));
     a.push(WP(-1, 'cylh', [0, .1, .12], [.18, .5, .18], [.7, .2, .25], 0, [0, 0, PI / 2]));
   }
-  if (n.kind === 'weapon') { // armeiro: avental de couro, braçadeiras e espada
+  if (K === 'weapon') { // armeiro: avental de couro, braçadeiras e espada
     a.push(P('box', [0, 1.05, .21], [.56, 1.0, .05], [.3, .2, .12]));
     a.push(WP(1, 'cylh', [0, -.02, 0], [.07, .26, .07], [.3, .2, .1], .95), WP(1, 'box', [0, .66, 0], [.14, 1, .04], [.8, .82, .88], .95, null, { mt: .9, rg: .25, sharp: 1 }));
   }
-  if (n.kind === 'stable') { // cavalariço: chapéu de palha e forcado
+  if (K === 'stable') { // cavalariço: chapéu de palha e forcado
     a.push(P('cylh', [0, 1.98, -.02], [.8, .04, .8], [.85, .72, .35]), P('cylh', [0, 2.08, -.02], [.42, .2, .42], [.85, .72, .35]));
     a.push(WP(1, 'cylh', [.03, .5, .07], [.06, 1.8, .06], [.5, .36, .2], .14));
     for (const sx of [-.07, 0, .07]) a.push(WP(1, 'shard', [.03 + sx, 1.5, .07], [.03, .3, .03], [.6, .62, .66], .14));
@@ -468,7 +530,7 @@ function npcParts(n) {
     a.push(WP(-1, 'box', [tX / 2, .14 + Math.cos(th) * Lb / 2, z], [.08, Lb, .07], [.45, .3, .15], .08, [0, 0, th]), WP(-1, 'box', [tX / 2, -(.14 + Math.cos(th) * Lb / 2), z], [.08, Lb, .07], [.45, .3, .15], .08, [0, 0, -th]));
   }
   stretchLegs(a, .14);
-  return npcCache[n.id] = headScale(a, .82);
+  return npcCache[n.id] = keepParts(headScale(a, .82));
 }
 
 /* ----- monstros (cor c = tonalidade base) ----- */
@@ -492,45 +554,66 @@ const MOBM = {
 };
 /* pata de quadrúpede (coxa, junta e canela + casco/pata no chão); ry 0 = o passo vai para frente/trás */
 function quadLeg(a, H, K, F, w, c, foot, sw, ph) { legChain(a, H, K, F, w, c, { ry: 0, sw, ph, foot }); }
-/* lobo (também chacal, lobo glacial, cão infernal, alfa): corpo orgânico, cabeça que morde no ataque (mandíbula abre), cauda e 4 patas no chão */
+/* peça com geometria própria (loft de meshes_extra.js): J = pivô de balanço (quadril, ombro, base da cauda); a geometria já está em coordenadas do modelo */
+const geoP = (g, c, J, x) => P('geo', J || [0, 0, 0], [1, 1, 1], c, Object.assign({ g, o: J ? [-J[0], -J[1], -J[2]] : [0, 0, 0] }, x || {}));
+/* tom por vértice para pelagem: costas mais escuras, barriga e garganta mais claras (multiplica a cor da peça) */
+const furTone = (back, belly) => (nx, ny) => ny > .3 ? back : ny < -.25 ? belly : 1;
+/* lobo (também raposa, chacal, lobo glacial, cão infernal, alfa): corpo, pescoço+cabeça, mandíbula, cauda e patas são LOFTS contínuos (sem esferas sobrepostas), com tom por vértice
+   (barriga e garganta claras, costas escuras, patas escuras, focinho claro). A cabeça gira no pescoço e a mandíbula abre no ataque; patas e cauda balançam.
+   o: ears (escala das orelhas), eye/eyeE (olhos), mane (juba/gola), lean (<1 = mais magro) */
 function wolfParts(c, o) {
   o = o || {};
-  const lt = shade(c, 1.12), dk = shade(c, .62), eye = o.eye || [1, .8, .1], ek = o.ears || 1, a = [];
-  a.push(P('sphere', [0, .75, -.08], [.5, .52, 1.3], c), P('sphere', [0, .78, .34], [.52, .58, .62], lt), P('sphere', [0, .76, -.46], [.5, .52, .56], c));
-  const N = [0, .88, .5], hd = { at: -.35 };
-  a.push(bone('sphere', N, [0, .8, .4], [0, 1.02, .74], .36, lt, Object.assign({ k: 1.2 }, hd)));
-  a.push(jointP('sphere', N, [0, 1.05, .8], [.36, .34, .42], c, [0, 0, 0], hd));
-  a.push(bone('tc', N, [0, 1.01, .92], [0, .95, 1.2], .2, lt, hd), jointP('sphere', N, [0, .99, 1.21], [.09, .08, .08], [.08, .06, .06], [0, 0, 0], hd));
-  a.push(bone('tc', N, [0, .9, .86], [0, .86, 1.12], .13, dk, { at: -.75 }));
+  const ek = o.ears || 1, mn = o.mane || 1, ln = o.lean || 1, eye = o.eye || [1, .8, .1], a = [];
+  const dk = shade(c, .6), tooth = [.97, .95, .88], nose = [.07, .05, .05];
+  const body = mkLoft([[0, .84, -.74, .19 * ln, .23], [0, .9, -.46, .27 * ln, .3], [0, .87, -.1, .23 * ln, .27], [0, .9, .26, .28 * ln, .35], [0, .9, .56, .3 * ln, .38], [0, .98, .8, .21 * ln, .29]],
+    { flat: .22, sides: 10, tone: (nx, ny, nz, px, py) => ny > .35 ? .88 : ny < -.2 ? 1.26 : 1 });
+  a.push(geoP(body, c));
+  const N = [0, .96, .5], hd = { at: -.35 };
+  const head = mkLoft([[0, .98, .7, .2, .26], [0, 1.08, .92, .17, .2], [0, 1.13, 1.06, .2, .2], [0, 1.11, 1.2, .16 * (o.snoutW || 1), .15], [0, 1.04, 1.38, .1 * (o.snoutW || 1), .09], [0, .99, 1.54, .075, .065]],
+    { sides: 10, tone: (nx, ny, nz, px, py, pz) => (pz > 1.28 ? 1.28 : ny < -.3 ? 1.24 : ny > .4 ? .92 : 1) });
+  a.push(geoP(head, c, N, hd));
+  const jaw = mkLoft([[0, .97, 1.0, .08, .055], [0, .93, 1.3, .06, .04], [0, .915, 1.5, .045, .03]], { sides: 8 });
+  a.push(geoP(jaw, mix(c, [.95, .93, .88], .35), N, { at: -.75 }));
+  a.push(geoP(mkLoft([[0, .995, 1.54, .06, .05], [0, .99, 1.58, .05, .045]], { sides: 8 }), nose, N, hd));
   for (const sx of [-1, 1]) {
-    a.push(jointP('cone', N, [sx * .11, 1.27 + (ek - 1) * .08, .74], [.1 * ek, .24 * ek, .07 * ek], c, [-.15, 0, -sx * .22], hd));
-    a.push(jointP('sphere', N, [sx * .1, 1.1, 1.0], [.07, .06, .05], eye, [0, 0, 0], Object.assign({ e: o.eyeE || 1 }, hd)));
+    a.push(jointP('cone', N, [sx * .07, .94, 1.38], [.045, .11, .045], tooth, [PI, 0, 0], hd));
+    a.push(jointP('cone', N, [sx * .15, 1.4 + (ek - 1) * .1, .86], [.15 * ek, .32 * ek, .09 * ek], c, [-.1, 0, -sx * .16], hd));
+    a.push(jointP('cone', N, [sx * .15, 1.37 + (ek - 1) * .1, .885], [.09 * ek, .2 * ek, .05 * ek], mix(c, [.95, .93, .88], .5), [-.1, 0, -sx * .16], hd));
+    a.push(jointP('cone', N, [sx * .22, 1.03, .96], [.1 * mn, .22 * mn, .1 * mn], mix(c, [.95, .93, .88], .3), [-.3, 0, -sx * 1.25], hd));
+    a.push(jointP('sphere', N, [sx * .14, 1.2, 1.17], [.075, .05, .05], eye, [0, 0, 0], Object.assign({ e: o.eyeE || 1 }, hd)));
+    a.push(jointP('sphere', N, [sx * .14, 1.245, 1.14], [.1, .04, .07], dk, [0, 0, sx * .35], hd));
   }
-  const T = [0, .86, -.66];
-  a.push(bone('tc', T, T, [0, .64, -1.12], .15, c, { sw: .12, ph: 2 }), jointP('sphere', T, [0, .6, -1.16], [.13, .16, .13], lt, [0, 0, 0], { sw: .12, ph: 2 }));
+  for (let k = 0; k < 5; k++) a.push(P('cone', [0, 1.1 - k * .035, .5 - k * .19], [.12 * mn, .24 * mn, .12 * mn], dk, { r: [-.5, 0, 0] }));  // crina do dorso
+  const T = [0, .88, -.7];
+  a.push(geoP(mkLoft([[0, .88, -.7, .1, .1], [0, .78, -1.0, .15, .15], [0, .62, -1.3, .17, .17], [0, .5, -1.52, .08, .08]], { sides: 8, tone: (nx, ny, nz, px, py) => py < .56 ? .55 : 1 }), c, T, { sw: .12, ph: 2 }));
+  const legTone = (nx, ny, nz, px, py) => py < .13 ? .52 : py < .3 ? .86 : 1;
   for (const sx of [-1, 1]) {
-    quadLeg(a, [sx * .17, .72, .38], [sx * .18, .34, .43], [sx * .18, .02, .38], .17, shade(c, .85), dk, .55, sx > 0 ? PI : 0);
-    quadLeg(a, [sx * .18, .74, -.46], [sx * .19, .36, -.62], [sx * .19, .02, -.5], .18, shade(c, .85), dk, .55, sx > 0 ? 0 : PI);
+    const ph1 = sx > 0 ? PI : 0, ph2 = sx > 0 ? 0 : PI;
+    const fl = mkLoft([[sx * .2, .88, .38, .14, .18], [sx * .2, .6, .36, .1, .12], [sx * .2, .36, .4, .068, .075], [sx * .2, .15, .41, .062, .068], [sx * .2, .04, .47, .072, .056]], { sides: 8, tone: legTone });
+    a.push(geoP(fl, shade(c, .96), [sx * .2, .84, .38], { sw: .55, ph: ph1 }));
+    const hl = mkLoft([[sx * .23, .9, -.5, .17, .22], [sx * .24, .58, -.38, .12, .15], [sx * .23, .34, -.6, .074, .08], [sx * .23, .14, -.6, .064, .07], [sx * .23, .04, -.54, .07, .056]], { sides: 8, tone: legTone });
+    a.push(geoP(hl, shade(c, .96), [sx * .23, .86, -.5], { sw: .55, ph: ph2 }));
   }
   return a;
 }
-/* javali: corpo atarracado com corcova e crina, focinho com presas, patas curtas com cascos */
+/* javali: corpo, cabeça com focinho e patas em LOFTS contínuos; corcova e crina de cerdas, presas e cascos */
 function boarParts(c) {
   const dk = shade(c, .6), lt = shade(c, 1.12), a = [];
-  a.push(P('sphere', [0, .7, -.08], [.8, .72, 1.4], c), P('sphere', [0, .82, .3], [.76, .74, .72], lt));
-  for (let k = 0; k < 6; k++) a.push(P('cone', [0, 1.12 - Math.abs(k - 1.5) * .05, .38 - k * .18], [.1, .28, .14], dk, { r: [-.5, 0, 0] }));
-  const N = [0, .76, .52], hd = { at: -.3 };
-  a.push(bone('sphere', N, [0, .82, .52], [0, .6, 1.0], .52, c, Object.assign({ k: 1.15, wz: .5 }, hd)));
-  a.push(bone('cyl', N, [0, .6, .98], [0, .56, 1.16], .26, [.86, .58, .55], hd), jointP('cyl', N, [0, .56, 1.17], [.24, .03, .2], [.55, .3, .3], [PI / 2 - .2, 0, 0], hd));
+  a.push(geoP(mkLoft([[0, .66, -.84, .3, .34], [0, .74, -.5, .42, .5], [0, .8, -.05, .46, .55], [0, .86, .38, .43, .56], [0, .8, .66, .32, .42]], { flat: .15, sides: 10, tone: (nx, ny) => ny > .4 ? .88 : ny < -.25 ? 1.12 : 1 }), c));
+  for (let k = 0; k < 6; k++) a.push(P('cone', [0, 1.18 - Math.abs(k - 1.5) * .04, .46 - k * .2], [.1, .28, .14], dk, { r: [-.5, 0, 0] }));
+  const N = [0, .78, .6], hd = { at: -.3 };
+  a.push(geoP(mkLoft([[0, .8, .5, .33, .4], [0, .8, .82, .3, .34], [0, .72, 1.08, .2, .22], [0, .6, 1.3, .14, .14], [0, .56, 1.42, .13, .12]], { sides: 10, tone: (nx, ny, nz, px, py, pz) => pz > 1.2 ? 1.2 : 1 }), c, N, hd));
+  a.push(geoP(mkLoft([[0, .56, 1.4, .13, .1], [0, .55, 1.46, .12, .09]], { sides: 8 }), [.86, .58, .55], N, hd));
   for (const sx of [-1, 1]) {
-    a.push(jointP('cone', N, [sx * .16, .58, 1.04], [.06, .26, .06], [1, .97, .88], [-.35, 0, -sx * .35], hd));
-    a.push(jointP('cone', N, [sx * .2, .98, .62], [.13, .2, .07], dk, [-.4, 0, -sx * .5], hd));
-    a.push(jointP('sphere', N, [sx * .15, .82, .86], [.07, .07, .05], [.15, .02, .02], [0, 0, 0], hd));
+    a.push(jointP('cone', N, [sx * .16, .58, 1.34], [.06, .28, .06], [1, .97, .88], [-.35, 0, -sx * .35], hd));
+    a.push(jointP('cone', N, [sx * .2, 1.03, .85], [.13, .2, .07], dk, [-.4, 0, -sx * .5], hd));
+    a.push(jointP('sphere', N, [sx * .16, .86, 1.1], [.07, .07, .05], [.15, .02, .02], [0, 0, 0], hd));
   }
-  a.push(bone('cone', [0, .82, -.75], [0, .82, -.75], [0, .66, -.95], .07, dk, { sw: .2 }));
+  a.push(geoP(mkLoft([[0, .8, -.8, .06, .06], [0, .72, -.98, .05, .05], [0, .62, -1.06, .03, .03]], { sides: 6 }), dk, [0, .82, -.78], { sw: .2 }));
+  const legTone = (nx, ny, nz, px, py) => py < .1 ? .5 : 1;
   for (const sx of [-1, 1]) {
-    quadLeg(a, [sx * .24, .6, .42], [sx * .25, .3, .45], [sx * .25, .02, .42], .2, shade(c, .8), [.15, .1, .08], .7, sx > 0 ? PI : 0);
-    quadLeg(a, [sx * .24, .6, -.52], [sx * .25, .3, -.6], [sx * .25, .02, -.52], .21, shade(c, .8), [.15, .1, .08], .7, sx > 0 ? 0 : PI);
+    a.push(geoP(mkLoft([[sx * .27, .66, .46, .17, .2], [sx * .27, .38, .48, .12, .13], [sx * .27, .1, .5, .1, .1], [sx * .27, .03, .52, .1, .08]], { sides: 8, tone: legTone }), shade(c, .85), [sx * .27, .62, .46], { sw: .7, ph: sx > 0 ? PI : 0 }));
+    a.push(geoP(mkLoft([[sx * .27, .66, -.56, .18, .22], [sx * .27, .38, -.62, .12, .13], [sx * .27, .1, -.6, .1, .1], [sx * .27, .03, -.58, .1, .08]], { sides: 8, tone: legTone }), shade(c, .85), [sx * .27, .62, -.56], { sw: .7, ph: sx > 0 ? 0 : PI }));
   }
   return a;
 }
@@ -624,10 +707,13 @@ function jointP(m, J, C, s, c, r, x) { // peça centrada em C, com rotação r, 
 }
 /* perna articulada (coxa + junta + canela) que pisa no chão em F; gira inteira em torno do quadril H */
 function legChain(a, H, K, F, w, c, x) {
-  const ry = Math.atan2(-(F[2] - H[2]), F[0] - H[0]); // eixo x local = direção horizontal da perna (o passo vai para frente/trás)
-  const y = Object.assign({ ry }, x), r0 = [0, y.ry, 0];
-  a.push(bone('tc', H, H, K, w, c, y), jointP('sphere', H, K, [w * .95, w * .95, w * .95], shade(c, .9), r0, y), bone('tc', H, K, F, w * .82, c, y));
-  if (x && x.foot) a.push(jointP('sphere', H, [F[0], F[1] + w * .3, F[2]], [w * 1.1, w * .7, w * 1.1], x.foot, r0, y));
+  x = x || {};
+  const ry = Math.atan2(-(F[2] - H[2]), F[0] - H[0]), cy = Math.cos(ry), sy = Math.sin(ry); // eixo x local = direção horizontal da perna (o passo vai para frente/trás)
+  const rv = p => { const dx = p[0] - H[0], dz = p[2] - H[2]; return [H[0] + cy * dx - sy * dz, p[1], H[2] + sy * dx + cy * dz]; }; // gira -ry em torno do quadril: a peça gira ry e cai de volta no lugar
+  const r0 = rv(H), r1 = rv(K), r2 = rv(F), q = Object.assign({}, x); delete q.foot; delete q.ry;
+  const g = mkLoft([[r0[0], r0[1], r0[2], w * .5, w * .5], [r1[0], r1[1], r1[2], w * .47, w * .47], [r2[0], r2[1], r2[2], w * .38, w * .38]], { sides: 8, sub: 3, up: [0, 0, 1] });
+  a.push(P('geo', H, [1, 1, 1], c, Object.assign({ g, o: [-H[0], -H[1], -H[2]], r: [0, ry, 0] }, q)));
+  if (x.foot) a.push(jointP('sphere', H, [F[0], F[1] + w * .3, F[2]], [w * 1.1, w * .7, w * 1.1], x.foot, [0, ry, 0], q));
 }
 /* escorpião: cefalotórax + abdômen em placas, 8 patas articuladas, pedipalpos com pinças que abrem no ataque e cauda curva com ferrão que golpeia */
 function scorpParts(c, o) {
@@ -641,12 +727,12 @@ function scorpParts(c, o) {
   for (const sx of [-1, 1]) a.push(P('sphere', [sx * .08, .59, .68], [.06, .06, .05], [1, .25, .1], { e: 1 }), P('sphere', [sx * .2, .52, .74], [.04, .04, .04], [1, .25, .1], { e: 1 }), P('sbox', [sx * .08, .36, .8], [.1, .1, .14], dk, { r: [.2, 0, 0] }));
   // cauda: 5 segmentos + vesícula + ferrão, todos girando em torno da base (golpe para frente no ataque)
   const T = [[0, .46, -.86], [0, .66, -1.12], [0, .98, -1.26], [0, 1.31, -1.2], [0, 1.56, -.98], [0, 1.67, -.7]], J = T[0], tl = { sw: .06, ph: 1, at: -.6 };
-  for (let i = 0; i < 5; i++) a.push(bone('sphere', J, T[i], T[i + 1], .27 - i * .022, i % 2 ? c : lt, Object.assign({ k: 1.3, wz: .25 - i * .02 }, tl)));
-  a.push(bone('sphere', J, T[5], [0, 1.6, -.44], .27, shade(c, .85), Object.assign({ k: 1.25 }, tl)), bone('cone', J, [0, 1.55, -.42], [0, 1.36, -.24], .1, sting, Object.assign({ e: o.stingE || .4 }, tl)));
+  a.push(geoP(mkLoft([[...T[0], .15, .15], [...T[1], .135, .135], [...T[2], .125, .125], [...T[3], .115, .115], [...T[4], .105, .105], [...T[5], .13, .13], [0, 1.6, -.44, .15, .15]], { sides: 9, sub: 3, up: [1, 0, 0], tone: (nx, ny, nz, px, py) => py > 1.5 ? .85 : 1 }), c, J, tl));
+  a.push(bone('cone', J, [0, 1.55, -.42], [0, 1.36, -.24], .1, sting, Object.assign({ e: o.stingE || .4 }, tl)));
   // pedipalpos com pinças (o dedo móvel abre para cima no ataque)
   for (const sx of [-1, 1]) {
     const S = [sx * .26, .42, .72], E = [sx * .62, .5, .9], W = [sx * .56, .48, 1.22], H0 = [sx * .52, .46, 1.36], H1 = [sx * .5, .46, 1.62];
-    a.push(bone('tc', S, S, E, .14, leg), P('sphere', E, [.14, .14, .14], dk), bone('tc', E, E, W, .15, leg), P('sphere', W, [.15, .15, .15], dk));
+    a.push(geoP(mkLoft([[...S, .075, .075], [...E, .07, .07], [...W, .08, .08]], { sides: 8, sub: 3, up: [0, 1, 0] }), leg));
     a.push(bone('sphere', H0, [sx * .54, .47, 1.2], H1, .36, lt, { wz: .28, k: 1.2 }));
     a.push(bone('cone', H1, [sx * .44, .44, 1.58], [sx * .4, .43, 1.95], .14, dk, { k: 1, wz: .1 }));
     const Hm = [sx * .55, .52, 1.58];
@@ -716,7 +802,7 @@ MOBM.imp = c => { // diabrete: patas dobradas no chão, braços nos ombros, asas
   a.push(bone('tc', T, T, [0, .5, -.55], .09, c, tl), bone('tc', T, [0, .5, -.55], [0, .64, -.9], .07, c, tl), bone('cone', T, [0, .68, -.88], [0, .74, -1.08], .16, [.9, .25, .1], Object.assign({ e: .6, wz: .05 }, tl)));
   return a;
 };
-MOBM.jackal = c => wolfParts(c, { ears: 1.45 });
+MOBM.jackal = c => wolfParts(c, { ears: 1.5, lean: .85, mane: .7 });
 MOBM.frostwolf = c => { const a = wolfParts(c, { eye: [.4, .8, 1], eyeE: 1.3 }); for (let k = 0; k < 4; k++) a.push(P('cone6', [0, 1.12 - k * .03, .36 - k * .26], [.12, .3, .12], [.75, .92, 1], { r: [-.4, 0, 0], e: .25 })); return a; };
 MOBM.hellhound = c => { const a = wolfParts(c, { eye: [1, .45, .1], eyeE: 1.6 }); for (let k = 0; k < 5; k++) a.push(P('cone', [0, 1.14 - k * .03, .42 - k * .24], [.13, .34, .13], k % 2 ? [1, .75, .2] : [1, .4, .1], { e: 1, r: [-.4, 0, 0] })); return a; };
 MOBM.sandgolem = c => golemParts(c, { k: 'sand', rune: [1, .7, .25] });
@@ -736,6 +822,18 @@ MOBM.ignar = c => golemParts(c).concat([P('cone', [-.35, 3.1, 0], [.18, .9, .18]
 
 
 /* ----- monstros do bestiário (estilo dark fantasy) ----- */
+/* asas de morcego/dragão: braço + 4 dedos em leque saindo do ombro, com membrana (placa fina) entre eles; batem como as demais (fl) */
+function fanWings(a, y, z, bone, mem, sc) {
+  for (const s of [-1, 1]) {
+    const sh = [s * .35 * sc, y, z], fl = s * .5;
+    a.push(P('box', sh, [1.5 * sc, .16 * sc, .17 * sc], bone, { o: [s * .75 * sc, .2 * sc, 0], fl, r: [0, 0, s * .15], sharp: 1 }));
+    for (let k = 0; k < 4; k++) {
+      const ang = s * (.05 + k * .4), L = (2.8 - k * .3) * sc;
+      a.push(P('box', sh, [L, .07 * sc, .07 * sc], bone, { o: [s * L / 2, .12 * sc, 0], fl, r: [0, ang, s * .12], sharp: 1 }));
+      a.push(P('box', sh, [L * .97, .03, .95 * sc], mem, { o: [s * L / 2, .1 * sc, -.45 * sc], fl, r: [0, ang, s * .12], sharp: 1 }));
+    }
+  }
+}
 const wingPair = (y, z, c, len) => [-1, 1].map(sd => P('box', [sd * .35, y, z], [len, .1, len * .5], c, { o: [sd * len * .5, .1, 0], fl: sd * .5, r: [0, 0, sd * .12] }));
 MOBM.rat = c => {
   const a = [P('sphere', [0, .36, 0], [.5, .42, .95], c), P('sphere', [0, .4, .55], [.32, .3, .42], shade(c, 1.1)), P('cone', [0, .36, .86], [.12, .22, .12], [.95, .7, .7], { r: [1.57, 0, 0] }),
@@ -743,6 +841,28 @@ MOBM.rat = c => {
     P('sphere', [-.08, .46, .72], [.05, .05, .04], [1, .2, .1], { e: 1 }), P('sphere', [.08, .46, .72], [.05, .05, .04], [1, .2, .1], { e: 1 }),
     P('cyl6', [0, .3, -.85], [.07, 1.0, .07], [.85, .6, .6], { r: [1.3, 0, 0], bob: .05 })];
   for (const [x, z, ph] of [[-.2, .3, 0], [.2, .3, PI], [-.2, -.3, PI], [.2, -.3, 0]]) a.push(P('box', [x, .2, z], [.1, .26, .1], shade(c, .7), { o: [0, -.1, 0], sw: 1, ph }));
+  return a;
+};
+/* gremlin: criatura pequena de orelhas enormes e olhos esbugalhados (campo de treinamento) */
+MOBM.gremlin = c => {
+  const dk = shade(c, .62), lt = shade(c, 1.2), a = [P('sphere', [0, .5, 0], [.5, .56, .42], c), P('sphere', [0, .46, .12], [.34, .4, .3], lt), P('sphere', [0, 1.02, .05], [.62, .5, .54], c),
+    P('box', [0, .36, .02], [.5, .26, .46], [.4, .28, .15]), P('sphere', [0, .92, .27], [.24, .1, .06], [.16, .06, .08]), P('sphere', [0, 1.0, .33], [.09, .07, .06], dk)];
+  for (const sx of [-1, 1]) {
+    a.push(P('cone', [sx * .34, 1.12, 0], [.14, .6, .12], c, { r: [0, 0, -sx * 1.25] }), P('cone', [sx * .36, 1.12, .02], [.08, .4, .06], [.9, .6, .6], { r: [0, 0, -sx * 1.25] }));
+    a.push(P('sphere', [sx * .16, 1.1, .28], [.2, .22, .12], [1, .95, .4], { e: .7 }), P('sphere', [sx * .16, 1.1, .35], [.06, .14, .05], [.08, .06, .04]));
+    a.push(P('box', [sx * .34, .72, 0], [.1, .46, .1], dk, { o: [0, -.18, 0], sw: .9, ph: sx > 0 ? 0 : PI }));
+    a.push(P('box', [sx * .15, .22, 0], [.12, .3, .12], dk, { o: [0, -.1, 0], sw: 1, ph: sx > 0 ? PI : 0 }), P('box', [sx * .15, .04, .1], [.14, .06, .22], shade(dk, .8)));
+  }
+  a.push(P('cyl6', [.4, .5, .22], [.07, .8, .07], [.45, .3, .16], { r: [.5, 0, .35], o: [0, .15, 0], sw: .9, ph: 0 }), P('sphere', [.52, .82, .38], [.18, .18, .18], [.5, .34, .18]));
+  return a;
+};
+/* minilagarto: corpo baixo, cauda comprida e crista de espinhos nas costas */
+MOBM.lizard = c => {
+  const lt = mix(c, [1, .95, .55], .4), dk = shade(c, .6), a = [P('sphere', [0, .3, 0], [.46, .3, .95], c), P('sphere', [0, .22, .05], [.34, .2, .7], lt), P('sphere', [0, .34, .82], [.34, .26, .5], shade(c, 1.1)),
+    P('cone', [0, .3, 1.1], [.2, .3, .18], shade(c, 1.15), { r: [1.57, 0, 0] }), P('cone', [0, .3, -1.0], [.2, 1.3, .2], c, { r: [-1.5, 0, 0], bob: .08 })];
+  for (const sx of [-1, 1]) a.push(P('sphere', [sx * .16, .44, .84], [.12, .12, .1], [1, .85, .2], { e: .8 }), P('sphere', [sx * .16, .45, .9], [.03, .1, .04], [.06, .05, .03]));
+  for (let k = 0; k < 6; k++) a.push(P('cone', [0, .6 - Math.abs(k - 2) * .02, .6 - k * .3], [.1, .24, .1], dk));
+  for (const [x, z, ph] of [[-.34, .45, 0], [.34, .45, PI], [-.34, -.4, PI], [.34, -.4, 0]]) a.push(P('box', [x, .16, z], [.1, .3, .13], dk, { o: [Math.sign(x) * .08, -.06, 0], sw: 1, ph }));
   return a;
 };
 MOBM.bandit = c => {
@@ -797,7 +917,68 @@ MOBM.minotaur = c => {
     P('cyl6', [.95, 2.2, 0], [.1, 1.8, .1], [.4, .28, .16], { o: [0, -1.2, .3], sw: .35, ph: 0, at: 1.4 }), P('box', [.95, 2.2, 0], [.8, .55, .08], [.65, .66, .72], { o: [.35, -1.7, .3], sw: .35, ph: 0, at: 1.4 })];
   return a;
 };
-MOBM.alphawolf = c => { const a = wolfParts(c, { eye: [1, .2, .1], eyeE: 1.5 }); for (let k = 0; k < 5; k++) a.push(P('cone', [0, 1.13 - k * .03, .42 - k * .24], [.1, .34, .1], [.8, .15, .1], { r: [-.4, 0, 0] })); a.push(P('sphere', [0, .92, .5], [.66, .5, .5], shade(c, .8))); return a; };
+
+/* urso (e urso polar): corpo maciço com corcova, cabeça larga de focinho curto, patas grossas — LOFTS contínuos; orelhas redondas e garras */
+function bearParts(c) {
+  const dk = shade(c, .6), claw = [.93, .9, .8], snout = mix(c, [.88, .78, .66], .5), a = [];
+  a.push(geoP(mkLoft([[0, .9, -.95, .46, .5], [0, 1.0, -.55, .6, .66], [0, 1.1, -.05, .62, .72], [0, 1.26, .42, .58, .76], [0, 1.2, .8, .4, .54]], { flat: .12, sides: 12, tone: (nx, ny) => ny > .45 ? 1.04 : ny < -.3 ? .9 : 1 }), c));
+  const N = [0, 1.14, .94], hd = { at: -.3 };
+  a.push(geoP(mkLoft([[0, 1.18, .74, .4, .5], [0, 1.18, 1.0, .36, .4], [0, 1.1, 1.3, .27, .27], [0, 1.02, 1.56, .17, .16], [0, .98, 1.7, .14, .12]], { sides: 12, tone: (nx, ny, nz, px, py, pz) => pz > 1.4 ? 1.16 : 1 }), c, N, hd));
+  a.push(geoP(mkLoft([[0, .98, 1.68, .13, .1], [0, .97, 1.76, .1, .08]], { sides: 8 }), [.07, .05, .05], N, hd));
+  a.push(geoP(mkLoft([[0, .94, 1.15, .1, .06], [0, .9, 1.55, .09, .05]], { sides: 8 }), shade(snout, .85), N, { at: -.7 }));
+  for (const sx of [-1, 1]) {
+    a.push(jointP('sphere', N, [sx * .3, 1.5, 1.02], [.22, .22, .1], c, [0, 0, 0], hd), jointP('sphere', N, [sx * .3, 1.5, 1.07], [.12, .12, .06], dk, [0, 0, 0], hd));
+    a.push(jointP('sphere', N, [sx * .17, 1.24, 1.5], [.06, .06, .04], [.08, .05, .03], [0, 0, 0], hd));
+  }
+  a.push(P('sphere', [0, .98, -1.08], [.26, .26, .26], shade(c, .9)));
+  const legTone = (nx, ny, nz, px, py) => py < .12 ? .6 : 1;
+  for (const sx of [-1, 1]) {
+    a.push(geoP(mkLoft([[sx * .42, .95, .55, .26, .3], [sx * .43, .55, .6, .2, .22], [sx * .43, .22, .62, .17, .18], [sx * .43, .05, .68, .18, .13]], { sides: 10, tone: legTone }), shade(c, .93), [sx * .42, .9, .55], { sw: .45, ph: sx > 0 ? PI : 0 }));
+    a.push(geoP(mkLoft([[sx * .42, .95, -.7, .28, .34], [sx * .43, .55, -.78, .2, .24], [sx * .43, .22, -.76, .17, .18], [sx * .43, .05, -.7, .18, .13]], { sides: 10, tone: legTone }), shade(c, .93), [sx * .42, .9, -.7], { sw: .45, ph: sx > 0 ? 0 : PI }));
+    for (const k of [-1, 0, 1]) a.push(P('cone', [sx * .43 + k * .1, .06, .86], [.05, .12, .05], claw, { r: [1.5, 0, 0], sw: .45, ph: sx > 0 ? PI : 0 }));
+  }
+  return a;
+}
+MOBM.bear = c => bearParts(c);
+MOBM.polarbear = c => bearParts(c);
+/* naja: UM loft contínuo (espiral no chão que sobe num pescoço), capelo achatado com desenho e cabeça com língua; balança (bob) */
+MOBM.cobra = c => {
+  const lt = mix(c, [.96, .9, .66], .5), dk = shade(c, .55), a = [], pts = [];
+  for (let k = 0; k <= 12; k++) { const an = k * .62 - 1.6, r = .78 - k * .034; pts.push([Math.cos(an) * r, .17, Math.sin(an) * r - .1, .05 + Math.min(.12, k * .013), .05 + Math.min(.12, k * .013)]); }
+  pts.push([0, .45, .06, .17, .17], [0, .85, .26, .16, .16], [0, 1.22, .34, .15, .15], [0, 1.45, .35, .14, .14]);
+  a.push(geoP(mkLoft(pts, { sides: 10, sub: 3, up: [0, 1, 0], tone: (nx, ny, nz, px, py, pz) => ny < -.3 ? 1.3 : ((Math.floor(px * 3.2 + pz * 3.2 + py * 4) & 1) ? .84 : 1) }), c));
+  a.push(P('sphere', [0, 1.52, .3], [.96, .74, .16], c, { bob: .03 }), P('sphere', [0, 1.52, .38], [.64, .5, .06], lt, { bob: .03 }));
+  a.push(P('sphere', [-.12, 1.56, .42], [.12, .12, .05], dk, { bob: .03 }), P('sphere', [.12, 1.56, .42], [.12, .12, .05], dk, { bob: .03 }));
+  a.push(geoP(mkLoft([[0, 1.74, .4, .15, .13], [0, 1.78, .55, .13, .1], [0, 1.77, .7, .08, .06]], { sides: 8 }), c, null, { bob: .03 }), P('cone', [0, 1.7, .82], [.04, .22, .04], [.9, .1, .1], { r: [1.57, 0, 0], bob: .03 }));
+  for (const sx of [-1, 1]) a.push(P('sphere', [sx * .12, 1.82, .6], [.06, .06, .05], [1, .85, .1], { e: 1, bob: .03 }));
+  return a;
+};
+/* salamandra: lagarto baixo e comprido — corpo, cabeça, cauda e patas abertas em LOFTS contínuos; crista de brasas e manchas incandescentes */
+MOBM.salamander = c => {
+  const dk = shade(c, .55), lt = mix(c, [1, .8, .4], .35), a = [];
+  a.push(geoP(mkLoft([[0, .46, -.9, .26, .22], [0, .52, -.4, .36, .28], [0, .54, .2, .38, .3], [0, .52, .7, .3, .24], [0, .5, 1.0, .22, .18]], { flat: .2, sides: 10, tone: (nx, ny) => ny < -.25 ? 1.35 : 1 }), c));
+  const N = [0, .5, 1.0], hd = { at: -.3 };
+  a.push(geoP(mkLoft([[0, .5, .9, .2, .17], [0, .5, 1.2, .24, .16], [0, .46, 1.5, .17, .11], [0, .42, 1.82, .1, .07]], { sides: 10, tone: (nx, ny, nz, px, py, pz) => pz > 1.5 ? 1.25 : 1 }), lt, N, hd));
+  for (const sx of [-1, 1]) a.push(jointP('sphere', N, [sx * .17, .6, 1.5], [.09, .09, .06], [1, .85, .1], [0, 0, 0], { e: 1.3, at: -.3 }));
+  a.push(geoP(mkLoft([[0, .48, -.85, .2, .16], [0, .4, -1.4, .17, .13], [0, .3, -2.0, .1, .08], [0, .24, -2.5, .045, .04]], { sides: 8, tone: (nx, ny, nz, px, py, pz) => pz < -1.9 ? [1.3, 1.1, .5] : 1 }), c, [0, .5, -.9], { sw: .14, ph: 1 }));
+  for (let k = 0; k < 7; k++) a.push(P('cone', [0, .83 - Math.abs(k - 3) * .02, .8 - k * .3], [.1, .3 - Math.abs(k - 3) * .02, .1], [1, .55 - k * .02, .12], { e: .9, r: [-.2, 0, 0] }));
+  for (let k = 0; k < 8; k++) a.push(P('sphere', [(k % 2 ? .22 : -.22) * (1 - k * .03), .72, .6 - k * .27], [.16, .05, .16], [1, .7, .15], { e: 1 }));
+  const legTone = (nx, ny, nz, px, py) => py < .1 ? .55 : 1;
+  for (const sx of [-1, 1]) {
+    a.push(geoP(mkLoft([[sx * .34, .5, .62, .13, .13], [sx * .72, .34, .7, .1, .1], [sx * .88, .1, .66, .08, .08], [sx * .94, .03, .72, .1, .06]], { sides: 8, tone: legTone }), shade(c, .92), [sx * .34, .5, .62], { sw: .5, ph: sx > 0 ? PI : 0 }));
+    a.push(geoP(mkLoft([[sx * .32, .48, -.5, .14, .14], [sx * .7, .32, -.6, .11, .11], [sx * .86, .1, -.55, .08, .08], [sx * .92, .03, -.6, .1, .06]], { sides: 8, tone: legTone }), shade(c, .92), [sx * .32, .48, -.5], { sw: .5, ph: sx > 0 ? 0 : PI }));
+  }
+  return a;
+};
+/* gárgula: golem de pedra com chifres, asas de morcego em leque e olhos brilhantes */
+MOBM.gargoyle = c => {
+  const a = golemParts(c);
+  fanWings(a, 2.4, -.38, shade(c, .55), shade(c, .8), .85);
+  for (const sx of [-1, 1]) a.push(P('cone', [sx * .32, 3.1, .02], [.15, .6, .15], shade(c, .5), { r: [-.2, 0, -sx * .45] }), P('sphere', [sx * .17, 2.72, .36], [.1, .08, .05], [1, .35, .15], { e: 1.4 }));
+  return a;
+};
+MOBM.fox = c => { const a = wolfParts(c, { ears: 1.55, lean: .8, mane: .45, eye: [1, .75, .1] }); a.push(P('sphere', [0, .52, -1.46], [.2, .22, .26], [.97, .95, .9], { sw: .12, ph: 2 })); return a; };
+MOBM.alphawolf = c => { const a = wolfParts(c, { eye: [1, .2, .1], eyeE: 1.5, mane: 1.4 }); for (let k = 0; k < 5; k++) a.push(P('cone', [0, 1.13 - k * .03, .42 - k * .24], [.1, .34, .1], [.8, .15, .1], { r: [-.4, 0, 0] })); return a; };
 MOBM.queenspider = c => spiderParts(c, 1);
 /* aranha: cefalotórax + abdômen ligados pelo pedicelo, 8 patas articuladas com joelho alto e pés no chão, quelíceras que mordem no ataque */
 function spiderParts(c, queen) {
@@ -851,12 +1032,25 @@ MOBM.demon = c => {
   { const Hd = [.39, .8, .06], Tp = [.42, .98, 1.42]; // espada flamejante na mão, apontando para frente (não atravessa o chão)
     a.push(bone('box', J_R, [.39, .86, .02], [.39, .7, .1], .07, [.2, .1, .08], R_({ wz: .07 })), bone('box', J_R, [.39, .8, -.06], [.39, .76, .2], .34, [.6, .4, .2], R_({ wz: .06 })));
     a.push(bone('box', J_R, Hd, Tp, .14, [1, .45, .12], R_({ e: 1.2, wz: .05 })), bone('cone', J_R, [.43, 1.04, 1.72], Tp, .14, [1, .8, .3], R_({ e: 1.4, wz: .05 }))); }
-  for (const sd of [-1, 1]) a.push(P('box', [sd * .35, 1.65, -.2], [2.0, .12, 1.0], shade(c, .6), { o: [sd * 1.0, .3, 0], fl: sd * .4, r: [0, 0, sd * .3] }), P('box', [sd * .35, 1.65, -.2], [1.3, .06, 1.6], [.35, .08, .1], { o: [sd * 1.5, .0, -.2], fl: sd * .4, r: [0, 0, sd * .3] }));
+  fanWings(a, 1.65, -.2, shade(c, .6), [.38, .09, .11], .9);
   return a;
 };
 MOBM.ignar = c => mountParts('dragon');
 
 for (const k in MOB_ALIAS) MOBM[k] = MOBM[MOB_ALIAS[k]];
+{ // hidra: espinhos no dorso e na cauda, chifres nas cabeças; serpe glacial: a mesma base com cristais de gelo luminosos
+  const hydraBase = MOBM.hydra, HEADS = [[-.5, .8, 2.4], [0, 1.1, 2.9], [.5, .8, 2.4]];
+  MOBM.hydra = c => { const a = hydraBase(c); for (let i = 0; i < 6; i++) a.push(P('cone', [0, 1.95 - Math.abs(i - 2.5) * .06, .9 - i * .36], [.16, .42, .16], shade(c, .6)));
+    for (const [x, z, h] of HEADS) for (const sd of [-1, 1]) a.push(P('cone', [x * 1.4 + sd * .17, 1.0 + h * .85 + .3, z + .5], [.08, .3, .08], [.9, .85, .7], { r: [-.5, 0, -sd * .4] }));
+    return a; };
+  MOBM.frostwyrm = c => { const a = hydraBase(c), ice = [.78, .94, 1];
+    for (let i = 0; i < 7; i++) a.push(P('cone', [(i % 2 ? .22 : -.22), 1.9, 1.0 - i * .32], [.18, .7 + (i % 3) * .2, .18], ice, { e: .5, r: [0, 0, (i % 2 ? -.35 : .35)] }));
+    for (const [x, z, h] of HEADS) for (let k = -1; k <= 1; k++) a.push(P('cone', [x * 1.4 + k * .2, 1.0 + h * .85 + .35, z + .4], [.1, .45 - Math.abs(k) * .1, .1], ice, { e: .6, r: [-.3, 0, -k * .3] }));
+    for (const sd of [-1, 1]) a.push(P('cone', [sd * .85, 1.7, .2], [.3, 1.0, .3], ice, { e: .45, r: [0, 0, -sd * .5] }));
+    a.push(P('cone', [0, .75, -2.1], [.32, .9, .32], ice, { e: .5, r: [-1.5, 0, 0] }));
+    return a; };
+}
+
 /* chefes que antes só reaproveitavam o modelo do monstro comum ganham detalhes próprios (mesma base, mesma escala) */
 MOBM.pharaoh = c => { // faraó: múmia de faixas claras com nemes dourado listrado, colar largo e cetro
   const a = mummyParts([.86, .8, .66], [1, .8, .25]), g = c, bl = [.15, .25, .65];
@@ -875,13 +1069,15 @@ MOBM.banditking = c => { // rei dos bandidos: bandido com coroa torta, capa long
   return a;
 };
 const mobCache = {};
-function mobParts(id, c) { const k = id + c.join(','); return mobCache[k] || (mobCache[k] = MOBM[id](c)); }
+const keepParts = a => { a._c = 1; return a; }; // marca modelos em cache: R.parts junta as peças deles em poucas malhas (engine.js batchOf)
+function mobParts(id, c) { const k = id + c.join(','); if (mobCache[k]) return mobCache[k]; LOFT_MODE = true; try { return mobCache[k] = keepParts(MOBM[id](c)); } finally { LOFT_MODE = false; } }
 const MOB_COL = { slime: [.35, .85, .4], boar: [.5, .35, .25], wolfm: [.55, .55, .6], spider: [.25, .2, .3], goblin: [.4, .65, .3], ent: [.4, .28, .16], skel: [.9, .88, .8], golemm: [.55, .55, .6], wraith: [.5, .4, .85], guardian: [.35, .22, .12], colossus: [.45, .42, .5],
+  bear: [.42, .28, .18], polarbear: [.93, .94, .96], fox: [.86, .42, .13], cobra: [.6, .52, .22], salamander: [.78, .26, .12], gargoyle: [.5, .5, .57],
   scorpion: [.72, .5, .25], jackal: [.8, .64, .38], mummy: [.82, .78, .62], sandgolem: [.8, .62, .38], yeti: [.92, .95, 1], frostwolf: [.78, .88, .98], frostwraith: [.55, .8, 1], icegolem: [.6, .82, .95],
-  rat: [.5, .42, .38], bandit: [.4, .3, .22], orc: [.42, .62, .28], necro: [.14, .12, .2], banshee: [.7, .85, 1], fireelem: [1, .45, .1], waterelem: [.3, .6, 1], minotaur: [.5, .32, .2], alphawolf: [.4, .38, .42], queenspider: [.2, .16, .3], orcwar: [.36, .5, .24], phoenix: [1, .5, .12], hydra: [.25, .42, .35], lich: [.16, .2, .4], demon: [.65, .12, .1], ignar: [1, 1, 1],
+  gremlin: [.45, .72, .28], lizard: [.3, .62, .35], rat: [.5, .42, .38], bandit: [.4, .3, .22], orc: [.42, .62, .28], necro: [.14, .12, .2], banshee: [.7, .85, 1], fireelem: [1, .45, .1], waterelem: [.3, .6, 1], minotaur: [.5, .32, .2], alphawolf: [.4, .38, .42], queenspider: [.2, .16, .3], orcwar: [.36, .5, .24], phoenix: [1, .5, .12], hydra: [.25, .42, .35], lich: [.16, .2, .4], demon: [.65, .12, .1], ignar: [1, 1, 1],
   lavaslime: [1, .42, .1], imp: [.75, .2, .15], hellhound: [.25, .1, .1], magmagolem: [.32, .18, .16], scorpqueen: [.5, .15, .1], yetiking: [.78, .9, 1], ignar: [.28, .12, .1],
   boarelite: [.36, .3, .3], shadowwolf: [.2, .17, .27], ancientent: [.3, .2, .1], banditking: [.55, .12, .1], pharaoh: [.95, .8, .35], frostwyrm: [.55, .85, 1] };
-const MOB_SC = { boarelite: 1.4, shadowwolf: 1.3, ancientent: 1.5, slime: 1, boar: 1, wolfm: 1, spider: 1.1, goblin: .9, ent: 1.1, skel: 1, golemm: 1.3, wraith: 1.1, scorpion: 1, jackal: 1.05, mummy: 1, sandgolem: 1.3, yeti: 1.2, frostwolf: 1.1, frostwraith: 1.1, icegolem: 1.3, lavaslime: 1.1, imp: 1, hellhound: 1.15, magmagolem: 1.35, rat: .9, bandit: 1, orc: 1.3, necro: 1, banshee: 1.1, fireelem: 1.2, waterelem: 1.2, minotaur: 1.3, alphawolf: 1.3, queenspider: 1.5, orcwar: 1.5, phoenix: 1.2, hydra: 1.3 };
+const MOB_SC = { bear: 1.2, polarbear: 1.35, fox: .66, cobra: 1.1, salamander: 1.25, gargoyle: 1.15, boarelite: 1.4, shadowwolf: 1.3, ancientent: 1.5, slime: 1, boar: 1, wolfm: 1, spider: 1.1, goblin: .9, ent: 1.1, skel: 1, golemm: 1.3, wraith: 1.1, scorpion: 1, jackal: 1.05, mummy: 1, sandgolem: 1.3, yeti: 1.2, frostwolf: 1.1, frostwraith: 1.1, icegolem: 1.3, lavaslime: 1.1, imp: 1, hellhound: 1.15, magmagolem: 1.35, rat: .9, bandit: 1, orc: 1.3, necro: 1, banshee: 1.1, fireelem: 1.2, waterelem: 1.2, minotaur: 1.3, alphawolf: 1.3, queenspider: 1.5, orcwar: 1.5, phoenix: 1.2, hydra: 1.3 };
 
 
 /* ===== montarias (frente = +z) ===== */
@@ -968,17 +1164,14 @@ function mountParts(id) {
     for (let i = 0; i < 6; i++) a.push(P('cone', [0, 2.72 - (i > 3 ? (i - 3) * .04 : 0), 1.0 - i * .38], [.15, .42, .15], dk));
     a.push(P('sphere', [0, 2.0, -1.5], [.75, .62, .95], red, { bob: .03 }), P('sphere', [0, 1.9, -2.2], [.52, .46, .85], red, { bob: .05 }), P('sphere', [0, 1.8, -2.8], [.36, .32, .7], red, { bob: .07 }));
     a.push(P('cone', [0, 1.75, -3.4], [.26, .7, .26], dk, { r: [-1.57, 0, 0], bob: .09 }));
-    for (const s of [-1, 1]) {
-      a.push(P('box', [s * .35, 2.65, .15], [1.9, .12, .15], dk, { o: [s * .95, .2, 0], fl: s * .5, r: [0, 0, s * .12] }));
-      a.push(P('box', [s * .35, 2.65, .15], [2.3, .05, 1.4], [.56, .1, .12], { o: [s * 1.2, .0, -.5], fl: s * .5, r: [0, 0, s * .12] }));
-      a.push(P('box', [s * .35, 2.65, .15], [.07, .06, 1.2], dk, { o: [s * 1.7, .02, -.4], fl: s * .5, r: [0, 0, s * .12] }));
-    }
+    fanWings(a, 2.65, .15, dk, [.56, .1, .12], 1);
+    for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) a.push(P('cone', [sd * .13, 3.1, 2.38 + k * .17], [.05, .13, .05], [.95, .92, .8], { r: [3.14, 0, 0] })); // dentes
     for (const [x, z, ph] of [[-.5, .85, 0], [.5, .85, PI], [-.5, -.85, PI], [.5, -.85, 0]]) {
       a.push(P('rbox', [x, 1.55, z], [.3, .95, .34], red, { o: [0, -.45, 0], sw: .7, ph }));
       a.push(P('box', [x, 1.55, z], [.34, .16, .4], [.95, .9, .75], { o: [0, -.92, .06], sw: .7, ph }));
     }
   }
-  return mountCache[id] = a;
+  return mountCache[id] = keepParts(a);
 }
 
 /* cavaleiro sentado: coxas para a frente e abertas (abraçando a sela), canelas penduradas a partir do joelho */
@@ -994,20 +1187,20 @@ function seatedParts(a) {
   s = a.map(q => {
     if (!(q.sw && Math.abs(q.p[1] - HIP) < 1e-3 && Math.abs(q.p[0]) <= .2)) return q;
     const sd = q.p[0] < 0 ? -1 : 1, rt = [-1.38, 0, sd * .34], o = q.o || [0, 0, 0];
-    if (o[1] > KNEE - .03) return Object.assign({}, q, { r: rt, sw: 0 }); // coxa, joelho
+    if (q.leg ? q.leg === 'thigh' : o[1] > KNEE - .03) return Object.assign({}, q, { r: rt, sw: 0 }); // coxa, joelho
     const K = rotApply([0, KNEE, 0], rt);
     return Object.assign({}, q, { p: [q.p[0] + K[0], q.p[1] + K[1], q.p[2] + K[2]], o: [o[0], o[1] - KNEE, o[2]], r: [.22, 0, sd * .1], sw: 0 });
   });
-  seatCache.set(a, s); return s;
+  seatCache.set(a, keepParts(s)); return s;
 }
 
 /* item caído no chão com o formato do próprio item (deitado, comprimento no eixo X) */
 const itemCache = {};
 const Z90 = [0, 0, PI / 2];
 function itemParts(it) {
-  const key = [it.slot, it.wt || '', it.grade, it.rar].join('_');
+  const key = [it.slot, it.wt || '', it.grade, it.rar, it.cls || ''].join('_');
   if (itemCache[key]) return itemCache[key];
-  const g = Math.max(0, Math.min(5, it.grade | 0)), wc = WPN_COL[g], ac = ARM_COL[g], gl = RAR_GLOW[it.rar | 0], MT = { rg: .3, mt: .85 }, a = [];
+  const g = Math.max(0, Math.min(5, it.grade | 0)), wc = WPN_COL[g], ac = (ARM_CLS_COL[it.cls] || ARM_COL)[g], gl = RAR_GLOW[it.rar | 0], MT = { rg: .3, mt: .85 }, a = [];
   const y = .06, H = [.35, .22, .12];
   if (it.slot === 'w') {
     const wt = it.wt;

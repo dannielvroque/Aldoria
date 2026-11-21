@@ -2,7 +2,7 @@ import os, sys
 root = os.path.dirname(os.path.abspath(__file__))
 src = os.path.join(root, 'src')
 read = lambda n: open(os.path.join(src, n), encoding='utf-8').read()
-order = ['engine.js', 'data.js', 'meshes_extra.js'] + (['assets_data.js'] if os.path.exists(os.path.join(src, 'assets_data.js')) else []) + ['skin.js', 'models.js', 'art.js', 'story.js', 'world.js', 'ui.js', 'game.js', 'admin.js']
+order = ['engine.js', 'data.js', 'meshes_extra.js'] + (['assets_data.js'] if os.path.exists(os.path.join(src, 'assets_data.js')) else []) + ['skin.js', 'models.js', 'art.js', 'story.js', 'encounters.js', 'audio.js', 'world.js', 'ui.js', 'game.js', 'admin.js']
 missing = [f for f in order + ['style.css', 'index.html'] if not os.path.exists(os.path.join(src, f))]
 if missing:
     sys.exit('faltando: ' + ', '.join(missing))

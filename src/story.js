@@ -10,18 +10,34 @@
      explore {x, z, r, place}               chegar a um lugar
    As missões dos Anciões continuam existindo como missões secundárias. */
 const CHAPTERS = [
-  { id: 'c1', n: 'Capítulo I — A Sombra sobre Aldoria', lv: [1, 10], rew: { gold: 600, item: 2 },
+  { id: 'c0', n: 'Prólogo — O Campo de Treinamento', lv: [1, CAMP.endLv], rew: { gold: 300, item: 1 },
+    intro: 'Todo herói começa numa ilha cercada, num lago perto de Aldoria. Aprenda o básico e suba até o nível 29: só então as cidades terão missões para você.' },
+  { id: 'c1', n: 'Capítulo I — A Sombra sobre Aldoria', lv: [CAMP.endLv, 10], rew: { gold: 600, item: 2 },
     intro: 'As criaturas dos campos ficaram agressivas da noite para o dia. O Capitão Roderic suspeita que algo — ou alguém — está por trás disso.' },
   { id: 'c2', n: 'Capítulo II — Sussurros na Floresta', lv: [11, 20], rew: { gold: 2500, item: 3 },
     intro: 'Os bandidos carregavam um fragmento de cristal negro. O rastro leva à Floresta Sussurrante, onde o Guardião do Bosque perdeu a razão.' },
   { id: 'c3', n: 'Capítulo III — O Chamado das Areias', lv: [21, 30], rew: { gold: 7000, item: 3 },
     intro: 'Uma carta selada chega do Oásis de Sahr: o mesmo cristal apareceu sob as dunas, e os mortos voltaram a andar.' },
   { id: 'c4', n: 'Capítulo IV — As Ruínas do Rei Caído', lv: [31, 40], rew: { gold: 16000, item: 4 },
-    intro: 'A erudita Selene decifrou o símbolo dos cristais: é o selo do Rei Colosso, que reinou antes de Aldoria e quer voltar.' },
+    intro: 'O Refinador, estudioso de línguas antigas, decifrou o símbolo dos cristais: é o selo do Rei Colosso, que reinou antes de Aldoria e quer voltar.' },
   { id: 'c5', n: 'Capítulo V — Gelo e Fogo', lv: [41, 50], rew: { gold: 40000, item: 4 },
     intro: 'O último fragmento pulsa no coração do vulcão. Para alcançá-lo, você precisará da bênção do Norte e da coragem para enfrentar Ignar.' },
 ];
 const MAIN = [
+  // ---- Prólogo (Campo de Treinamento, nível 1 a 29): tutorial. Etapas 'do' contam um evento do jogo (ver mainEv em game.js) ----
+  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'O Instrutor do campo', t: 'Fale com o Instrutor Brann, na clareira do campo (clique nele ou aperte F perto dele).',
+    say: 'Bem-vindo ao Campo de Treinamento! Esta ilha é cercada por um lago: aqui os novatos aprendem sem perigo de verdade. Vou ensinar o básico; depois é com você. Primeiro, ande um pouco.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'move', nm: 'Ande pelo campo', t: 'Clique no chão para andar (a roda do mouse dá zoom; segurar o botão direito gira a câmera). Afaste-se uns 12 passos.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['gremlin'], n: 3, t: 'Clique num Gremlin (ou aperte Espaço) para atacar. Derrote 3 Gremlins.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'open:inv', nm: 'Abra o Equipamento', t: 'Aperte I para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores. Dá para abrir C, V, M e B juntos e arrastar as janelas pelo título.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'camp_trainer', n: 'O Mestre de Habilidades', t: 'Fale com o Mestre de Habilidades, ao lado do instrutor.',
+    say: 'Cada nível dá pontos de habilidade. Escolha uma habilidade aqui e gaste seus pontos nela: ela vai para a barra de atalhos (teclas 1 a 5, 8 e 9).' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'learn', nm: 'Aprenda uma habilidade', t: 'No diálogo do Mestre de Habilidades, aprenda uma habilidade.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'skill', nm: 'Use a habilidade', t: 'Use a habilidade da barra de atalhos (tecla 1, 2...) num monstro.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['lizard'], n: 4, t: 'Minilagartos são mais rápidos. Derrote 4 deles: deixam poções e pedras de refino.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'potion', nm: 'Use uma poção', t: 'Aperte 6 para usar uma Poção de Vida (7 é a de Mana). Elas curam 40% do máximo.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'Formatura', t: 'Volte ao Instrutor Brann.',
+    say: 'Você já sabe o essencial. Continue caçando gremlins e lagartos até o nível 29: com ele, atravesse a ponte, vá até Aldoria e fale com o Capitão Roderic. Se quiser sair antes, o portão está aberto, mas as cidades só têm missões a partir do 29.' },
   // ---- Capítulo I (1–10) ----
   { ch: 'c1', lvl: 1, k: 'talk', npc: 'roderic', n: 'Um capitão preocupado', t: 'Fale com o Capitão Roderic, na praça da Vila de Aldoria.',
     say: 'Você chegou em boa hora. Gosmas e ratos estão atacando as plantações. Comece por eles — quero ver do que você é capaz.' },
@@ -60,20 +76,20 @@ const MAIN = [
   { ch: 'c3', lvl: 28, k: 'explore', x: LM.pyramid[0], z: LM.pyramid[1], r: 10, place: 'Pirâmide Soterrada', t: 'Encontre a Pirâmide Soterrada a sudeste do oásis.' },
   { ch: 'c3', lvl: 29, k: 'elite', zone: 'dunes', n: 1, t: 'Derrote uma elite do deserto — a Hidra guarda o Covil, perto da pirâmide.' },
   { ch: 'c3', lvl: 30, k: 'talk', npc: 'sahr_q', n: 'O terceiro fragmento', t: 'Volte ao Ancião Rahim com o terceiro fragmento.',
-    say: 'Três fragmentos e um nome nas ataduras: Colosso. Volte a Aldoria e procure a erudita Selene. Ela lê línguas mortas.' },
+    say: 'Três fragmentos e um nome nas ataduras: Colosso. Volte a Aldoria e procure o Refinador. Ele lê línguas mortas.' },
   // ---- Capítulo IV (31–40) ----
-  { ch: 'c4', lvl: 31, k: 'talk', npc: 'selene', n: 'A erudita', t: 'Fale com a erudita Selene na Vila de Aldoria.',
+  { ch: 'c4', lvl: 31, k: 'talk', npc: 'selene', n: 'O Refinador', t: 'Fale com o Refinador na Vila de Aldoria.',
     say: 'O Rei Colosso governou antes de Aldoria. Foi selado nas ruínas, e os cristais são pedaços do selo. Alguém está quebrando-o de propósito.' },
   { ch: 'c4', lvl: 31, k: 'kill', mobs: ['skel'], n: 12, t: 'Derrote 12 Esqueletos Guerreiros nas Ruínas Esquecidas.' },
   { ch: 'c4', lvl: 33, k: 'collect', mobs: ['necro'], item: 'Grimório Rasgado', n: 5, ch_: .4, t: 'Recupere 5 páginas de Grimório dos Necromantes.' },
-  { ch: 'c4', lvl: 35, k: 'talk', npc: 'selene', n: 'As páginas', t: 'Leve as páginas a Selene.',
+  { ch: 'c4', lvl: 35, k: 'talk', npc: 'selene', n: 'As páginas', t: 'Leve as páginas ao Refinador.',
     say: 'É um ritual de despertar. Os espectros alimentam o selo com almas. Detenha-os e enfrente os campeões do rei.' },
   { ch: 'c4', lvl: 35, k: 'explore', nw: 1, x: LM.lichtower[0], z: LM.lichtower[1], r: 10, place: 'Torre Partida', t: 'As páginas falam de uma torre onde o ritual começou. Encontre a Torre Partida, a oeste, além da floresta.' },
   { ch: 'c4', lvl: 35, k: 'kill', mobs: ['wraith', 'banshee'], n: 12, t: 'Derrote 12 Espectros ou Banshees.' },
   { ch: 'c4', lvl: 37, k: 'elite', zone: 'ruins', n: 3, t: 'Derrote 3 campeões de elite das ruínas (Minotauros ou Orcs Senhores da Guerra) na Arena dos Campeões, ao sul.' },
   { ch: 'c4', lvl: 38, k: 'explore', nw: 1, x: LM.crypt[0], z: LM.crypt[1] + 3, r: 10, place: 'Cripta do Rei Caído', t: 'Encontre a Cripta do Rei Caído, nas ruínas a sudoeste. O Colosso dorme ali perto.' },
   { ch: 'c4', lvl: 39, k: 'boss', boss: 'colossus', t: 'Derrote o Rei Colosso antes que ele desperte por completo.' },
-  { ch: 'c4', lvl: 40, k: 'talk', npc: 'selene', n: 'O selo quebrado', t: 'Conte a Selene o que aconteceu.',
+  { ch: 'c4', lvl: 40, k: 'talk', npc: 'selene', n: 'O selo quebrado', t: 'Conte ao Refinador o que aconteceu.',
     say: 'O Colosso caiu, mas o último fragmento não estava com ele. Está no Norte — ou no fogo. O Ancião Pyros e a Anciã Brynja precisam saber.' },
   // ---- Capítulo V (41–50) ----
   { ch: 'c5', lvl: 41, k: 'talk', npc: 'hiel_q', n: 'A bênção do Norte', t: 'Viaje ao norte, até a Vila de Hielmar, e fale com a Anciã Brynja.',
@@ -91,6 +107,8 @@ const MAIN = [
   { ch: 'c5', lvl: 50, k: 'talk', npc: 'maelis', n: 'Lenda de Aldoria', t: 'Volte para casa. A Anciã Maelis espera por você.',
     say: 'Os cinco fragmentos, juntos, se apagam na sua mão. O selo está completo outra vez. Aldoria tem uma nova lenda — e ela tem o seu nome.' },
 ];
+/* as cidades só têm missões a partir do nível 29 do Mortal (CAMP.endLv na escala interna): etapas dos capítulos passam a exigi-lo */
+for (const s of MAIN) if (s.ch !== 'c0' && s.lvl < CAMP.endLv) s.lvl = CAMP.endLv;
 /* oi: posição da etapa antes do continente (saves antigos guardam o índice); etapas novas (nw) não têm */
 { let o = 0; for (const s of MAIN) if (!s.nw) s.oi = o++; }
 MAIN.forEach((s, i) => {
@@ -116,20 +134,22 @@ const stepReward = s => ({ xp: Math.round(xpNeed(Math.max(1, s.lvl)) * (s.k === 
 /* NPCs da história */
 NPCS.push(
   { id: 'roderic', kind: 'story', n: 'Capitão Roderic', role: 'Guarda de Aldoria', x: 6.5, z: -6.2, col: [.62, .2, .18], reg: 'aldoria' },
-  { id: 'selene', kind: 'story', n: 'Erudita Selene', role: 'Estudiosa de línguas antigas', x: -6.5, z: 6.5, col: [.3, .35, .62], reg: 'aldoria' },
+  { id: 'selene', kind: 'story', n: 'Refinador', role: 'Funde peças em Ancient (+10 e +11)', x: -6.5, z: 6.5, col: [.3, .35, .62], reg: 'aldoria' },
+  { id: 'instr', kind: 'story', n: 'Instrutor Brann', role: 'Mestre do Campo de Treinamento', x: CAMP.sx - CAMP.ux * 1.2 - CAMP.uz * 2.6, z: CAMP.sz - CAMP.uz * 1.2 + CAMP.ux * 2.6, col: [.2, .45, .3], reg: 'aldoria' },
+  { id: 'camp_trainer', kind: 'trainer', n: 'Mestre de Habilidades', role: 'Habilidades · gaste seus pontos aqui', x: CAMP.sx + CAMP.ux * 1.2 + CAMP.uz * 4, z: CAMP.sz + CAMP.uz * 1.2 - CAMP.ux * 4, col: [.55, .2, .6], reg: 'aldoria' },
   { id: 'elric', kind: 'story', n: 'Guarda-florestal Elric', role: 'Vigia da floresta', x: VILLAGES[1].cx + 2.4, z: VILLAGES[1].cz - 4.4, col: [.25, .45, .22], reg: 'aldoria', vil: 'post' },
 );
-const STORY_NPC = new Set(['roderic', 'selene', 'elric']);
+const STORY_NPC = new Set(['roderic', 'selene', 'elric', 'instr']);
 /* NPCs de serviço em cada vila principal: Mestre de Habilidades, Guarda de Carga (baú), Armeiro, Alfaiate, Cavalariço e Joalheiro */
 { const SERV = [
-    ['trainer', 'Mestre de Habilidades', 'Ensina habilidades', -9.2, -2.6, [.55, .2, .6]],
-    ['bank', 'Guarda de Carga', 'Baú compartilhado da conta', 9.2, -2.6, [.45, .38, .25]],
-    ['armor', 'Alfaiate', 'Roupas e armaduras básicas', -2.2, 12.6, [.3, .45, .55]],
-    ['weapon', 'Armeiro', 'Armas básicas', 2.2, 12.6, [.5, .3, .2]],
+    ['trainer', 'Habilidades', 'gaste seus pontos aqui', -9.2, -2.6, [.55, .2, .6]],
+    ['bank', 'Guarda de Carga', 'guarda itens e ouro de toda a conta', 9.2, -2.6, [.45, .38, .25]],
+    ['armor', 'Loja', 'roupas e armaduras', -2.2, 12.6, [.3, .45, .55]],
+    ['weapon', 'Loja', 'armas', 2.2, 12.6, [.5, .3, .2]],
     ['stable', 'Cavalariço', 'Ração para montarias', 14.5, -2.8, [.45, .55, .25]],
-    ['jewel', 'Joalheiro', 'Engasta pedras de adicional', 16, 7, [.55, .3, .65]],
+    ['jewel', 'Engaste', 'pedras de adicional', 16, 7, [.55, .3, .65]],
   ];
-  const NAMES = { aldoria: ['Mestre Aldric', 'Guarda Bertram', 'Alfaiate Mirela', 'Armeiro Tomas', 'Cavalariço Pip', 'Joalheiro Ravel'], desert: ['Mestre Karim', 'Guarda Hassan', 'Alfaiate Samira', 'Armeiro Omar', 'Cavalariço Yusuf', 'Joalheira Layla'], snow: ['Mestra Ingrid', 'Guarda Halvar', 'Alfaiate Astrid', 'Armeiro Bjorn', 'Cavalariço Leif', 'Joalheiro Eirik'], volcano: ['Mestre Ashur', 'Guarda Korr', 'Alfaiate Vesna', 'Armeiro Drak', 'Cavalariço Fenn', 'Joalheira Obsidia'] };
+  const NAMES = { pedraluz: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Zeca', 'Joalheiro'], zahar: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Rashid', 'Joalheiro'], cinzeiro: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Cinzas', 'Joalheiro'], frostmar: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Odd', 'Joalheiro'], aldoria: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Pip', 'Joalheiro'], desert: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Yusuf', 'Joalheiro'], snow: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Leif', 'Joalheiro'], volcano: ['Mestre de Habilidades', 'Baú', 'Armaduras', 'Armeiro', 'Cavalariço Fenn', 'Joalheiro'] };
   for (const v of VILLAGES) if (NAMES[v.id]) SERV.forEach(([kind, title, role, dx, dz, col], i) => NPCS.push({ id: v.id + '_' + kind, kind, n: NAMES[v.id][i], role: title + ' · ' + role, x: v.cx + dx, z: v.cz + dz, col, reg: v.reg, vil: v.id }));
 }
 
@@ -162,6 +182,9 @@ const ACHIEVEMENTS = [
   { id: 'r7', n: 'Mão de Ferreiro', t: 'Refine um item até +7', k: 'plus', n_: 7, rew: 4000 },
   { id: 'leg', n: 'Sortudo', t: 'Encontre um item Lendário', k: 'legend', n_: 1, rew: 2000 },
   { id: 'reg4', n: 'Viajante', t: 'Visite os 4 biomas do continente', k: 'regions', n_: 4, rew: 3000 },
+  { id: 'disc', n: 'Descobridor', t: 'Descubra os 6 locais secretos do continente', k: 'disc', n_: 6, rew: 8000 },
+  { id: 'enc5', n: 'Amigo dos Viajantes', t: 'Conclua 5 encontros com gente do caminho', k: 'enc', n_: 5, rew: 4000 },
+  { id: 'enc20', n: 'Lenda da Estrada', t: 'Conclua 20 encontros com gente do caminho', k: 'enc', n_: 20, rew: 30000 },
   { id: 'd7', n: 'Dedicado', t: 'Complete 7 desafios diários', k: 'daily', n_: 7, rew: 5000 },
 ];
 
