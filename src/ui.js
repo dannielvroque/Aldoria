@@ -159,7 +159,7 @@ const UI = (() => {
 <div class="panel off" id="p-auto"><div class="ph"><h2>🤖 Automático</h2><kbd>T</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel lv off" id="p-lv"><div class="ph"><h2>📊 Níveis e Regiões</h2><kbd>B</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel tree off" id="p-tree"><div class="ph"><h2>🌳 Árvore de Habilidades</h2><kbd>V</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
-<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button><button data-a="maplg" class="maplg" title="Legenda">?</button></div></div><div class="map-side"></div></div></div></div>
+<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button><button data-a="maplg" class="maplg" title="Legenda">?</button></div><div class="map-gps off"></div></div><div class="map-side"></div></div></div></div>
 <div class="panel dlg off" id="p-dlg"><div class="ph"><div class="npc-ic"></div><div class="npc-id"><h2></h2><small></small></div><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div><div class="pf-foot"><button class="btn" data-a="close">Despedir-se</button></div></div>
 <div class="death off"><div class="death-in"><h1>Você caiu</h1><p>Suas forças se esvaem... mas Aldoria ainda precisa de você.</p><button class="btn primary" data-a="respawn">Voltar à vila</button></div></div>
 <div class="menu off"></div>
@@ -589,6 +589,7 @@ const UI = (() => {
   const zlv = z => ZLV[z.id] || (z.lv ? 'Nv ' + DLV(z.lv[0]) + '–' + DLV(z.lv[1]) : '');
   const REG_LV = { aldoria: 'Níveis 1–50 (treino, campos, floresta e ruínas)', desert: 'Níveis 26–40', snow: 'Níveis 37–50', volcano: 'Níveis 48–60' };
   function objectivePos(G) {
+    if (G.gps) return [G.gps.x, G.gps.z, G.gps.n]; // o destino do GPS (escolha do jogador) vale mais que o objetivo da história
     const s = G.main && MAIN[G.main.i];
     if (!s || ELV() < s.lvl) { // sem passo da história: missão ativa (monstro mais próximo da zona dela)
       const q = QUESTS.find(q => G.quests[q.id] && G.quests[q.id].state === 'active' && q.zone); if (!q) return null;
@@ -622,7 +623,8 @@ const UI = (() => {
     const rq = QUESTS.filter(q => G.quests[q.id] && G.quests[q.id].state === 'ready'), rd = G.daily ? G.daily.list.filter(d => d.done && !d.claimed).length : 0;
     let btns = rq.map(q => `<button class="btn primary" data-a="qturn" data-id="${q.id}">✅ Entregar: ${esc(q.n)}</button>`).join('');
     if (rd) btns += `<button class="btn primary" data-a="dailyall">🎁 Resgatar ${rd} diário(s)</button>`;
-    if (s && ELV() >= s.lvl && s.k !== 'do') btns += `<button class="btn ${btns ? '' : 'primary'}" data-a="go">🧭 Ir até lá</button>`;
+    if (G.gps || (s && ELV() >= s.lvl && s.k !== 'do')) btns += `<button class="btn ${btns ? '' : 'primary'}" data-a="go">🧭 ${G.gps ? 'Seguir o GPS' : 'Ir até lá'}</button>`;
+    if (G.gps) btns += '<button class="btn" data-a="gpscancel">✕ Cancelar GPS</button>';
     h += `<div class="op-b col">${btns}</div><div class="op-b"><button class="btn" data-a="p-map">🗺️ Mapa</button><button class="btn" data-a="p-quest">📜 Missões</button></div>`;
     if (E.objPop._h !== h) { E.objPop._h = h; E.objPop.innerHTML = h; }
   }
@@ -745,6 +747,24 @@ const UI = (() => {
     cv.addEventListener('mousedown', e => { drag = [e.clientX, e.clientY]; });
     window.addEventListener('mouseup', () => { drag = null; });
     window.addEventListener('mousemove', e => { if (!drag || !st.mapK) return; const s = sc(); st.mapC = [st.mapC[0] - (e.clientX - drag[0]) * s / st.mapK, st.mapC[1] - (e.clientY - drag[1]) * s / st.mapK]; drag = [e.clientX, e.clientY]; st.mapView = 'free'; mapClamp(); mapReq(); });
+    /* toque: um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca o destino do GPS */
+    const pts = new Map(); let tap = null, pinch = 0;
+    cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) { } pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 1) tap = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false }; else { tap = null; const [a, b] = [...pts.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+    cv.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'touch' || !pts.has(e.pointerId) || !st.mapK) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); const s = sc();
+      if (pts.size === 1) { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true; if (!tap || tap.moved) { st.mapC = [st.mapC[0] - (e.clientX - prev[0]) * s / st.mapK, st.mapC[1] - (e.clientY - prev[1]) * s / st.mapK]; st.mapView = 'free'; mapClamp(); mapReq(); } }
+      else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), r = cv.getBoundingClientRect(); if (pinch > 0) { mapZoom(d / pinch, ((a[0] + b[0]) / 2 - r.left) * s, ((a[1] + b[1]) / 2 - r.top) * s); mapReq(); } pinch = d; }
+    });
+    const up = e => { if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return; pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; if (tap && !tap.moved && pts.size === 0 && performance.now() - tap.t < 500) mapTap(tap.x, tap.y); if (!pts.size) tap = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => { pts.delete(e.pointerId); pinch = 0; tap = null; });
+  }
+  function mapTap(cx, cy) { const w = mapToWorld(cx, cy); if (!w) return; st.mapPin = w; mapGpsSync(); mapReq(); }
+  const fmDist = d => d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m';
+  function mapGpsSync() { // barra do mapa: confirma o destino tocado, ou mostra o GPS ativo
+    const el = E.p_map && E.p_map.querySelector('.map-gps'); if (!el || !G.player) return; const pin = st.mapPin, g = G.gps, p = G.player; let h = '';
+    if (pin) h = `<span>📍 ${fmDist(Math.hypot(pin[0] - p.x, pin[1] - p.z))}${coastD(pin[0], pin[1]) < 2 ? ' · água: vou até a margem' : ''}</span><button class="btn primary" data-a="gpsgo">Ir até aqui</button><button class="btn" data-a="gpsx">✕</button>`;
+    else if (g) h = `<span>🧭 ${esc(g.n)} · ${fmDist(Math.hypot(g.x - p.x, g.z - p.z))}</span><button class="btn" data-a="gpscancel">Cancelar GPS</button>`;
+    if (el._h !== h) { el._h = h; el.innerHTML = h; } setVis(el, !!h);
   }
   /* ponto do mundo sob (clientX, clientY) no mapa M aberto, ou null (usado pelo teleporte do painel do administrador) */
   function mapToWorld(cx, cy) {
@@ -773,6 +793,7 @@ const UI = (() => {
       c.beginPath(); c.arc(0, 0, 8, 0, 7); c.fillStyle = '#ffd84a'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#3a2508'; c.stroke(); c.fillStyle = '#3a2508'; c.fillRect(-1.3, -5, 2.6, 6); c.fillRect(-1.3, 2.4, 2.6, 2.4); c.restore(); },
     me(c, x, y, u, a) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 15, 0, 7); c.fillStyle = 'rgba(79,209,255,.22)'; c.fill(); c.rotate(-(a || 0) + Math.PI);
       c.beginPath(); c.moveTo(0, -13); c.lineTo(8.5, 9); c.lineTo(0, 4); c.lineTo(-8.5, 9); c.closePath(); c.fillStyle = '#4fd1ff'; c.fill(); c.lineWidth = 2.2; c.strokeStyle = '#fff'; c.stroke(); c.restore(); },
+    pin(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u * 1.2, u * 1.2); c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-11, -14, -9, -26, 0, -26); c.bezierCurveTo(9, -26, 11, -14, 0, 0); c.fillStyle = '#e53935'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#fff'; c.stroke(); c.beginPath(); c.arc(0, -17, 3.6, 0, 7); c.fillStyle = '#fff'; c.fill(); c.restore(); },
     mob(c, x, y, u, el) { c.beginPath(); c.arc(x, y, (el ? 3.6 : 2.6) * u, 0, 7); c.fillStyle = el ? '#ffcf4a' : '#ff5a4a'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(30,10,5,.85)'; c.stroke(); },
     road(c, x, y, u) { c.lineCap = 'round'; c.beginPath(); c.moveTo(x - 9 * u, y + 3 * u); c.quadraticCurveTo(x, y - 5 * u, x + 9 * u, y + 1 * u); c.lineWidth = 5 * u; c.strokeStyle = 'rgba(70,44,18,.75)'; c.stroke(); c.lineWidth = 3 * u; c.strokeStyle = '#e3c890'; c.stroke(); },
   };
@@ -873,9 +894,12 @@ const UI = (() => {
     const ob = objectivePos(G), pu = 1 + .12 * Math.sin(performance.now() / 200);
     if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); occ.push([x - 15 * ue, y - 15 * ue, x + 15 * ue, y + 15 * ue]); L.push({ x, y, r: 16, t: ob[2], pr: 100, fs: 13, font: '700 # system-ui, sans-serif', col: '#ffe066', bg: 1, edge: 'rgba(255,216,74,.6)' }); }
     if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); occ.push([x - 14 * ue, y - 14 * ue, x + 14 * ue, y + 14 * ue]); }
+    if (G.gps) { const rt = [[p.x, p.z]].concat(G.gps.wp.slice(G.gps.i)); c.save(); c.setLineDash([7 * u, 6 * u]); c.lineWidth = 3 * u; c.lineJoin = 'round'; c.strokeStyle = 'rgba(79,209,255,.95)'; c.beginPath(); rt.forEach((q, i) => { const [x, y] = toS(q[0], q[1]); if (i) c.lineTo(x, y); else c.moveTo(x, y); }); c.stroke(); c.restore(); }
     for (const [k, x, y, a] of ic) MI[k](c, x, y, ue, a);
     placeLabels(c, L, occ, Wc, Hc, u * (IS_TOUCH ? .85 : 1));
     if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); MI.obj(c, x, y, ue, pu); }
+    if (st.mapPin) { const [x, y] = toS(st.mapPin[0], st.mapPin[1]); MI.pin(c, x, y, ue); }
+    mapGpsSync();
     if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); MI.me(c, x, y, ue, p.rot); }
     else { // jogador fora da vista: seta na borda apontando para ele
       const [x, y] = toS(p.x, p.z), a = Math.atan2(y - Hc / 2, x - Wc / 2), m = 18 * u, ex = Math.max(m, Math.min(Wc - m, Wc / 2 + Math.cos(a) * Wc)), ey = Math.max(m, Math.min(Hc - m, Hc / 2 + Math.sin(a) * Hc));
@@ -971,7 +995,7 @@ const UI = (() => {
       h += `<h3>${id === 'weapon' ? 'Armas' : 'Roupas e armaduras'} <small>💰 ${fmt(p.gold)} · comuns, sem refino</small></h3><div class="shop">`;
       for (const { it, price } of list) {
         const e = p.eq[it.slot], d = cmpDelta(it, e);
-        h += `<div class="shop-r"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b>${esc(itemName(it))}</b><small>${SLOTS[it.slot]} · ${istr(it)}${d == null ? ' · <i class="ar new">●</i> espaço vazio' : d > 0 ? ' · <i class="ar up">▲ melhor</i>' : ''}</small></div><button class="btn" data-a="buyitem" data-s="${it.slot}" data-w="${it.wt || ''}" data-g="${it.grade}"${p.gold < price ? ' disabled' : ''}>Comprar<small>💰 ${fmt(price)}</small></button></div>`;
+        h += `<div class="shop-r"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b>${esc(itemName(it))}</b><small>${SLOTS[it.slot]} · ${istr(it)}${d == null ? ' · <i class="ar new">●</i> espaço vazio' : d > 0 ? ' · <i class="ar up">▲ melhor</i>' : d < 0 ? ' · <i class="ar dn">▼ pior</i>' : ''}</small></div><button class="btn" data-a="buyitem" data-s="${it.slot}" data-w="${it.wt || ''}" data-g="${it.grade}"${p.gold < price ? ' disabled' : ''}>Comprar<small>💰 ${fmt(price)}</small></button></div>`;
       }
       h += '</div><div class="dim pad">O estoque acompanha o seu nível: grau atual e o anterior.</div>';
     } else if (id === 'stable') {
@@ -1004,7 +1028,8 @@ const UI = (() => {
       if (!p.inv.length) h += '<div class="dim pad">Sua mochila está vazia.</div>';
       const ic = SLOT_IC(p.cls);
       p.inv.forEach(it => {
-        h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
+        const d = cmpDelta(it, p.eq[it.slot]), cm = d == null ? '<i class="ar new">●</i> espaço vazio' : d > 0 ? '<i class="ar up">▲ melhor que o equipado</i>' : d < 0 ? '<i class="ar dn">▼ pior que o equipado</i>' : '<i class="ar eq">＝ igual ao equipado</i>';
+        h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}<br>${cm}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
       });
       h += '</div>';
     } else if (nid === 'selene') { // Refinador: fundir peças iguais em Ancient
@@ -1087,6 +1112,9 @@ const UI = (() => {
       case 'qturn': Game.turnInQuest(d.id); refreshPanels(); return;
       case 'dailyall': if (G.daily) G.daily.list.forEach((x, k) => { if (x.done && !x.claimed) Game.claimDaily(k); }); refreshPanels(); return;
       case 'maplg': st.mapLeg = !st.mapLeg; renderMap(G); return;
+      case 'gpsgo': { const pin = st.mapPin; if (pin) { const v = VILLAGES.find(q => Math.hypot(q.cx - pin[0], q.cz - pin[1]) < 40); st.mapPin = null; if (Game.gpsGo(pin[0], pin[1], v ? v.n : 'Destino')) winClose('map'); else renderMap(G); } return; }
+      case 'gpsx': st.mapPin = null; renderMap(G); return;
+      case 'gpscancel': Game.gpsCancel(); st.mapPin = null; renderMap(G); objSync(G); return;
       case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
       case 'fab': st.fabOpen = !st.fabOpen; fabSync(); return;
       case 'p-lv': togglePanel('lv'); return;

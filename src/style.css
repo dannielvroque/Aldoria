@@ -720,3 +720,8 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 .itcard li.up { color: #8be08b; } .itcard li.dn { color: #ff9a8a; } .itcard li.bad { color: #ff7a6a; } .itcard li.val { color: #e8d28a; margin-top: 3px; }
 .itcard .ic-b { display: flex; flex-wrap: wrap; gap: 6px; } .itcard .ic-b .btn { flex: 1 1 calc(50% - 6px); padding: 8px 6px; font-size: 13px; } .itcard .ic-b .btn.primary { flex-basis: 100%; }
 .itcard .ic-q { color: #ffcf8a; margin: 6px 0; } .itcard .bad { color: #ff8a80; }
+
+/* ---------- mapa: GPS (toque marca o destino) ---------- */
+.map-c { touch-action: none; }
+.map-gps { position: absolute; top: 8px; left: 8px; right: 56px; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: rgba(16, 12, 22, .88); border: 1px solid var(--gold-d); font-size: 12.5px; pointer-events: auto; }
+.map-gps span { flex: 1; min-width: 0; line-height: 1.2; } .map-gps .btn { padding: 6px 10px; font-size: 12.5px; flex: none; }

@@ -116,6 +116,10 @@ Mais missões e masmorras, árvore de talentos, itens com efeitos especiais, aju
 - **Começo do campo**: `CAMP_DMG0` (0,7) multiplica o dano do jogador no nível 1 e sobe até 1 no nível 29 do Mortal (`playerDmg`). O kit inicial agora traz elmo e luvas (`starterKit`).
 - **Economia de energia**: ~40 FPS por acumulador (`ECO_MS`), resolução até 1,4× no toque.
 
+## GPS e mapa no toque
+- Mapa (`mapEvents`, ui.js): um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca `st.mapPin` e mostra a barra `.map-gps` ("Ir até aqui"). `Game.gpsGo(x, z, nome)` (game.js) calcula uma rota por terra (`gpsRoute`: A* numa grade de 20 m com `coastD`, suavizada) e `gpsTick` segue os pontos com `cmd` `move` (`cmd.gps`); joystick ou qualquer toque/ataque pausa (o marcador fica; o ❗ "Seguir o GPS" retoma), 4 s parado recalcula a rota (3×) e depois desiste. `G.gps` vira o objetivo mostrado no minimapa, na seta e no mapa (rota tracejada); `objectivePos` devolve o GPS antes da história.
+- Cartão de item ao tocar (`cardRender`/`cardAct`) e lista de venda do mercador com ▲▼ contra o equipado.
+
 ## Missões no celular (toque)
 - Botão ❗ (`data-a="obj"`, aviso `.objpop`, `renderObj`/`objSync` em ui.js) mostra a etapa atual, o destino e **um** botão de ação: "Entregar" (secundária pronta), "Resgatar diários" ou "🧭 Ir até lá" (`Game.goObjective()`: anda até o NPC e abre o diálogo, vai ao lugar ou ao monstro mais próximo; chefe/elite só chega perto). Minimapa e botão "Mapa" abrem o mapa; legenda do mapa no botão `?`.
 - No toque (`IS_TOUCH`), missões secundárias liberadas entram como ativas sozinhas (`updateQuestLocks`) e entregam/resgatam pelo ❗, sem ir ao Ancião. No desktop o fluxo com Ancião continua igual.

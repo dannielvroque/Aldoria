@@ -508,8 +508,55 @@ const Game = (() => {
     if (!stepOpen(s) || s.k !== 'explore') return;
     const p = G.player; if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) { UI.toast('Descoberto: ' + s.place); stepDone(); }
   }
+  /* ---------- GPS: toque no mapa marca um destino; o personagem anda sozinho por uma rota pela terra ---------- */
+  function gpsRoute(x0, z0, x1, z1) { // A* (8 vizinhos) numa grade de 20 m que só passa por terra; devolve pontos [x, z] suavizados, ou null
+    const S = 20, nx = Math.ceil((WB.x1 - WB.x0) / S), nz = Math.ceil((WB.z1 - WB.z0) / S), N = nx * nz;
+    const ci = x => Math.max(0, Math.min(nx - 1, Math.floor((x - WB.x0) / S))), cj = z => Math.max(0, Math.min(nz - 1, Math.floor((z - WB.z0) / S)));
+    const cx = i => WB.x0 + (i + .5) * S, cz = j => WB.z0 + (j + .5) * S, si = ci(x0), sj = cj(z0), ti = ci(x1), tj = cj(z1), s0 = sj * nx + si, t0 = tj * nx + ti;
+    const ok = (i, j) => (j * nx + i === t0) || coastD(cx(i), cz(j)) > 6, g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+    const open = [[Math.hypot(ti - si, tj - sj) * S, s0]]; g[s0] = 0; let found = false;
+    while (open.length) {
+      let b = 0; for (let q = 1; q < open.length; q++) if (open[q][0] < open[b][0]) b = q;
+      const [, cur] = open[b]; open[b] = open[open.length - 1]; open.pop(); if (done[cur]) continue; done[cur] = 1;
+      if (cur === t0) { found = true; break; }
+      const ci0 = cur % nx, cj0 = (cur / nx) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue; const i = ci0 + di, j = cj0 + dj; if (i < 0 || j < 0 || i >= nx || j >= nz || !ok(i, j)) continue;
+        if (di && dj && !(ok(ci0 + di, cj0) && ok(ci0, cj0 + dj))) continue; // diagonal não corta quina de água
+        const id = j * nx + i, ng = g[cur] + (di && dj ? 1.414 : 1) * S; if (ng < g[id]) { g[id] = ng; from[id] = cur; open.push([ng + Math.hypot(i - ti, j - tj) * S, id]); }
+      }
+    }
+    if (!found) return null;
+    const pts = []; for (let c = t0; c >= 0; c = from[c]) { pts.push([cx(c % nx), cz((c / nx) | 0)]); if (c === s0) break; } pts.reverse(); pts[pts.length - 1] = [x1, z1];
+    const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 8); for (let k = 1; k < n; k++) if (coastD(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n) < 4) return false; return true; };
+    const out = []; let a = [x0, z0], k = 0; // puxa o fio: do ponto atual, vai ao ponto mais longe que ainda se alcança em linha reta
+    while (k < pts.length) { let far = k; for (let q = pts.length - 1; q > k; q--) if (clear(a, pts[q])) { far = q; break; } out.push(pts[far]); a = pts[far]; k = far + 1; }
+    return out;
+  }
+  function gpsGo(x, z, name) {
+    const p = G.player; if (!p || G.dead) return false; const q = { x, z }; landClamp(q);
+    const r = gpsRoute(p.x, p.z, q.x, q.z); if (!r) { UI.toast('Não há caminho por terra até lá.'); return false; }
+    G.gps = { x: q.x, z: q.z, n: name || 'Destino', wp: r, i: 0, walk: true, chk: { t: G.t, x: p.x, z: p.z }, rb: 0 }; cmd = null; tmob = null;
+    UI.log('GPS: indo para ' + G.gps.n + ' (' + Math.round(Math.hypot(q.x - p.x, q.z - p.z)) + ' m).', 'sys'); return true;
+  }
+  function gpsCancel() { if (!G.gps) return; if (cmd && cmd.gps) cmd = null; G.gps = null; UI.log('GPS cancelado.', 'sys'); }
+  function gpsResume() { const g = G.gps; return !!g && gpsGo(g.x, g.z, g.n); }
+  function gpsTick(kd) { // a cada quadro: segue o próximo ponto da rota; o controle manual só pausa (o marcador continua)
+    const g = G.gps, p = G.player; if (!g || !p || G.dead) return;
+    if (kd || (cmd && !cmd.gps)) { g.walk = false; return; }
+    if (Math.hypot(g.x - p.x, g.z - p.z) < 4) { G.gps = null; if (cmd && cmd.gps) cmd = null; UI.toast('📍 Você chegou ao destino!'); sfx('quest'); return; }
+    if (!g.walk) return;
+    if (G.t - g.chk.t > 4) { // parado há 4 s: recalcula a rota (até 3 vezes) e, se continuar preso, desiste
+      if (Math.hypot(p.x - g.chk.x, p.z - g.chk.z) < 2) { if (++g.rb > 3) { G.gps = null; cmd = null; UI.toast('GPS parou: algo bloqueia o caminho.'); return; } const r = gpsRoute(p.x, p.z, g.x, g.z); if (r) { g.wp = r; g.i = 0; cmd = null; } }
+      g.chk = { t: G.t, x: p.x, z: p.z };
+    }
+    if (cmd) return;
+    while (g.i < g.wp.length - 1 && Math.hypot(g.wp[g.i][0] - p.x, g.wp[g.i][1] - p.z) < 6) g.i++;
+    const w = g.wp[g.i]; cmd = { type: 'move', x: w[0], z: w[1], gps: true };
+  }
   /* um toque: vai até o objetivo da história (NPC, lugar, ou o monstro/chefe mais próximo do passo). Devolve false se não há para onde ir */
   function goObjective() {
+    if (G.gps) return gpsResume();
     const s = G.main && curStep(), p = G.player; if (!s || !stepOpen(s) || G.dead) return false;
     if (s.k === 'talk') { const n = NPCS.find(x => x.id === s.npc); if (!n) return false; cmd = { type: 'npc', npc: n }; return true; }
     if (s.k === 'explore') { cmd = { type: 'move', x: s.x, z: s.z }; return true; }
@@ -1404,7 +1451,7 @@ const Game = (() => {
       }
       return;
     }
-    const spd = G.stats.spd * (p.mount ? 1 + mountSpd(p.mount) : 1) * (TST.spd ? 3 : 1), kd = keyDir();
+    const spd = G.stats.spd * (p.mount ? 1 + mountSpd(p.mount) : 1) * (TST.spd ? 3 : 1), kd = keyDir(); gpsTick(kd);
     const go = (tx, tz, speed, steer) => {
       const ftx = tx, ftz = tz;
       let routed = false; // rota da vila já desvia de tudo: sem desvio local, que oscila em ruas estreitas
@@ -1931,6 +1978,7 @@ const Game = (() => {
     return true;
   }
   function startPlay() {
+    G.gps = null;
     wx.t = Math.min(wx.t, 60); G.state = 'play'; G.dead = false; G.wasSafe = false; portalLock = true; loadAuto(); autoHome = null; autoPause = 0; autoOut.hp = autoOut.mp = false; populate(); cam.init = false; lastZone = null; combatT = -99;
     UI.hideMenu(); UI.hideDeath(); UI.closeAll();
     evTick('load'); // mostra a faixa e o aviso "Evento ativo" se já houver evento rodando
@@ -2436,7 +2484,7 @@ const Game = (() => {
   });
   return {
     boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, gpsGo, gpsCancel, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();
