@@ -137,7 +137,10 @@ data "aws_iam_policy_document" "assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/${var.github_branch}"]
+      values = compact([
+        "repo:${var.github_repo}:ref:refs/heads/${var.github_branch}",
+        var.github_sub_prefix == "" ? "" : "${var.github_sub_prefix}:ref:refs/heads/${var.github_branch}",
+      ])
     }
   }
 }
