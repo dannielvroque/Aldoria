@@ -405,7 +405,8 @@ const Game = (() => {
     for (let i = 0; i < QUESTS.length; i++) {
       const q = QUESTS[i], st = G.quests[q.id];
       if (st.state === 'locked' && EL(G.player) >= q.lvl && (q.after ? G.quests[q.after].state === 'done' : (i === 0 || G.quests[QUESTS[i - 1].id].state === 'done'))) {
-        st.state = 'available'; if (!silent) UI.log('Nova missão disponível: ' + q.n + '. Fale com um Ancião.', 'quest');
+        if (IS_TOUCH) { st.state = 'active'; st.prog = 0; if (!silent) UI.log('Missão aceita: ' + q.n + '.', 'quest'); } // celular: aceita sozinha, sem ir ao Ancião
+        else { st.state = 'available'; if (!silent) UI.log('Nova missão disponível: ' + q.n + '. Fale com um Ancião.', 'quest'); }
       }
     }
   }
@@ -505,6 +506,18 @@ const Game = (() => {
     if (stepOpen(s) && s.k === 'do' && s.ev === 'move') { const p = G.player; if (!G.main.mx) G.main.mx = [p.x, p.z]; else if (Math.hypot(p.x - G.main.mx[0], p.z - G.main.mx[1]) >= 12) mainEv('move'); return; }
     if (!stepOpen(s) || s.k !== 'explore') return;
     const p = G.player; if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) { UI.toast('Descoberto: ' + s.place); stepDone(); }
+  }
+  /* um toque: vai até o objetivo da história (NPC, lugar, ou o monstro/chefe mais próximo do passo). Devolve false se não há para onde ir */
+  function goObjective() {
+    const s = G.main && curStep(), p = G.player; if (!s || !stepOpen(s) || G.dead) return false;
+    if (s.k === 'talk') { const n = NPCS.find(x => x.id === s.npc); if (!n) return false; cmd = { type: 'npc', npc: n }; return true; }
+    if (s.k === 'explore') { cmd = { type: 'move', x: s.x, z: s.z }; return true; }
+    if (s.k === 'do') return false;
+    const ms = G.mobs.filter(m => !m.dead && (s.k === 'boss' ? m.boss && m.id === s.boss : s.k === 'elite' ? m.elite && m.zone === s.zone : !m.boss && (s.zone ? m.zone === s.zone : s.mobs.includes(m.id))));
+    if (!ms.length) return false;
+    ms.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)); const m = ms[0], d = Math.hypot(m.x - p.x, m.z - p.z);
+    if (m.boss || m.elite) { if (d < 30) { tmob = m; cmd = { type: 'attack', mob: m }; } else { const k = (d - 26) / d; cmd = { type: 'move', x: p.x + (m.x - p.x) * k, z: p.z + (m.z - p.z) * k }; } return true; } // chefe/elite: chega perto, o ataque é decisão sua
+    tmob = m; cmd = { type: 'attack', mob: m }; return true;
   }
   function storyTalk(npc) {
     const s = curStep(); if (!stepOpen(s) || s.k !== 'talk' || s.npc !== npc) return;
@@ -2413,7 +2426,7 @@ const Game = (() => {
   });
   return {
     boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();

@@ -617,7 +617,11 @@ const UI = (() => {
     const aq = QUESTS.filter(q => G.quests[q.id] && (G.quests[q.id].state === 'active' || G.quests[q.id].state === 'ready'));
     if (aq.length) h += '<ul>' + aq.slice(0, 3).map(q => `<li>${esc(q.n)} · ${STATE_N[G.quests[q.id].state]}</li>`).join('') + '</ul>';
     if (ob && G.player) { const d = Math.hypot(ob[0] - G.player.x, ob[1] - G.player.z); h += `<p class="where">📍 ${esc(ob[2] || 'Objetivo')} · ${d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m'} <small>(marcado no minimapa)</small></p>`; }
-    h += '<div class="op-b"><button class="btn primary" data-a="p-map">🗺️ Ver no mapa</button><button class="btn" data-a="p-quest">📜 Missões</button></div>';
+    const rq = QUESTS.filter(q => G.quests[q.id] && G.quests[q.id].state === 'ready'), rd = G.daily ? G.daily.list.filter(d => d.done && !d.claimed).length : 0;
+    let btns = rq.map(q => `<button class="btn primary" data-a="qturn" data-id="${q.id}">✅ Entregar: ${esc(q.n)}</button>`).join('');
+    if (rd) btns += `<button class="btn primary" data-a="dailyall">🎁 Resgatar ${rd} diário(s)</button>`;
+    if (s && ELV() >= s.lvl && s.k !== 'do') btns += `<button class="btn ${btns ? '' : 'primary'}" data-a="go">🧭 Ir até lá</button>`;
+    h += `<div class="op-b col">${btns}</div><div class="op-b"><button class="btn" data-a="p-map">🗺️ Mapa</button><button class="btn" data-a="p-quest">📜 Missões</button></div>`;
     if (E.objPop._h !== h) { E.objPop._h = h; E.objPop.innerHTML = h; }
   }
   function objSync(G) {
@@ -1075,6 +1079,9 @@ const UI = (() => {
       case 'p-auto': togglePanel('auto'); return;
       case 'p-look': togglePanel('look'); return;
       case 'p-map': mapToggle(); return;
+      case 'go': { if (!Game.goObjective()) UI.toast('Não há para onde ir agora.'); return; }
+      case 'qturn': Game.turnInQuest(d.id); refreshPanels(); return;
+      case 'dailyall': if (G.daily) G.daily.list.forEach((x, k) => { if (x.done && !x.claimed) Game.claimDaily(k); }); refreshPanels(); return;
       case 'maplg': st.mapLeg = !st.mapLeg; renderMap(G); return;
       case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
       case 'p-lv': togglePanel('lv'); return;
