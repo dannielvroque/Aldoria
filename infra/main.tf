@@ -91,7 +91,7 @@ data "aws_iam_policy_document" "bucket" {
   statement {
     sid       = "AllowCloudFrontRead"
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.site.arn}/*"]
+    resources = ["${aws_s3_bucket.site.arn}/index.html"] # só a página: o resto do bucket (ex.: backup/) não é servido
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -137,7 +137,10 @@ data "aws_iam_policy_document" "assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/${var.github_branch}"]
+      values = compact([
+        "repo:${var.github_repo}:ref:refs/heads/${var.github_branch}",
+        var.github_sub_prefix == "" ? "" : "${var.github_sub_prefix}:ref:refs/heads/${var.github_branch}",
+      ])
     }
   }
 }
