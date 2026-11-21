@@ -655,7 +655,8 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 #ui.touch #p-pause { width: min(340px, calc(100% - 24px)); }
 #ui.touch #p-pause .btn { white-space: normal; }
 /* toque: botão de objetivo (❗) no lugar do 🤖 repetido, minimapa abre o mapa, aviso com o que fazer agora */
-#ui .tobj, #ui .objpop { display: none; }
+#ui .tobj, #ui .objpop, #ui .maplg { display: none; }
+#ui.touch .maplg { display: block; }
 #ui.touch .tobj { display: block; }
 #ui.touch .btns [data-a="p-auto"] { display: none; }
 #ui.touch .mm { pointer-events: auto; cursor: pointer; }
@@ -678,6 +679,7 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 @media (orientation: portrait) { /* mapa em retrato: mapa em cima, lista de regiões embaixo (rola com o painel) */
   #ui.touch .map-w { flex-direction: column; }
   #ui.touch .map-cw { width: 100%; }
+  #ui.touch .map-c { aspect-ratio: auto; height: min(62vh, 540px); }
   #ui.touch .map-side { min-width: 0; max-height: none; overflow: visible; }
 }
 #ui.touch .panel.win { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; animation: none; }
