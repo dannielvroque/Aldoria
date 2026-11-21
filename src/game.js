@@ -1486,11 +1486,11 @@ const Game = (() => {
     const jend = e => { if (e.pointerId !== jid) return; jid = null; joy.on = false; joy.x = joy.y = 0; knob.style.transform = ''; };
     base.addEventListener('pointerup', jend); base.addEventListener('pointercancel', jend);
     ui.querySelectorAll('.tact').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); act(b.dataset.k); }));
-    // tela cheia + paisagem (quando o navegador permitir)
-    const fs = ui.querySelector('.tfs');
-    if (fs) fs.addEventListener('click', () => {
-      const d = document.documentElement;
-      try { if (document.fullscreenElement) document.exitFullscreen(); else { (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } } catch (e) { /* sem suporte */ }
+    // tela cheia (Android e iPad). O Safari do iPhone não tem a API: o botão some; lá o jeito é "Adicionar à Tela de Início" (abre sem barra de endereço)
+    const fs = ui.querySelector('.tfs'), de = document.documentElement, reqFs = de.requestFullscreen || de.webkitRequestFullscreen;
+    if (fs && !reqFs) fs.remove();
+    else if (fs) fs.addEventListener('click', () => {
+      try { if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document); else { const r = reqFs.call(de); if (r && r.catch) r.catch(() => { }); } } catch (e) { /* sem suporte */ }
     });
     window.addEventListener('blur', () => { joy.on = false; joy.x = joy.y = 0; });
   }

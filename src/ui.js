@@ -116,7 +116,7 @@ const UI = (() => {
     <div class="bar hp"><i></i><span></span></div>
   </div>
   <div class="tr">
-    <div class="mm"><canvas width="${MM}" height="${MM}"></canvas></div>
+    <div class="mm"${TX('', ' data-a="p-map" title="Abrir o mapa"')}><canvas width="${MM}" height="${MM}"></canvas></div>
     <div class="zone"></div>
     <div class="btns">
       <button data-a="p-inv" title="Inventário [I]">🎒</button>
@@ -124,12 +124,14 @@ const UI = (() => {
       <button data-a="p-char" title="Personagem [C]">👤</button>
       <button data-a="p-lv" title="Níveis e regiões [B]">📊</button>
       <button data-a="p-look" title="Montarias [H]">🐎</button>
+      <button data-a="obj" class="tobj" title="O que fazer agora">❗</button>
       <button data-a="p-auto" title="Automático [T]">🤖</button>
       <button data-a="mute" title="Som [N]">🔊</button>
       <button data-a="pause" title="Menu / Pausa [Esc]">☰</button>
     </div>
     <div class="qt glass off"><div class="qt-h">Missão</div><div class="qt-n"></div><div class="qt-p"></div></div>
   </div>
+  <div class="objpop glass off"></div>
   <div class="auto-badge off" data-a="p-auto" title="Modo automático ativo [T] · Z liga/desliga o combate automático"></div>
   <div class="sb"></div>
   <div class="log"></div>
@@ -142,7 +144,7 @@ const UI = (() => {
     <button class="tact" data-k="Tab" title="Trocar alvo">🎯</button>
     <button class="tact" data-k="KeyF" title="Falar">💬</button>
     <button class="tact" data-k="KeyZ" title="Automático">🤖</button>
-    <button class="tact" data-k="KeyX" title="Montar">🐎</button>
+    <button class="tact" data-k="KeyX" title="Montar">🏇</button>
   </div>
   <button class="tfs" title="Tela cheia">⛶</button>
 </div>
@@ -170,7 +172,7 @@ const UI = (() => {
     E.hp = q('.pf .bar.hp i'); E.hpT = q('.pf .bar.hp span'); E.mp = q('.pf .bar.mp i'); E.mpT = q('.pf .bar.mp span'); E.xp = q('.pf .bar.xp i'); E.evbar = q('.evbar'); E.evtoast = q('.evtoast'); E.hud = q('.hud');
     E.tfName = q('.tf-name'); E.tfIc = q('.tf-ic'); E.tfLv = q('.tf-lv'); E.tfHp = q('.tf .bar i'); E.tfHpT = q('.tf .bar span');
     E.zone = q('.zone'); E.qt = q('.qt'); E.qtN = q('.qt-n'); E.qtP = q('.qt-p'); E.mute = q('[data-a=mute]');
-    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]') };
+    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]'), obj: q('.btns [data-a=obj]') }; E.objPop = q('.objpop'); E.mm = q('.mm');
     E.badge = q('.auto-badge'); E.qa = q('.qarrow'); E.qaAr = q('.qa-ar'); E.qaD = q('.qa-d');
     E.npcIc = q('.npc-ic'); E.npcN = q('.npc-id h2'); E.npcR = q('.npc-id small');
     ctx = q('.mm canvas').getContext('2d');
@@ -190,7 +192,7 @@ const UI = (() => {
     E.slots.forEach(s => { s.$cdv = s.querySelector('.cdv'); s.$cdt = s.querySelector('.cdt'); s.$mpc = s.querySelector('.mpc'); s.$ic = s.querySelector('.ic'); s.$qty = s.querySelector('.qty'); });
 
     buildMenu();
-    [E.sb, q('.btns'), E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    [E.sb, q('.btns'), E.mm, E.objPop, E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
     WIN_KEYS.forEach(k => { E['p_' + k].addEventListener('pointerdown', () => winFront(k), true); E['p_' + k].querySelector('.ph').addEventListener('pointerdown', ev => winDrag(k, ev)); });
   }
 
@@ -444,6 +446,7 @@ const UI = (() => {
     const q = (typeof Game !== 'undefined' && Game._dbg && Game._dbg.R) ? Game._dbg.R.q.name : '';
     let h = '<div class="pause-b">';
     h += '<button class="btn primary" data-a="close">▶ Continuar jogando</button>';
+    h += TX('', '<button class="btn" data-a="p-auto">🤖 Configurar automático</button>');
     h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b>${TX(' <small>[G]</small>', '')}</button>`;
     h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'}${TX(' <small>[N]</small>', '')}</button>`;
     { const V = Game.getVol ? Game.getVol() : {}; h += '<div class="mixer">' + [['master', '🔊 Geral'], ['sfx', '⚔ Efeitos'], ['amb', '🌿 Ambiente'], ['music', '🎵 Música']].map(([k, n]) => `<label><span>${n}</span><input type="range" min="0" max="100" value="${Math.round((V[k] == null ? 1 : V[k]) * 100)}" data-vol="${k}"></label>`).join('') + '</div>'; }
@@ -601,6 +604,27 @@ const UI = (() => {
     if (!ms.length) return null;
     const p = G.player; ms.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
     return [ms[0].x, ms[0].z, s.item || ms[0].name];
+  }
+  function mapToggle() { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
+  /* celular: botão ❗ "o que fazer agora". Mostra a etapa da história, o destino (já marcado no minimapa) e atalhos para o mapa e as missões */
+  const objKey = G => G.main ? G.main.i + ':' + G.main.prog : '';
+  function renderObj(G) {
+    const M = G.main, s = M && MAIN[M.i], ob = st.obj; let h = '';
+    if (s && ELV() >= s.lvl) { const tg = stepGoal(s), pr = Math.min(M.prog, tg); h += `<b>${esc(stepTitle(s))}</b><p>${esc(s.t)}</p>${tg > 1 ? `<small>Progresso: ${pr}/${tg}</small>` : ''}`; }
+    else if (s) h += `<b>Próxima etapa da história</b><p>Disponível no nível ${DLV(s.lvl)}. Enquanto isso, faça missões e suba de nível.</p>`;
+    else h += '<b>História concluída</b><p>Você completou as Crônicas de Aldoria.</p>';
+    const aq = QUESTS.filter(q => G.quests[q.id] && (G.quests[q.id].state === 'active' || G.quests[q.id].state === 'ready'));
+    if (aq.length) h += '<ul>' + aq.slice(0, 3).map(q => `<li>${esc(q.n)} · ${STATE_N[G.quests[q.id].state]}</li>`).join('') + '</ul>';
+    if (ob && G.player) { const d = Math.hypot(ob[0] - G.player.x, ob[1] - G.player.z); h += `<p class="where">📍 ${esc(ob[2] || 'Objetivo')} · ${d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m'} <small>(marcado no minimapa)</small></p>`; }
+    h += '<div class="op-b"><button class="btn primary" data-a="p-map">🗺️ Ver no mapa</button><button class="btn" data-a="p-quest">📜 Missões</button></div>';
+    if (E.objPop._h !== h) { E.objPop._h = h; E.objPop.innerHTML = h; }
+  }
+  function objSync(G) {
+    if (!IS_TOUCH || !E.objPop) return;
+    const open = st.objOpen && G.state === 'play' && !st.modal && !G.dead;
+    if (open) { st.objSeen = objKey(G); renderObj(G); }
+    setVis(E.objPop, open);
+    setCls(E.btn.obj, 'pulse', !open && !!st.obj && st.objSeen !== objKey(G));
   }
   /* ---------- terreno do mapa (M e minimapa): a grade de 4 m do world.js é amostrada com interpolação bilinear
      direto na resolução da tela, então a costa e as fronteiras ficam lisas em qualquer zoom (nada de bitmap ampliado) ---------- */
@@ -1049,6 +1073,8 @@ const UI = (() => {
       case 'p-quest': togglePanel('quest'); return;
       case 'p-auto': togglePanel('auto'); return;
       case 'p-look': togglePanel('look'); return;
+      case 'p-map': mapToggle(); return;
+      case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
       case 'p-lv': togglePanel('lv'); return;
       case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
       case 'pause': showPanel('pause'); return;
@@ -1402,6 +1428,7 @@ const UI = (() => {
     const t = now();
     if (t - lastHeavy > 100) { lastHeavy = t; st.obj = G.state === 'play' ? objectivePos(G) : null; heavy(G); if (st.wins.includes('map')) renderMap(G); }
     if (G.vp) { updateLabels(G); updateFloats(G); updateArrow(G); }
+    objSync(G);
   }
 
   /* ---------- init ---------- */
@@ -1425,6 +1452,7 @@ const UI = (() => {
     window.addEventListener('mousemove', ev => { if (st.carry) { const g = root.querySelector('.carry-ghost'); if (g) { g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px'; } } });
     root.addEventListener('click', ev => {
       const t = ev.target.closest('[data-a]');
+      if (st.objOpen && t && t.dataset.a !== 'obj') { st.objOpen = false; objSync(G); } // qualquer outro botão da interface fecha o aviso de objetivo
       if (!t || t.disabled || !root.contains(t)) return;
       { const pn = t.closest('.panel'); if (pn && t.dataset.a === 'close') t.dataset._k = pn.id.slice(2); }
       act(t.dataset.a, t.dataset);
@@ -1459,6 +1487,7 @@ const UI = (() => {
     root.addEventListener('mousedown', ev => { if (st.cm && !ev.target.closest('.ctxm')) cmClose(); }, true);
     root.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('button, .btn, .bi, .es') && Game.sound) Game.sound('click', { force: true }); }, true);
     root.addEventListener('input', ev => { const t = ev.target; if (t.dataset && t.dataset.vol) { Game.setVol(t.dataset.vol, t.value / 100); return; } if (!t.dataset || !t.dataset.ci) return; if (t.dataset.ci === 'cr') Game.createSet('hcx', t.value); else Game.setLook('hcx', t.value); });
+    addEventListener('pointerdown', () => { if (st.objOpen) { st.objOpen = false; objSync(G); } }); // toque no jogo (fora da interface) fecha o aviso de objetivo
     addEventListener('keydown', ev => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey || st.menu) return;
       const k = ev.key.toLowerCase();
@@ -1474,7 +1503,7 @@ const UI = (() => {
       else if (k === 'b') togglePanel('lv');
       else if (k === 'n') Game.toggleMute();
       else if (k === 'v') togglePanel('tree');
-      else if (k === 'm') { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
+      else if (k === 'm') mapToggle();
     });
     showPanel(null);
   }
