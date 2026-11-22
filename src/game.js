@@ -2335,7 +2335,18 @@ const Game = (() => {
         R.parts(mountParts(p.mount), M.part([p.x, hov, p.z], [0, p.rot, 0], [0, 0, 0], [1, 1, 1]), tint, 0, 1, { t: G.t, amp: p.moving ? 1 : 0, atk: 0 });
         R.parts(seatedParts(parts), M.part([p.x, hov + st[0] - SEAT_HIP * psc, p.z], [0, p.rot, 0], [0, 0, st[1]], [psc, psc, psc]), tint, 0, 1, { t: G.t, amp: 0, atk: p.atkT > 0 ? 1 - p.atkT / .3 : 0 });
         shadows.push([p.x, p.z, fly ? 1.8 : 1.0]);
-      } else { R.parts(parts, b, tint, 0, 1, { t: G.t, amp: p.moving ? 1 : 0, atk: p.atkT > 0 ? 1 - p.atkT / .3 : 0 }); shadows.push([p.x, p.z, .75]); }
+      } else {
+        const k = p.atkT > 0 ? 1 - p.atkT / .3 : 0; let bb = b;
+        if (k > 0) { // golpe com o corpo todo (não só o braço): avanço, inclinação, giro do tronco e impulso, por classe
+          const s = Math.sin(k * Math.PI), cl = p.cls;
+          const fwd = cl === 'vanguard' ? .3 * s : cl === 'huntress' ? -.1 * s : .12 * s;
+          const lean = cl === 'vanguard' ? .2 * s : cl === 'huntress' ? -.05 * s : .12 * s;
+          const tw = cl === 'vanguard' ? .55 * Math.sin(k * Math.PI * 2) : cl === 'huntress' ? .45 * s : .18 * Math.sin(k * Math.PI * 2);
+          const hop = cl === 'arcanist' || cl === 'tamer' ? .08 * s : 0;
+          bb = M.mul(M.part([p.x + Math.sin(p.rot) * fwd, hop, p.z + Math.cos(p.rot) * fwd], [0, p.rot + tw, 0], [0, 0, 0], [1, 1, 1]), M.part([0, 0, 0], [lean, 0, 0], [0, 0, 0], [psc, psc, psc]));
+        }
+        R.parts(parts, bb, tint, 0, 1, { t: G.t, amp: p.moving ? 1 : 0, atk: k }); shadows.push([p.x, p.z, .75]);
+      }
       R.setRim(0, 0, 0);
       if (pet) { R.parts(mobParts(PET_MODEL[pet.kind] || 'golemm', pet.col), base(pet.x, pet.z, pet.rot, pet.sc), pet.flash > 0 ? [2.2, 2.2, 2.2] : WH, 0, 1, { t: G.t, amp: pet.moving ? 1 : 0, atk: pet.atkT > 0 ? 1 - pet.atkT / .3 : 0 }); shadows.push([pet.x, pet.z, pet.rad * 1.3]); }
       R.softBox = false;
