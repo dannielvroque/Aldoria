@@ -56,14 +56,14 @@ const UI = (() => {
 
   /* ---------- itens ---------- */
   function istats(it) {
-    const m = itemMul(it), o = [];
-    if (it.atk != null) o.push(['Ataque', 'Atq', Math.round(it.atk * m)]);
-    if (it.def != null) o.push(['Defesa', 'Def', Math.round(it.def * m)]);
-    if (it.hp != null) o.push(['Vida', 'Vida', Math.round(it.hp * m)]);
+    const o = []; // mesmos valores que o recalc soma (itemVal: % do refino + bônus fixo por "+")
+    if (it.atk != null) o.push(['Ataque', 'Atq', Math.round(itemVal(it, 'atk'))]);
+    if (it.def != null) o.push(['Defesa', 'Def', Math.round(itemVal(it, 'def'))]);
+    if (it.hp != null) o.push(['Vida', 'Vida', Math.round(itemVal(it, 'hp'))]);
     if (it.spd != null) o.push(['Velocidade', 'Vel', +(it.spd * 100).toFixed(1), '%']);
     if (it.crit != null) o.push(['Crítico', 'Crít', +(it.crit * 100).toFixed(1), '%']);
     if (it.dodge != null) o.push(['Esquiva', 'Esq', +(it.dodge * 100).toFixed(1), '%']);
-    if (it.mp != null) o.push(['Mana', 'Mana', Math.round(it.mp * m)]);
+    if (it.mp != null) o.push(['Mana', 'Mana', Math.round(itemVal(it, 'mp'))]);
     return o;
   }
   const istr = it => istats(it).map(s => `${s[1]} ${s[2]}${s[3] || ''}`).join(' · ') + (it.adds && it.adds.length ? ' · ✦ ' + it.adds.map(addShort).join(' · ') : '');
