@@ -55,6 +55,7 @@ function faceParts(a, lk, SK, hc, EC) {
   if (bd === 4) a.push(P('box', [0, 1.69, .225], [.17, .04, .05], bc), P('cone', [-.09, 1.665, .225], [.04, .1, .04], bc, { r: [PI, 0, 0] }), P('cone', [.09, 1.665, .225], [.04, .1, .04], bc, { r: [PI, 0, 0] }));
   if (bd === 5) a.push(P('sphere', [0, 1.615, .04], [.4, .27, .39], bc), P('box', [0, 1.4, .16], [.1, .42, .1], bc, { bob: .01 }), P('sphere', [0, 1.18, .16], [.11, .11, .11], [.95, .8, .3]));
 }
+const AT_L = 1.1; // quanto o braço esquerdo sobe no golpe (o direito: 1.5): o corpo todo ataca, não só a mão
 function humanoid(o) {
   const L = o.legs !== false, SK = CURLOOK ? SKIN_TONES[CURLOOK.sk] : (o.skin || SKIN), F = !!(CURLOOK && CURLOOK.g === 1);
   const bw = CURLOOK ? [.9, 1, 1.12][CURLOOK.b == null ? 1 : CURLOOK.b] : 1, tw = (F ? .5 : .56) * bw, aw = (F ? .15 : .17) * (bw > 1 ? 1.08 : bw < 1 ? .92 : 1), lw = (F ? .19 : .2) * bw;
@@ -88,7 +89,7 @@ function humanoid(o) {
   a.push(P('sphere', [-.205, 1.77, -.01], [.05, .09, .05], shade(SK, .94)), P('sphere', [.205, 1.77, -.01], [.05, .09, .05], shade(SK, .94)));
   if (CURLOOK) hairParts(a, CURLOOK, hc); else if (o.hair) a.push(P('sphere', [0, 1.86, -.03], [.46, .34, .46], o.hair));
   for (const s of [-1, 1]) { // ombro, braço, antebraço e mão
-    const ph = s < 0 ? PI : 0, K = { sw: .8, ph, at: s > 0 ? 1.5 : 0 }, sl = o.sleeve || o.top;
+    const ph = s < 0 ? PI : 0, K = { sw: .8, ph, at: s > 0 ? 1.5 : AT_L }, sl = o.sleeve || o.top;
     if (LOFT_MODE || o.loft) { // braço: ombro, braço e antebraço num loft contínuo; a mão segue como peça própria (stretchLegs sobe o pivô e a geometria vai junto)
       const r1 = (aw + .12) / 2, r2 = (aw + .07) / 2, r3 = (aw + .03) / 2;
       a.push(geoP(mkLoft([[s * .38, 1.58, 0, r1, r1], [s * .38, 1.42, 0, r1 * .92, r1 * .92], [s * .39, 1.22, .01, r2, r2], [s * .4, 1.0, .02, r3, r3]], { sides: 8, sub: 2 }), sl, [s * .38, 1.52, 0], K));
@@ -105,7 +106,7 @@ function humanoid(o) {
   return a;
 }
 const R_ = (extra) => Object.assign({ sw: .8, ph: 0, at: 1.5 }, extra || {}); // acompanha o braço direito
-const L_ = (extra) => Object.assign({ sw: .8, ph: PI }, extra || {}); // acompanha o braço esquerdo
+const L_ = (extra) => Object.assign({ sw: .8, ph: PI, at: AT_L }, extra || {}); // acompanha o braço esquerdo (sobe junto no golpe: arco, escudo, mão do feitiço)
 const J_R = [.38, 1.52, 0], J_L = [-.38, 1.52, 0];
 
 const playerCache = {};
@@ -130,6 +131,12 @@ const ARM_CLS_COL = {
   huntress: [[.7, .55, .38], [.55, .36, .2], [.38, .22, .13], [.26, .31, .23], [.48, .27, .14], [.84, .93, .88]],
   tamer: [[.55, .42, .28], [.5, .37, .24], [.33, .5, .3], [.87, .83, .74], [.86, .71, .36], [.9, .93, 1]],
 };
+/* acabamento do material (faixas, cintos, metal) igual ao do ícone: lê ARMART.MAT (art.js, carregado depois; só usado em tempo de jogo) */
+const hexRGB = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
+function armTrim(cls, g) {
+  const M = typeof ARMART !== 'undefined' && ARMART.MAT[cls] && ARMART.MAT[cls][g];
+  return M ? { t: hexRGB(M.t), m: hexRGB(M.m), l: hexRGB(M.l) } : { t: [.4, .28, .16], m: [.95, .78, .3], l: [.8, .78, .72] };
+}
 const ARM_COL = [[.78, .72, .58], [.62, .42, .25], [.62, .66, .74], [.25, .62, .7], [.92, .74, .25], [.66, .76, .92]];
 const WPN_COL = [[.62, .52, .36], [.72, .74, .8], [.5, .68, .95], [.3, .85, .8], [.98, .82, .3], [.7, .84, .96]];
 const RAR_GLOW = [null, [.45, .9, .45], [.35, .65, 1], [.82, .42, 1], [1, .72, .22]];
@@ -155,7 +162,8 @@ function angelWings(a) {
   }
 }
 function styleLayer(a, cls, ag, ac, hg, SKc, arl) {
-  const gold = [.95, .78, .3], capeC = { vanguard: [.55, .1, .12], arcanist: [.14, .2, .62], huntress: [.13, .38, .2], tamer: [.4, .18, .6] }[cls] || [.4, .3, .3];
+  const gold = [.95, .78, .3], cls0 = { vanguard: [.55, .1, .12], arcanist: [.14, .2, .62], huntress: [.13, .38, .2], tamer: [.4, .18, .6] }[cls] || [.4, .3, .3];
+  const capeC = ag >= 0 && cls !== 'vanguard' ? shade(ac, .66) : cls0; // capa/capuz no tom do material (a capa vermelha da Vanguarda fica)
   capeParts(a, capeC, gold);
   for (const s of [-1, 1]) a.push(P('sphere', [s * .22, 1.58, -.12], [.09, .09, .06], gold));
   a.push(P('box', [0, .95, .17], [.17, .12, .05], gold), P('sphere', [0, .95, .2], [.07, .07, .04], [.3, .65, 1], { e: 1 }), P('box', [0, 1.57, 0], [.5, .05, .32], gold));
@@ -168,7 +176,7 @@ function styleLayer(a, cls, ag, ac, hg, SKc, arl) {
     hood(capeC);
     a.push(P('cyl', [.15, 1.3, -.3], [.14, .7, .14], [.4, .26, .14], { r: [0, 0, .3] }));
     for (let k = 0; k < 3; k++) a.push(P('cone', [.26 + k * .02, 1.72 + k * .02, -.3], [.05, .16, .05], [.9, .85, .6], { r: [0, 0, .3] }));
-    if (ag >= 0) for (const s of [-1, 1]) a.push(P('sphere', [s * .4, 1.6, 0], [.25, .14, .27], [.3, .2, .12]));
+    if (ag >= 0) for (const s of [-1, 1]) a.push(P('sphere', [s * .4, 1.6, 0], [.25, .14, .27], shade(ac, .72)));
   } else if (cls === 'arcanist') {
     hood(capeC);
     for (const s of [-1, 1]) a.push(P('sphere', [s * .4, 1.6, 0], [.27, .16, .29], shade(capeC, 1.25)), P('sphere', [s * .4, 1.7, .05], [.07, .07, .07], [.4, .75, 1], { e: 1 }));
@@ -202,7 +210,7 @@ function armorDeco(a, ag, ac, rg, ap, arl, cls) {
     else a.push(P('sphere', [0, 1.33, .1], [.5, .52, .2], shade(ac, 1.15), { rg: .35, mt: .8 }));
   }
   if (ag >= 3) {
-    a.push(P('cylh', [-.38, 1.52, 0], [.23, .2, .23], ac, { o: [0, -.52, .01], sw: .8, ph: PI, rg: .4, mt: .7 }));
+    a.push(P('cylh', [-.38, 1.52, 0], [.23, .2, .23], ac, { o: [0, -.52, .01], sw: .8, ph: PI, at: AT_L, rg: .4, mt: .7 }));
     a.push(P('cylh', [.38, 1.52, 0], [.23, .2, .23], ac, { o: [0, -.52, .01], sw: .8, ph: 0, at: 1.5, rg: .4, mt: .7 })); // braceletes
     a.push(P('sphere', [0, 1.42, .2], [.14, .14, .1], rg || [.9, .3, .3], { e: 1 }));
   }
@@ -233,12 +241,20 @@ function helmParts(a, cls, hg, C, rg) {
   if (cls === 'arcanist') {
     const s = 1 + hg * .07;
     a.push(P('cyl', [0, 1.97, 0], [.78 * s, .06, .78 * s], shade(hc, .8)), P('cone', [0, 2.3 + hg * .03, -.02], [.5 * s, .8 * s, .5 * s], hc, { r: [-.12, 0, 0] }));
+    a.push(P('cyl', [0, 2.03, -.01], [.52 * s, .08, .52 * s], armTrim(cls, hg).t)); // faixa do chapéu (como o ícone)
     if (hg >= 2) a.push(P('sphere', [0, 2.04, .26 * s], [.1, .1, .1], rg || [1, .9, .5], { e: 1 }));
     if (hg >= 3) a.push(P('sphere', [0, 2.62 + hg * .03, -.1], [.14, .14, .14], [1, .9, .5], { e: 1, bob: .03 }));
   } else if (cls === 'huntress') {
     a.push(P('sphere', [0, 1.88, -.05], [.49, .4, .49], shade(hc, .85)), P('box', [0, 1.96, .17], [.4, .07, .1], hc));
     if (hg >= 2) a.push(P('cone', [.2, 2.12, -.1], [.07, .5, .07], [.9, .3, .3], { r: [0, 0, -.5] }));
     if (hg >= 3) a.push(P('box', [0, 1.945, .21], [.42, .05, .06], shade(hc, .55), { rg: .4, mt: .6 })); // faixa da testa
+  } else if (cls === 'tamer') { // cocar: faixa na testa e leque de penas do material, pontas no tom de acabamento (como o ícone)
+    const T = armTrim(cls, hg);
+    a.push(P('cyl', [0, 1.95, 0], [.53, .11, .53], hc));
+    for (let k = 0; k < 7; k++) { const t = (k - 3) * .3, sx = Math.sin(t), cy = Math.cos(t);
+      a.push(P('sphere', [sx * .3, 2.0 + cy * .3, -.17], [.11, .6, .035], hc, { r: [-.2, 0, -t] }), P('sphere', [sx * .56, 2.0 + cy * .56, -.2], [.07, .13, .03], T.t, { r: [-.2, 0, -t] }));
+    }
+    for (const sd of [-1, 0, 1]) a.push(P('sphere', [sd * .2, 1.95, .23 - Math.abs(sd) * .05], [.06, .06, .05], T.m));
   } else {
     a.push(P('sphere', [0, 1.88, -.05], [.5, .42, .5], hc), P('box', [0, 1.97, .15], [.46, .07, .12], shade(hc, .85)));
     if (hg >= 2) { a.push(P('box', [0, 1.77, .24], [.035, .15, .03], shade(hc, .85), { rg: .4, mt: .7 })); for (const sd of [-1, 1]) a.push(P('box', [sd * .262, 1.74, .0], [.03, .2, .22], shade(hc, .75), { rg: .4, mt: .7 })); } // protetor de nariz e bochechas (não cobre os olhos)
@@ -399,26 +415,31 @@ function playerParts(cls, tier, wg, ag, o) {
   const ACL = ARM_CLS_COL[cls] || ARM_COL, C = CLASSES[cls].col, has = ag >= 0, ac = has ? ACL[ag] : [.5, .45, .4];
   const wc = wg >= 0 ? WPN_COL[wg] : [.5, .35, .2], wp = o.wp | 0, k = wg >= 0 ? 1 + .08 * wg + .015 * wp : .72;
   const wr = RAR_GLOW[o.wr | 0], ar = RAR_GLOW[o.ar | 0], hr = RAR_GLOW[o.hr | 0], wE = (wp >= 7 || wg === 5) ? .35 : 0;
-  const body = has ? mix(C, ac, .4) : shade(mix(C, [.55, .5, .44], .38), .92);
-  const pants = lg >= 0 ? shade(mix(C, ACL[lg], .55), .62) : has ? shade(mix(C, ac, .3), .55) : shade(mix(C, [.4, .34, .3], .6), .6);
-  const boots = bg >= 0 ? shade(ACL[bg], .62) : [.28, .2, .13];
+  // a roupa usa a cor do MATERIAL de cada peça (igual ao ícone do inventário), sem misturar com a cor da classe
+  const T = has ? armTrim(cls, ag) : { t: [.36, .25, .15], m: [.7, .6, .4], l: [.7, .66, .6] };
+  const body = has ? ac : shade(mix(C, [.55, .5, .44], .38), .92);
+  const pants = lg >= 0 ? shade(ACL[lg], .84) : has ? shade(ac, .7) : shade(mix(C, [.4, .34, .3], .6), .6);
+  const boots = bg >= 0 ? shade(ACL[bg], .78) : [.28, .2, .13];
   let a; CURLOOK = o.look || null;
-  if (cls === 'vanguard') a = humanoid({ loft: 1, top: body, pants, boots, hair: [.25, .15, .1], belt: ac, sleeve: shade(body, .85) });
-  else if (cls === 'arcanist') {
-    const rb = has ? mix([.22, .3, .8], ac, .45) : [.42, .4, .5];
-    a = humanoid({ loft: 1, top: rb, pants: shade(rb, .6), boots, hair: [.9, .9, .95], sleeve: rb, belt: ac });
+  if (cls === 'vanguard') a = humanoid({ loft: 1, top: body, pants, boots, hair: [.25, .15, .1], belt: T.t, sleeve: shade(body, .85) });
+  else if (cls === 'arcanist') { // manto com faixa na cintura e barra (como o ícone)
+    const rb = has ? ac : [.42, .4, .5];
+    a = humanoid({ loft: 1, top: rb, pants, boots, hair: [.9, .9, .95], sleeve: rb, belt: T.t });
     a.push(P('robe', [0, .6, 0], [.84, 1.1, .8], rb, { gr: 1 }));
-  } else if (cls === 'huntress') {
-    const lt = has ? mix([.25, .55, .3], ac, .5) : [.4, .42, .32];
-    a = humanoid({ loft: 1, top: lt, pants, boots, hair: [.55, .25, .12], sleeve: shade(lt, .9), belt: ac });
-  } else {
-    const tp = has ? mix([.5, .32, .16], ac, .45) : [.42, .34, .26], fr = has ? mix([.75, .5, .2], ac, .3) : [.55, .4, .25];
-    a = humanoid({ loft: 1, top: tp, pants, boots, hair: [.2, .12, .08], sleeve: tp, belt: ac });
+    if (has) a.push(P('cyl', [0, .98, 0], [.62, .1, .5], T.t), P('cyl', [0, .1, 0], [.86, .08, .82], T.t));
+  } else if (cls === 'huntress') { // couraça com alça cruzada no peito
+    const lt = has ? ac : [.4, .42, .32];
+    a = humanoid({ loft: 1, top: lt, pants, boots, hair: [.55, .25, .12], sleeve: shade(lt, .9), belt: T.t });
+    if (has) a.push(P('box', [0, 1.3, .19], [.08, .78, .05], T.t, { r: [0, 0, .75] }));
+  } else { // colete com gola de pelo e colar de presas
+    const tp = has ? ac : [.42, .34, .26], fr = has ? shade(T.l, .9) : [.55, .4, .25];
+    a = humanoid({ loft: 1, top: tp, pants, boots, hair: [.2, .12, .08], sleeve: tp, belt: T.t });
     a.push(P('sphere', [0, 1.55, 0], [.8, .3, .56], fr));
+    if (has) for (const k of [-1, 0, 1]) a.push(P('cone', [k * .1, 1.34 - Math.abs(k) * .02, .23], [.05, .12, .05], T.m, { r: [PI, 0, 0] }));
   }
   if (gg >= 0) { // luvas: punho e mão revestidos na cor do conjunto (aço para a Vanguarda), com friso dourado nos graus altos
     const gc = shade(ACL[gg], .8), gm = cls === 'vanguard' ? .8 : .2;
-    for (const s of [-1, 1]) { const K = { sw: .8, ph: s < 0 ? PI : 0, at: s > 0 ? 1.5 : 0 };
+    for (const s of [-1, 1]) { const K = { sw: .8, ph: s < 0 ? PI : 0, at: s > 0 ? 1.5 : AT_L };
       a.push(P('cylh', [s * .38, 1.52, 0], [.2, .13, .2], gc, Object.assign({ o: [0, -.66, .01], rg: .4, mt: gm }, K)), P('hand', [s * .38, 1.52, 0], [.2, .2, .19], shade(ACL[gg], .95), Object.assign({ o: [0, -.75, .01], rg: .4, mt: gm }, K)));
       if (gg >= 3) a.push(P('cylh', [s * .38, 1.52, 0], [.21, .03, .21], [.95, .8, .3], Object.assign({ o: [0, -.6, .01], mt: .9 }, K)));
     }
