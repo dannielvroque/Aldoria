@@ -118,6 +118,7 @@ Mais missões e masmorras, árvore de talentos, itens com efeitos especiais, aju
 
 ## GPS e mapa no toque
 - Mapa (`mapEvents`, ui.js): um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca `st.mapPin` e mostra a barra `.map-gps` ("Ir até aqui"). `Game.gpsGo(x, z, nome)` (game.js) calcula uma rota por terra (`gpsRoute`: A* numa grade de 20 m com `coastD`, suavizada) e `gpsTick` segue os pontos com `cmd` `move` (`cmd.gps`); joystick ou qualquer toque/ataque pausa (o marcador fica; o ❗ "Seguir o GPS" retoma), 4 s parado recalcula a rota (3×) e depois desiste. `G.gps` vira o objetivo mostrado no minimapa, na seta e no mapa (rota tracejada); `objectivePos` devolve o GPS antes da história.
+- A rota do GPS (`gpsRoute`) **contorna muralhas** (bloqueia o quadrado `hs+8` das vilas que não são a do começo nem a do destino), **passa pela ponte do campo de treino** (6 m, invisível na grade de 20 m; eixo `CAMP.ux/uz`) e o personagem anda em passos de até 26 m fora das vilas (o desvio local `buildLocal` só enxerga ~30 m; dentro de vila vale a rota de portões `townRoute`). Gestos do mapa: dedo fantasma é descartado (`fresh`/`drop`), o toque curto usa `e.timeStamp` (quadro lento não atrasa).
 - Cartão de item ao tocar (`cardRender`/`cardAct`) e lista de venda do mercador com ▲▼ contra o equipado.
 
 ## Missões no celular (toque)
