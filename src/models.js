@@ -121,12 +121,14 @@ function rotOff(d, r) {
 }
 const PA = (m, J, d, s, c, r, x) => P(m, J, s, c, Object.assign({ o: rotOff(d, r), r }, x));
 // paletas por grau: 0 pano, 1 couro, 2 aço, 3 rúnico, 4 ouro, 5 celeste
-/* cor da armadura por classe e grau: Vanguarda = aço, Arcanista = tecido azul/violeta, Caçadora = couro e verde, Invocador = peles e osso */
+/* cor da armadura por classe e grau, seguindo o material do nome (CLS_ARM_MAT) e o ícone (ARMART em art.js):
+   Vanguarda ferro velho/ferro/aço/aço rúnico/ouro/aço celeste; Arcanista linho/lã/seda/seda rúnica/seda real/éter;
+   Caçadora couro cru/batido/curtido/rúnico/real/celeste; Invocador peles/presas/escamas/ossos/peles reais/penas */
 const ARM_CLS_COL = {
-  vanguard: [[.52, .5, .5], [.58, .6, .66], [.7, .74, .82], [.3, .62, .7], [.92, .74, .25], [.82, .9, 1]],
-  arcanist: [[.8, .78, .9], [.5, .56, .9], [.42, .4, .85], [.25, .62, .9], [.9, .8, .45], [.9, .9, 1]],
-  huntress: [[.55, .45, .3], [.4, .55, .3], [.3, .5, .3], [.25, .62, .55], [.85, .7, .3], [.8, .95, .85]],
-  tamer: [[.6, .48, .32], [.7, .5, .3], [.55, .38, .25], [.6, .3, .7], [.92, .74, .25], [.95, .9, .8]],
+  vanguard: [[.44, .4, .37], [.52, .54, .58], [.7, .74, .8], [.32, .42, .54], [.9, .7, .26], [.82, .88, 1]],
+  arcanist: [[.84, .78, .63], [.4, .37, .68], [.28, .25, .64], [.16, .4, .56], [.94, .89, .73], [.9, .92, 1]],
+  huntress: [[.7, .55, .38], [.55, .36, .2], [.38, .22, .13], [.26, .31, .23], [.48, .27, .14], [.84, .93, .88]],
+  tamer: [[.55, .42, .28], [.5, .37, .24], [.33, .5, .3], [.87, .83, .74], [.86, .71, .36], [.9, .93, 1]],
 };
 const ARM_COL = [[.78, .72, .58], [.62, .42, .25], [.62, .66, .74], [.25, .62, .7], [.92, .74, .25], [.66, .76, .92]];
 const WPN_COL = [[.62, .52, .36], [.72, .74, .8], [.5, .68, .95], [.3, .85, .8], [.98, .82, .3], [.7, .84, .96]];

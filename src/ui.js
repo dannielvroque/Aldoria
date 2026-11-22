@@ -20,9 +20,9 @@ const UI = (() => {
     stable: 'Montaria bem alimentada corre o dobro. Quantas rações vai querer?',
   };
   const WIC = { vanguard: '🗡️', arcanist: '🔮', huntress: '🏹', tamer: '🪄' };
-  const SLOT_IC = cls => ({ w: WIC[cls] || '🗡️', h: '⛑️', a: '👕', l: '👖', g: '🧤', b: '🥾', c: '💍' });
+  const SLOT_IC = cls => { const A = s => ARMART.icon({ slot: s, cls, grade: 0 }); return { w: WIC[cls] || '🗡️', h: A('h'), a: A('a'), l: A('l'), g: A('g'), b: A('b'), c: A('c') }; }; // espaço vazio: a peça da classe desenhada (esmaecida pelo .dim)
   const WT_IC = { sword: '🗡️', daggers: '🔪', axe: '🪓', staff: '🪄', wand: '✨', orb: '🔮', tome: '📕', bow: '🏹', longbow: '🏹', compbow: '🏹', crossbow: '🎯', scepter: '🔱', totem: '🗿' };
-  const iconOf = (it, ic) => it.slot === 'w' && it.wt && WT_IC[it.wt] ? WT_IC[it.wt] : ic[it.slot];
+  const iconOf = (it, ic) => it.slot === 'w' && it.wt && WT_IC[it.wt] ? WT_IC[it.wt] : ARMART.icon(it) || ic[it.slot]; // armadura e acessório: desenho do material (art.js)
   const BAG = 24;
 
   const now = () => performance.now();
