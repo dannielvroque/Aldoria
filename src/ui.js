@@ -168,7 +168,7 @@ const UI = (() => {
     ['inv', 'char', 'quest', 'auto', 'look', 'pause', 'dlg', 'map', 'tree', 'lv'].forEach(k => { E['p_' + k] = root.querySelector('#p-' + k); E['b_' + k] = E['p_' + k].querySelector('.pb'); });
     const q = (s, r) => (r || root).querySelector(s);
     E.pfIc = q('.pf-ic'); E.pfName = q('.pf-name'); E.pfTier = q('.pf-tier'); E.pfLv = q('.pf-lv'); E.pfGold = q('.pf-gold');
-    E.mf = document.createElement('div'); E.mf.className = 'mf glass off'; q('.pf').after(E.mf);
+    E.mf = document.createElement('div'); E.mf.className = 'mf off'; q('.pf-main').appendChild(E.mf); // montaria: faixa compacta dentro do quadro do personagem
     E.hp = q('.pf .bar.hp i'); E.hpT = q('.pf .bar.hp span'); E.mp = q('.pf .bar.mp i'); E.mpT = q('.pf .bar.mp span'); E.xp = q('.pf .bar.xp i'); E.evbar = q('.evbar'); E.evtoast = q('.evtoast'); E.hud = q('.hud');
     E.tfName = q('.tf-name'); E.tfIc = q('.tf-ic'); E.tfLv = q('.tf-lv'); E.tfHp = q('.tf .bar i'); E.tfHpT = q('.tf .bar span');
     E.zone = q('.zone'); E.qt = q('.qt'); E.qtN = q('.qt-n'); E.qtP = q('.qt-p'); E.mute = q('[data-a=mute]');
@@ -1502,10 +1502,10 @@ const UI = (() => {
         const st_ = en <= 0 ? 'Exausta' : en < 30 ? 'Com fome' : en < 60 ? 'Cansada' : 'Disposta';
         const k = mid + '|' + Math.ceil(en) + '|' + (p.feed | 0) + '|' + !!p.mount + '|' + lv + '|' + Math.floor(mxp);
         if (E.mf._k !== k) { E.mf._k = k;
-          E.mf.innerHTML = `<span class="mf-ic">${M_.ic}</span><div class="mf-t"><div class="mf-h"><b>${esc(M_.n)}</b><span class="mlv">Nv ${lv}</span><small>${p.mount ? 'montado' : 'a pé'} · ${st_}</small></div>`
-            + `<div class="bar mst${en < 30 ? ' low' : ''}" title="Energia da montaria: cai enquanto você cavalga e volta devagar a pé. Abaixo de 30 ela come uma ração sozinha."><i style="width:${Math.max(0, Math.min(100, en))}%"></i><span>Energia ${Math.ceil(en / 100 * mx)}/${mx}</span></div>`
-            + `<div class="bar mxp" title="XP da montaria: vença lutas montado ou cavalgue"><i style="width:${mxp.toFixed(1)}%"></i></div>`
-            + `<small class="mf-f${(p.feed | 0) ? '' : ' warn'}">🌾 ${(p.feed | 0) ? (p.feed | 0) + ' ração(ões)' : 'Sem ração · compre no Cavalariço'}</small></div>`; }
+          E.mf.title = `${M_.n} · ${p.mount ? 'montada' : 'a pé'} · ${st_}`; setCls(E.mf, 'ride', !!p.mount);
+          E.mf.innerHTML = `<span class="mf-ic">${M_.ic}</span><div class="mf-t"><div class="bar mst${en < 30 ? ' low' : ''}" title="Energia da montaria: cai enquanto você cavalga e volta devagar a pé. Abaixo de 30 ela come uma ração sozinha."><i style="width:${Math.max(0, Math.min(100, en))}%"></i><span>Nv ${lv} · ${Math.ceil(en / 100 * mx)}/${mx}</span></div>`
+            + `<div class="bar mxp" title="XP da montaria: vença lutas montado ou cavalgue"><i style="width:${mxp.toFixed(1)}%"></i></div></div>`
+            + `<small class="mf-f${(p.feed | 0) ? '' : ' warn'}" title="${(p.feed | 0) ? 'Rações' : 'Sem ração: compre no Cavalariço'}">🌾${p.feed | 0}</small>`; }
       } }
     const t = G.target;
     setVis(E.tf, !!t);
