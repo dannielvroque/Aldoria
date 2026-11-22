@@ -41,6 +41,9 @@ const ptsAt = (k, lvl, tier) => Math.floor(k * (effLv(lvl, tier) - 1)); // ponto
 /* atributos: 5 pontos por nível EXIBIDO (apAt); cada ponto pesa attrW(fase) no recalc, então o poder no teto da fase é o mesmo de quando eram 245 pontos */
 const apAt = lvl => AP_PER_LEVEL * (lvl - 1);
 const attrW = tier => (MAXLV - 1) / Math.max(1, lvCap(tier) - 1);
+/* retorno decrescente: os primeiros pontos rendem bem mais (nível 29 do Mortal com 140 pontos: ~+40% de ataque em vez de +13%) e no teto o total fica perto do de antes */
+const ATTR_C = 140;
+const attrEff = (pts, tier) => pts > 0 ? Math.sqrt(pts * attrW(tier) * ATTR_C) : 0;
 
 /* kinds de habilidade: melee, proj, pierce, aoe_self, aoe_ground, dash, buff, shield, heal, mark, summon */
 /* main: atributo que escala o ataque (str ou int). dodge: chance base de esquiva. aspd: velocidade de ataque básico */
@@ -705,14 +708,19 @@ const DEFLOOK = {
 
 /* ===== atributos (pontos de status) ===== */
 const ATTRS = {
-  // {n} = efeito de 1 ponto com peso 1; a tela multiplica por attrW(fase) (attrDesc)
-  str: { n: 'Força', ic: '💪', d: '+{0.8}% de ataque por ponto (Vanguarda)' },
-  dex: { n: 'Destreza', ic: '🎯', d: '+{0.3}% de crítico, +{0.15}% de esquiva e +{0.1}% de velocidade por ponto; Caçadora: também +{0.7}% de ataque' },
-  int: { n: 'Inteligência', ic: '🔮', d: '+{2}% de mana e +{0.8}% de dano das habilidades por ponto; Arcanista e Invocador: também +{0.8}% de ataque' },
-  vit: { n: 'Vitalidade', ic: '❤️', d: '+{1.2}% de vida e +{0.6}% de defesa por ponto' },
-  spi: { n: 'Cura', ic: '✨', d: '+{1.5}% de cura das habilidades e +{1}% de efeito das poções por ponto' },
+  // fx: [% por ponto efetivo (attrEff), efeito, filtro de classe: 'huntress' | 'int' (classe de Inteligência) | '!int']; mesmos números do recalc
+  str: { n: 'Força', ic: '💪', d: 'Ataque de todas as classes', fx: [[.8, 'de ataque']] },
+  dex: { n: 'Destreza', ic: '🎯', d: 'Crítico, esquiva e velocidade; Caçadora: também ataque', fx: [[.7, 'de ataque', 'huntress'], [.3, 'de crítico'], [.15, 'de esquiva'], [.1, 'de velocidade']] },
+  int: { n: 'Inteligência', ic: '🔮', d: 'Mana e dano das habilidades; Arcanista e Invocador: também ataque', fx: [[.8, 'de ataque', 'int'], [.8, 'de dano das habilidades', '!int'], [.4, 'de dano das habilidades', 'int'], [2, 'de mana']] },
+  vit: { n: 'Vitalidade', ic: '❤️', d: 'Vida e defesa', fx: [[1.2, 'de vida'], [.6, 'de defesa']] },
+  spi: { n: 'Cura', ic: '✨', d: 'Cura das habilidades e poções', fx: [[1.5, 'de cura das habilidades'], [1, 'de efeito das poções']] },
 };
-const attrDesc = (k, tier) => ATTRS[k].d.replace(/\{([\d.]+)\}/g, (_, v) => String(+(v * attrW(tier)).toFixed(3)).replace('.', ','));
+/* texto do atributo: efeito total de agora e quanto os próximos 5 pontos somam no efeito principal */
+function attrDesc(k, cls, pts, tier) {
+  const ok = f => !f || f === cls || (f === 'int' ? CLASSES[cls].main === 'int' : f === '!int' ? CLASSES[cls].main !== 'int' : false);
+  const fx = ATTRS[k].fx.filter(e => ok(e[2])), E = attrEff(pts, tier), n = v => String(+v.toFixed(1)).replace('.', ',');
+  return ATTRS[k].d + ' · agora: ' + fx.map(([c, l]) => '+' + n(c * E) + '% ' + l).join(', ') + ' · +5 pontos: +' + n(fx[0][0] * (attrEff(pts + 5, tier) - E)) + '% ' + fx[0][1];
+}
 const ATTR_KEYS = Object.keys(ATTRS);
 /* aprender habilidades com o Mestre de Habilidades (índice = posição na barra). Níveis 1–10 com pontos de habilidade (1 por nível) */
 /* aprender: nível mínimo e custo em PONTOS DE HABILIDADE (3 por nível, gastos no Mestre de Habilidades); price é legado (não usado) */

@@ -334,14 +334,15 @@ const Game = (() => {
     const ad = { atk: 0, def: 0, hpp: 0, crit: 0, arc: 0 }; // adicionais das pedras
     for (const s of SLOT_ORDER) { const it = E[s]; if (it && Array.isArray(it.adds)) for (const a of it.adds) if (a && a.k in ad) ad[a.k] += +a.v || 0; }
     const T = tmul(p.tier), intCls = c.main === 'int'; // tier multiplica os stats base
-    const A = {}, aw = attrW(p.tier); for (const k of ATTR_KEYS) A[k] = (p.attr[k] || 0) * aw; // pontos de atributo com o peso da fase (5 por nível exibido)
+    const A = {}; for (const k of ATTR_KEYS) A[k] = attrEff(p.attr[k] || 0, p.tier); // pontos efetivos: peso da fase (5 por nível exibido) com retorno decrescente
     let atk = (b.atk + g.atk * l) * T + (w ? itemVal(w, 'atk') : 0) + ad.atk, eDef = 0, eHp = 0, eSpd = 0, eMp = 0, eDodge = 0;
     for (const s of ['h', 'a', 'l', 'g', 'b']) { const it = E[s]; if (it) { atk += itemVal(it, 'atk'); eDef += itemVal(it, 'def'); eHp += itemVal(it, 'hp'); if (it.spd) eSpd += it.spd; eMp += itemVal(it, 'mp'); if (it.dodge) eDodge += it.dodge; } }
     let def0 = (b.def + g.def * l) * T + eDef + ad.def;
     let maxHp = ((b.hp + g.hp * l) * T + eHp) * (1 + ad.hpp);
     const maxMp = ((b.mp + g.mp * l) * T + (ac ? itemVal(ac, 'mp') : 0) + eMp) * (1 + .02 * A.int) * (1 + ad.arc);
     let crit = b.crit + (ac ? ac.crit : 0) + ad.crit;
-    atk *= 1 + (c.main === 'dex' ? .007 : .008) * (A[c.main] || A.str || 0); maxHp *= 1 + .012 * A.vit; def0 *= 1 + .006 * A.vit; crit += .003 * A.dex;
+    // Força dá ataque a todas as classes; o atributo principal (Destreza/Inteligência) soma
+    atk *= 1 + .008 * A.str + (c.main === 'dex' ? .007 * A.dex : c.main === 'int' ? .008 * A.int : 0); maxHp *= 1 + .012 * A.vit; def0 *= 1 + .006 * A.vit; crit += .003 * A.dex;
     const set = SLOT_ORDER.every(s => E[s]) && SLOT_ORDER.every(s => E[s].grade === E.a.grade);
     if (set) { atk *= 1.15; maxHp *= 1.15; }
     const mb = p.lastMount && MOUNTS[p.lastMount] ? MOUNTS[p.lastMount].bon : null, mk = mountLvBon(mountLv(p.lastMount));
@@ -353,7 +354,7 @@ const Game = (() => {
     S.dodge = Math.min(.6, Math.min(.35, (b.dodge || 0) + eDodge + .0015 * A.dex) + (bf.dodge.t > 0 ? bf.dodge.v : 0)); // teto de 35% sem buff
     S.aspd = (b.aspd || 1) * (1 + (bf.aspd.t > 0 ? bf.aspd.v : 0)); S.leech = bf.leech.t > 0 ? bf.leech.v : 0; S.tierMul = T;
     crit = Math.min(.6, crit) + (bf.crit.t > 0 ? bf.crit.v : 0); S.dr = b.dr ? b.dr + .03 * p.tier : 0; S.healMul = 1 + .015 * A.spi; S.potMul = 1 + .01 * A.spi;
-    S.crit = crit; S.spd = 5.4 * (1 + .001 * p.attr.dex) * (1 + (G.eqSpd || 0)) * (1 + (bf.spd.t > 0 ? bf.spd.v : 0)); S.maxHp = Math.round(maxHp); S.maxMp = Math.round(maxMp); S.setBonus = set; S.adds = ad;
+    S.crit = crit; S.spd = 5.4 * (1 + .001 * A.dex) * (1 + (G.eqSpd || 0)) * (1 + (bf.spd.t > 0 ? bf.spd.v : 0)); S.maxHp = Math.round(maxHp); S.maxMp = Math.round(maxMp); S.setBonus = set; S.adds = ad;
     p.maxHp = S.maxHp; p.maxMp = S.maxMp; p.hp = Math.min(p.hp, p.maxHp); p.mp = Math.min(p.mp, p.maxMp);
   }
   /* conjuntos de presente entregues no baú da conta (Guarda de Carga), uma vez por personagem */
