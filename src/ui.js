@@ -952,6 +952,7 @@ const UI = (() => {
   function renderDlg(G) {
     const p = G.player, nid = st.npc, pv = String(nid).startsWith('portal:') && VILLAGES.find(v => 'portal:' + v.id === nid), n = pv ? { n: 'Portal · ' + pv.n, role: 'Portal de teletransporte', kind: 'portal', vil: pv.id } : (NPCS.find(x => x.id === nid) || { n: nid, role: '', kind: nid }), id = n.kind;
     setText(E.npcN, n.n); setText(E.npcR, n.role); setText(E.npcIc, NPC_IC[id] || '🙂');
+    setCls(E.p_dlg, 'svc', id !== 'story' && id !== 'enc'); // serviço (Ferreiro, Joalheiro, Cavalariço, lojas...): no toque, sem a frase de boas-vindas e sem "Despedir-se" (CSS)
     let h = '';
     { const s = G.main && MAIN[G.main.i];
       if (s && s.k === 'talk' && s.npc === nid && ELV() >= s.lvl) h += `<div class="story-d"><div class="sd-t">📖 ${esc(CHAP[s.ch].n)}</div><div class="say">“${esc(s.say)}”</div><button class="btn primary" data-a="story" data-id="${nid}">Continuar a história ▸</button></div>`;
