@@ -351,8 +351,8 @@ for (const k in BOSS_POS) BOSS_POS[k] = [BOSS_POS[k][0] * CK, BOSS_POS[k][1] * C
 /* chefes perigosos: quem tem o mesmo nível precisa de poções */
 for (const k in BOSSES) { BOSSES[k].hpm *= 3.5; BOSSES[k].atkm *= 1.5; }
 /* marcos do mundo (já na escala nova) */
-const MOB_HPK = 6, ELITE_HPK = 2, BOSS_HPK = 3; // fatores de vida (ver mobStats)
-const ELITE_M = { hpm: 8, atkm: 2.4, xpm: 6, hpk: ELITE_HPK };
+const MOB_HPK = 4, MOB_XPK = 6, ELITE_HPK = 2, BOSS_HPK = 3; // fatores de vida (ver mobStats); MOB_XPK: o XP do comum segue o fator antigo (6), então com menos vida o up fica ~1,5× mais rápido
+const ELITE_M = { hpm: 6, atkm: 1.9, xpm: 6, hpk: ELITE_HPK }; // nov/2026: era hpm 8 / atkm 2,4 (elite do mesmo nível matava em 1–2 de cada 2 lutas sem poção)
 for (const k in BOSSES) BOSSES[k].hpk = BOSS_HPK;
 const LM = { camp: [17, -97], mill: [-73, -62], ancient: [-175, -67], grave: [190, 500], pyramid: [665, 125], pond: [-75, 53],
   crypt: [-380, 360], icecave: [95, -745], caldera: [-790, -95], lichtower: [-440, 90],
@@ -434,7 +434,7 @@ const hpK = (lvl, boss) => boss ? (boss.hpm || 1) * (1 + ((boss.hpk || 1) - 1) *
 const mobStats = (lvl, boss) => ({ // vida acompanha o dano do jogador (~linear); ataque acompanha vida × defesa do jogador
   hp: Math.round((90 + 40 * lvl) * (1 + lvl / 250) * hpK(lvl, boss)),
   atk: (5 + 2.6 * lvl) * (1 + lvl / 9) * (1 + lvl / 100) * (boss ? boss.atkm : MOB_ATK),
-  def: lvl * 2.2 * .97, xp: Math.round((8 + lvl * 5) * (1 + lvl / 25) * (boss ? boss.xpm * (1 + ((boss.hpk || 1) - 1) * hpRamp(lvl)) : hpK(lvl))), gold: Math.max(1, Math.round((3 + lvl * 1.6) * .35 * (boss ? 8 : 1))), // XP cresce bem mais com o nível
+  def: lvl * 2.2 * .97, xp: Math.round((8 + lvl * 5) * (1 + lvl / 25) * (boss ? boss.xpm * (1 + ((boss.hpk || 1) - 1) * hpRamp(lvl)) : 1.5 + (MOB_XPK - 1.5) * hpRamp(lvl))), gold: Math.max(1, Math.round((3 + lvl * 1.6) * .35 * (boss ? 8 : 1))), // XP cresce bem mais com o nível
 });
 
 /* ===== Itens ===== */
@@ -598,6 +598,9 @@ const PLUS_MUL = [1, 1.08, 1.16, 1.24, 1.32, 1.4, 1.48, 1.56, 1.64, 1.72, 2.0, 2
 const PLUS_MAX = 9, ANCIENT_MAX = 11, FUSE_GOLD = 100000;
 const plusMul = p => PLUS_MUL[Math.max(0, Math.min(PLUS_MUL.length - 1, p | 0))];
 const itemMul = it => plusMul(it.plus) * tmul(it.tierReq); // refino × tier exigido
+/* valor final de um atributo do item: % do refino + um bônus fixo por "+" (senão, em item fraco, +8 % de 3 de ataque some no arredondamento e o refino não muda nada) */
+const REF_FLAT = { atk: 1, def: 1, hp: 5, mp: 2 };
+const itemVal = (it, k) => it[k] ? it[k] * itemMul(it) + (REF_FLAT[k] || 0) * Math.min(it.plus | 0, PLUS_MAX) * tmul(it.tierReq) : 0;
 /* peças "iguais" para fundir: mesmo espaço, classe, nome (material, tipo e classe), fase e refino */
 const fuseKey = it => [it.slot, it.cls || '', it.name, it.tierReq | 0, it.plus | 0].join('|');
 /* nível exigido para equipar = nível do item (máx. MAXLV). it.rq o substitui (recompensas de capítulo); itens de fase inferior à do personagem não exigem nível (equipamento antigo de quem evoluiu) */

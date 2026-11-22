@@ -18,14 +18,14 @@ JS = """([levels, dlv, trials, TIER, GEAR, SK, HPF]) => { const TM = TMUL[TIER];
   for (const o of G.mobs) if (o !== m && Math.hypot(o.x - m.x, o.z - m.z) < 60) { o.dead = true; o.respawnAt = 1e9; } // isola o monstro do teste (vizinhos entrariam na luta)
   G.state = 'play'; G.auto.attack = true; G.auto.skills = true; G.auto.hp = false; G.auto.mp = false;
   for (const cls of ['vanguard', 'arcanist', 'huntress', 'tamer']) { out[cls] = {};
-    for (const L of levels) for (const kind of ['normal', 'elite', 'boss']) { const rs = [];
+    for (const L of levels) for (const kind of ['normal', 'elite', 'champ', 'boss']) { const rs = [];
       for (let t = 0; t < trials; t++) {
         p.cls = cls; p.tier = TIER; p.lvl = lvForEff(L, TIER); p.eq = { w: null, h: null, a: null, l: null, g: null, b: null, c: null };
         for (const s of ['w', 'h', 'a', 'l', 'g', 'b', 'c']) { if (GEAR === 'carry' && TIER > 0) { const it = buildItem(s, cls, 50, 3, s === 'w' ? WTYPES[cls][0] : undefined, TIER - 1); it.plus = 9; p.eq[s] = it; } else p.eq[s] = buildItem(s, cls, L, 0, s === 'w' ? WTYPES[cls][0] : undefined, TIER); }
         const ap = 5 * (L - 1), mn = CLASSES[cls].main, A = { str: 0, dex: 0, int: 0, vit: 0, spi: 0 }; A[mn] = Math.round(ap * .7); A.vit = ap - A[mn]; p.attr = A;
         p.sk = CLASSES[cls].skills.map((_, i) => SK_LEARN[i].lvl <= L && !(CLASSES[cls].skills[i].tier > 0) ? 1 : 0); p.cd = p.cd.map(() => 0);
         d.recalc(); p.hp = p.maxHp; p.mp = p.maxMp; G.dead = false; p.shield = { hp: 0, t: 0 }; for (const k in p.buffs) p.buffs[k].t = 0;
-        const ml = Math.max(1, L + dlv), s = mobStats(ml, kind === 'elite' ? ELITE_M : kind === 'boss' ? { hpm: 13, atkm: 1.7, xpm: 14, hpk: BOSS_HPK } : null);
+        const ml = Math.max(1, L + dlv + (kind === 'champ' ? 1 : 0)), s = mobStats(ml, kind === 'elite' ? ELITE_M : kind === 'champ' ? { hpm: 7, atkm: 1.9, xpm: 18, hpk: ELITE_HPK } : kind === 'boss' ? { hpm: 13, atkm: 1.7, xpm: 14, hpk: BOSS_HPK } : null);
         m.lvl = ml; m.bhp = s.hp; m.batk = s.atk; m.def = s.def; m.maxHp = s.hp * TM * HPF; m.hp = s.hp * TM * HPF; m.atk = s.atk * TM; m.dead = false; m.state = 'chase'; m.stun = 0; m.slow = 0; m.dots = []; m.mark = 0; m.warn = null;
         G.auto.attack = SK; G.auto.skills = SK; p.x = m.x + 4; p.z = m.z; p.path = null; d.attack(m); const hp0 = p.maxHp; let ticks = 0, died = false, dmg = 0, prev = p.hp;
         // o personagem nunca morre no teste (morrer deixa a tela de morte aberta e desliga o automático nas lutas seguintes): vida enorme e o dano é a diferença; morrer = dano >= vida máxima real
@@ -43,7 +43,7 @@ with sync_playwright() as pw:
     r = pg.evaluate(JS, [LEVELS, DLV, TRIALS, TIER, GEAR, SK, HPF]); b.close()
 if errs: print('ERROS:', errs)
 print('Luta real (mobs de nível jogador%+d); cada célula: segundos para matar / %% da vida perdida / mortes' % DLV)
-for kind in ('normal', 'elite', 'boss'):
+for kind in ('normal', 'elite', 'champ', 'boss'):
     print('\n== monstro', kind)
     print('classe     ' + ''.join(f'{L:>14}' for L in LEVELS))
     for cls, v in r.items():

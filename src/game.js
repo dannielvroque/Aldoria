@@ -334,11 +334,11 @@ const Game = (() => {
     const ad = { atk: 0, def: 0, hpp: 0, crit: 0, arc: 0 }; // adicionais das pedras
     for (const s of SLOT_ORDER) { const it = E[s]; if (it && Array.isArray(it.adds)) for (const a of it.adds) if (a && a.k in ad) ad[a.k] += +a.v || 0; }
     const T = tmul(p.tier), A = p.attr, intCls = c.main === 'int'; // tier multiplica os stats base
-    let atk = (b.atk + g.atk * l) * T + (w ? w.atk * itemMul(w) : 0) + ad.atk, eDef = 0, eHp = 0, eSpd = 0, eMp = 0, eDodge = 0;
-    for (const s of ['h', 'a', 'l', 'g', 'b']) { const it = E[s]; if (it) { if (it.atk) atk += it.atk * itemMul(it); eDef += it.def * itemMul(it); eHp += it.hp * itemMul(it); if (it.spd) eSpd += it.spd; if (it.mp) eMp += it.mp * itemMul(it); if (it.dodge) eDodge += it.dodge; } }
+    let atk = (b.atk + g.atk * l) * T + (w ? itemVal(w, 'atk') : 0) + ad.atk, eDef = 0, eHp = 0, eSpd = 0, eMp = 0, eDodge = 0;
+    for (const s of ['h', 'a', 'l', 'g', 'b']) { const it = E[s]; if (it) { atk += itemVal(it, 'atk'); eDef += itemVal(it, 'def'); eHp += itemVal(it, 'hp'); if (it.spd) eSpd += it.spd; eMp += itemVal(it, 'mp'); if (it.dodge) eDodge += it.dodge; } }
     let def0 = (b.def + g.def * l) * T + eDef + ad.def;
     let maxHp = ((b.hp + g.hp * l) * T + eHp) * (1 + ad.hpp);
-    const maxMp = ((b.mp + g.mp * l) * T + (ac ? ac.mp * itemMul(ac) : 0) + eMp) * (1 + .02 * A.int) * (1 + ad.arc);
+    const maxMp = ((b.mp + g.mp * l) * T + (ac ? itemVal(ac, 'mp') : 0) + eMp) * (1 + .02 * A.int) * (1 + ad.arc);
     let crit = b.crit + (ac ? ac.crit : 0) + ad.crit;
     atk *= 1 + (c.main === 'dex' ? .007 : .008) * (A[c.main] || A.str | 0); maxHp *= 1 + .012 * A.vit; def0 *= 1 + .006 * A.vit; crit += .003 * A.dex;
     const set = SLOT_ORDER.every(s => E[s]) && SLOT_ORDER.every(s => E[s].grade === E.a.grade);
@@ -907,10 +907,11 @@ const Game = (() => {
   function champAt(x, zz, z) {
     const p = G.player, list = (ELITES[z.id] || []).concat(MOBS[z.id]), def = list[Math.floor(rnd() * list.length)];
     const near = G.mobs.filter(m => !m.boss && m.zone === z.id), lv = near.length ? Math.max(...near.map(m => m.lvl)) : Math.round(EL(p));
-    const lvl = Math.min(MAXLV + 10, lv + 3), s = mobStats(lvl, { hpm: 14, atkm: 2, xpm: 18, hpk: BOSS_HPK }); s.gold *= 12;
+    // nível do jogador +1 (sem passar do maior da zona) e força de elite reforçada; antes era o maior nível da zona +3 com vida e ataque de chefe (matava quem só passava)
+    const lvl = Math.max(1, Math.min(lv, Math.round(EL(p)) + 1)), s = mobStats(lvl, { hpm: 7, atkm: 1.9, xpm: 18, hpk: ELITE_HPK }); s.gold *= 12;
     const m = mobObj(def.id, 'Campeão ' + def.n, z.id, lvl, s, (MOB_SC[def.id] || 1) * 1.75, [1, .78, .3], x, zz, null, rnd);
     m.elite = true; m.champ = true; m.respawnAt = Infinity; m.aggroR = 11; G.mobs.push(m);
-    UI.toast('⚠ Um ' + m.name + ' (nv ' + lvl + ') apareceu por perto!'); UI.log('⚠ ' + m.name + ' (nível ' + lvl + ') surgiu em ' + z.name + '. Derrote-o para um tesouro épico!', 'lvl'); sfx('boom');
+    UI.toast('⚠ Um ' + m.name + ' (nv ' + dispLv(lvl, p.tier) + ') apareceu por perto!'); UI.log('⚠ ' + m.name + ' (nível ' + dispLv(lvl, p.tier) + ') surgiu em ' + z.name + '. Derrote-o para um tesouro épico!', 'lvl'); sfx('boom');
     return m;
   }
   function respawnMob(m) {
@@ -1948,7 +1949,7 @@ const Game = (() => {
       G.mobs.push(m); UI.toast('⚠ ' + b.n + ' apareceu!'); sfx('boom');
     }
     m.adm = 1; m.respawnAt = Infinity; fxPillar(m.x, m.z, 1.4, [1, .3, .3], 1.2);
-    return { ok: true, msg: m.name + ' (nv ' + m.lvl + ') surgiu perto de você.' };
+    return { ok: true, msg: m.name + ' (nv ' + dispLv(m.lvl, G.player.tier) + ') surgiu perto de você.' };
   }
   function admTime(h) { G.tod = ((+h % 24) + 24) % 24; return { ok: true, msg: 'Hora: ' + Math.floor(G.tod) + 'h' + String(Math.round(G.tod % 1 * 60)).padStart(2, '0') + '.' }; }
   function admWeather(id) {
@@ -2174,7 +2175,7 @@ const Game = (() => {
     for (const n of NPCS) if (Math.hypot(n.x - p.x, n.z - p.z) < 25) L.push({ x: n.x, y: 2.7, z: n.z, text: n.n, cls: 'npc' });
     for (const m of G.mobs) {
       if (m.dead) continue;
-      if ((m.boss || m.elite) && Math.hypot(m.x - p.x, m.z - p.z) < 40) L.push({ x: m.x, y: m.hgt + .5, z: m.z, text: (m.elite ? '★ ' : '') + m.name + ' Nv ' + m.lvl, cls: 'boss' });
+      if ((m.boss || m.elite) && Math.hypot(m.x - p.x, m.z - p.z) < 40) L.push({ x: m.x, y: m.hgt + .5, z: m.z, text: (m.elite ? '★ ' : '') + m.name + ' Nv ' + dispLv(m.lvl, p.tier), cls: 'boss' });
       else if (m === tmob) L.push({ x: m.x, y: m.hgt + .4, z: m.z, text: m.name + ' Nv ' + dispLv(m.lvl, p.tier), cls: 'mob' });
     }
   }
