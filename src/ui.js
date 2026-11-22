@@ -369,17 +369,18 @@ const UI = (() => {
   const plusB = it => it.plus ? `<em class="pl${it.plus >= 10 ? ' anc' : ''}">+${it.plus}</em>` : '';
   function renderInv(G) {
     const p = G.player, eq = p.eq || {}, ic = SLOT_IC(p.cls), tab = st.invTab || 'bag';
-    let l = '<div class="eqbox">';
+    const flat = IS_TOUCH; // toque: sem o boneco, equipados numa grade 4×2 (arma, elmo, peitoral, calça / luvas, botas, acessório, montaria)
+    let l = `<div class="eqbox${flat ? ' flat' : ''}">`;
     for (const s of SLOT_ORDER) {
-      const it = eq[s], [cx, ry] = EQ_POS[s], pos = `grid-column:${cx + 1};grid-row:${ry + 1}`;
+      const it = eq[s], [cx, ry] = EQ_POS[s], pos = flat ? '' : `grid-column:${cx + 1};grid-row:${ry + 1}`;
       if (it) { const [a, sel] = sideAct(it, s);
         l += `<div class="es has${sel ? ' sel' : ''}" style="${pos};--rc:${rcol(it)}" data-a="${a}" data-s="${s}" data-id="${it.id}" data-cm="${it.id}" data-drag="eq" draggable="true" title="${esc(itemTip(it, null, true))}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}<small>${SLOTS[s]}</small></div>`; }
       else l += `<div class="es" style="${pos}" data-drop="${s}"><span class="ei dim">${ic[s]}</span><small>${SLOTS[s]}</small></div>`;
     }
-    l += `<div class="portrait" style="grid-column:2;grid-row:1/4"><canvas class="pv" width="420" height="560" title="Prévia do personagem equipado. Arraste para girar."></canvas><b>${esc(p.name || CLASSES[p.cls].name)}</b><small>${esc(TIERS[p.tier] || '')} · Nv ${p.lvl}</small></div>`;
-    { const mid = p.lastMount, M_ = mid && MOUNTS[mid], lv = M_ ? Game.mountLv(mid) : 0;
-      l += M_ ? `<div class="es has mnt" style="grid-column:2;grid-row:4" data-a="p-look" title="${esc(M_.n + ' · Nível ' + lv + '\n' + mountBonusTxt(M_, lv) + '\nClique: abrir Montarias [H]')}"><span class="ei">${M_.ic}</span><em class="pl">Nv${lv}</em><small>Montaria</small></div>`
-        : `<div class="es mnt" style="grid-column:2;grid-row:4" data-a="p-look"><span class="ei dim">🐎</span><small>Montaria</small></div>`; }
+    if (!flat) l += `<div class="portrait" style="grid-column:2;grid-row:1/4"><canvas class="pv" width="420" height="560" title="Prévia do personagem equipado. Arraste para girar."></canvas><b>${esc(p.name || CLASSES[p.cls].name)}</b><small>${esc(TIERS[p.tier] || '')} · Nv ${p.lvl}</small></div>`;
+    { const mid = p.lastMount, M_ = mid && MOUNTS[mid], lv = M_ ? Game.mountLv(mid) : 0, mp = flat ? '' : 'grid-column:2;grid-row:4';
+      l += M_ ? `<div class="es has mnt" style="${mp}" data-a="p-look" title="${esc(M_.n + ' · Nível ' + lv + '\n' + mountBonusTxt(M_, lv) + '\nClique: abrir Montarias [H]')}"><span class="ei">${M_.ic}</span><em class="pl">Nv${lv}</em><small>Montaria</small></div>`
+        : `<div class="es mnt" style="${mp}" data-a="p-look"><span class="ei dim">🐎</span><small>Montaria</small></div>`; }
     l += '</div>';
     let g = '';
     if (tab === 'bag') {
@@ -613,12 +614,13 @@ const UI = (() => {
   /* celular: botão ❗ "o que fazer agora". Mostra a etapa da história, o destino (já marcado no minimapa) e atalhos para o mapa e as missões */
   const objKey = G => G.main ? G.main.i + ':' + G.main.prog : '';
   function renderObj(G) {
-    const M = G.main, s = M && MAIN[M.i], ob = st.obj; let h = '';
+    const M = G.main, s = M && MAIN[M.i], ob = st.obj; let h = '<small class="op-k">📖 História</small>';
     if (s && ELV() >= s.lvl) { const tg = stepGoal(s), pr = Math.min(M.prog, tg); h += `<b>${esc(stepTitle(s))}</b><p>${esc(s.t)}</p>${tg > 1 ? `<small>Progresso: ${pr}/${tg}</small>` : ''}`; }
     else if (s) h += `<b>Próxima etapa da história</b><p>Disponível no nível ${DLV(s.lvl)}. Enquanto isso, faça missões e suba de nível.</p>`;
     else h += '<b>História concluída</b><p>Você completou as Crônicas de Aldoria.</p>';
     const aq = QUESTS.filter(q => G.quests[q.id] && (G.quests[q.id].state === 'active' || G.quests[q.id].state === 'ready'));
-    if (aq.length) h += '<ul>' + aq.slice(0, 3).map(q => `<li>${esc(q.n)} · ${STATE_N[G.quests[q.id].state]}</li>`).join('') + '</ul>';
+    if (aq.length) h += '<small class="op-k">📜 Missões secundárias</small><ul>' + aq.slice(0, 3).map(q => { const qs = G.quests[q.id], tg = qTarget(q), rd = qs.state === 'ready';
+      return `<li${rd ? ' class="ok"' : ''}>${esc(q.n)} · ${rd ? '✔ ' + tg + '/' + tg + ', pronta para entregar' : Math.min(qs.prog || 0, tg) + '/' + tg + (q.zone && ZN[q.zone] ? ' (' + ZN[q.zone].name + ')' : '')}</li>`; }).join('') + '</ul>';
     if (ob && G.player) { const d = Math.hypot(ob[0] - G.player.x, ob[1] - G.player.z); h += `<p class="where">📍 ${esc(ob[2] || 'Objetivo')} · ${d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m'} <small>(marcado no minimapa)</small></p>`; }
     const rq = QUESTS.filter(q => G.quests[q.id] && G.quests[q.id].state === 'ready'), rd = G.daily ? G.daily.list.filter(d => d.done && !d.claimed).length : 0;
     let btns = rq.map(q => `<button class="btn primary" data-a="qturn" data-id="${q.id}">✅ Entregar: ${esc(q.n)}</button>`).join('');
@@ -1516,6 +1518,7 @@ const UI = (() => {
       const k = (G.zone ? G.zone.name : '') + '|' + night + '|' + h + ':' + m + '|' + G.weather;
       if (E.zone._k !== k) { E.zone._k = k; E.zone.innerHTML = esc(G.zone ? G.zone.name : '') + ' · ' + WX_IC[night ? 'moon' : 'sun'] + ' ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + (WX_IC[G.weather] ? ' ' + WX_IC[G.weather] : ''); } }
     setText(E.mute, G.mute ? '🔇' : '🔊');
+    if (IS_TOUCH) { const tb = E.talkBtn || (E.talkBtn = root.querySelector('.tact[data-k="KeyF"]')); if (tb) { const n = Game.nearNpc(); setCls(tb, 'off', !n); setCls(tb, 'near', !!n); } }
     updateSkills(p); updateQuest(G); drawMap(G);
     const A = G.auto || {}, any = A.attack || A.skills || A.hp || A.mp;
     setVis(E.badge, any);

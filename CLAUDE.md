@@ -124,6 +124,8 @@ Mais missões e masmorras, árvore de talentos, itens com efeitos especiais, aju
 ## Missões no celular (toque)
 - Botão ❗ (`data-a="obj"`, aviso `.objpop`, `renderObj`/`objSync` em ui.js) mostra a etapa atual, o destino e **um** botão de ação: "Entregar" (secundária pronta), "Resgatar diários" ou "🧭 Ir até lá" (`Game.goObjective()`: anda até o NPC e abre o diálogo, vai ao lugar ou ao monstro mais próximo; chefe/elite só chega perto). Minimapa e botão "Mapa" abrem o mapa; legenda do mapa no botão `?`.
 - No toque (`IS_TOUCH`), missões secundárias liberadas entram como ativas sozinhas (`updateQuestLocks`) e entregam/resgatam pelo ❗, sem ir ao Ancião. No desktop o fluxo com Ancião continua igual.
+- O ❗ separa "📖 História" e "📜 Missões secundárias" (com progresso de cada uma); o aviso de conclusão de secundária diz o nome da missão.
+- No toque, o Inventário não mostra o boneco (`eqbox.flat`: equipados em 4×2 com a montaria); Personagem, Missões e Níveis têm CSS compacto (bloco no fim de `style.css`). 🎯 e 💬 avisam por toast; 💬 fica apagado sem NPC a até `TALK_R` (7 m, `Game.nearNpc`).
 - Avaliação de mercado: `reports/2026-11-21-eval-aldoria.md` (veredicto PIVOT 21/35).
 
 ## Campo de Treinamento, janelas flutuantes e painel de níveis (nov/2026)
