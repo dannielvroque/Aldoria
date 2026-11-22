@@ -735,3 +735,27 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
   #ui.touch.sidebank #p-inv .eqbox, #ui.touch.sidebank #p-inv .tabs + .dim { display: none; } /* com o Baú aberto a mochila precisa aparecer (o boneco só atrapalha) */
   #ui.touch.side #p-inv { left: 50% !important; top: calc(46% + 6px) !important; transform: translateX(-50%) !important; width: calc(100% - 12px) !important; height: calc(54% - 12px); max-height: calc(54% - 12px) !important; z-index: 26; }
 }
+
+/* ---------- toque: Baú e Equipamento compactos (mais quadradinhos na tela) ---------- */
+#ui.touch #p-dlg:has(.bankw) .say, #ui.touch #p-dlg:has(.bankw) .npc-id small, #ui.touch #p-dlg:has(.bankw) .pf-foot { display: none; }
+#ui.touch #p-dlg:has(.bankw) .ph { padding: 5px 8px; gap: 8px; }
+#ui.touch #p-dlg:has(.bankw) .npc-ic { width: 28px; height: 28px; font-size: 15px; border-width: 1.5px; }
+#ui.touch #p-dlg:has(.bankw) .npc-id h2 { font-size: 15px; }
+#ui.touch #p-dlg:has(.bankw) .pb { padding: 6px 8px 8px; }
+#ui.touch .bankw { gap: 5px; }
+#ui.touch .bankg { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; padding: 4px; }
+#ui.touch .bankg .bi .ei { font-size: 15px; }
+#ui.touch .bpages button { width: 26px; height: 22px; font-size: 12px; } #ui.touch .bpages small { font-size: 10px; }
+#ui.touch .bgold { padding: 4px 6px; gap: 3px 8px; } #ui.touch .bgold .bg-r span { width: 46px; font-size: 11px; } #ui.touch .bgold .btn { padding: 3px 7px; font-size: 11px; } #ui.touch .bgold .igold b { font-size: 14px; }
+#ui.touch.sidebank #p-inv .ph { padding: 5px 10px; } #ui.touch.sidebank #p-inv .ph h2 { font-size: 15px; }
+#ui.touch.sidebank #p-inv .pb { padding: 6px 8px 8px; }
+#ui.touch.sidebank #p-inv .eqw { gap: 5px; }
+#ui.touch.sidebank #p-inv .itabs button { padding: 3px 10px; font-size: 12px; }
+#ui.touch.sidebank #p-inv .bag { gap: 3px; padding: 4px; }
+#ui.touch.sidebank #p-inv .foot-note { font-size: 11px; margin: 0; padding: 0; line-height: 1.2; }
+#ui.touch.sidebank #p-inv .igold { padding: 3px 8px; } #ui.touch.sidebank #p-inv .igold b { font-size: 14px; }
+#ui.touch.sidebank #p-inv .bag.cons { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+#ui.touch.sidebank #p-inv .eqbox, #ui.touch.sidebank #p-inv .tabs + .dim { display: none; }
+@media (orientation: landscape) {
+  #ui.touch .bgold { grid-template-columns: 1fr; } #ui.touch .bgold .igold { grid-row: auto; } #ui.touch .bgold .bg-r .btn { flex: 1; min-width: 0; padding: 3px 4px; }
+}
