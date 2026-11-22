@@ -725,3 +725,13 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 .map-c { touch-action: none; }
 .map-gps { position: absolute; top: 8px; left: 8px; right: 56px; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: rgba(16, 12, 22, .88); border: 1px solid var(--gold-d); font-size: 12.5px; pointer-events: auto; }
 .map-gps span { flex: 1; min-width: 0; line-height: 1.2; } .map-gps .btn { padding: 6px 10px; font-size: 12.5px; flex: none; }
+
+/* ---------- toque: mochila sem estourar a largura e serviços (Baú/Ferreiro/Joalheiro) empilhados no retrato ---------- */
+#ui.touch .bag { grid-template-columns: repeat(8, minmax(0, 1fr)); } #ui.touch .bag.mats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+#ui.touch .bankg { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+#ui.touch .bi .ei { font-size: 19px; } #ui.touch .bi .ar { font-size: 8px; }
+@media (orientation: portrait) {
+  #ui.touch.side #p-dlg { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; width: calc(100% - 12px) !important; max-height: calc(46% - 6px) !important; z-index: 27; }
+  #ui.touch.sidebank #p-inv .eqbox, #ui.touch.sidebank #p-inv .tabs + .dim { display: none; } /* com o Baú aberto a mochila precisa aparecer (o boneco só atrapalha) */
+  #ui.touch.side #p-inv { left: 50% !important; top: calc(46% + 6px) !important; transform: translateX(-50%) !important; width: calc(100% - 12px) !important; height: calc(54% - 12px); max-height: calc(54% - 12px) !important; z-index: 26; }
+}
