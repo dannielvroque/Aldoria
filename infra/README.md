@@ -20,12 +20,6 @@ terraform apply -var aws_profile=<perfil>        # confira o plano antes de conf
 - Local: `python tools/deploy_s3.py <S3_BUCKET> <CF_DISTRIBUTION_ID>`.
 - URL: saída `site_url` (`https://dxxxx.cloudfront.net`).
 
-## 4. Save na nuvem (login em qualquer aparelho)
-`cloud.tf` cria Cognito (login por e-mail), API Gateway HTTP + Lambda (`lambda/save.mjs`) e grava `saves/<usuário>.json` no mesmo bucket (o CloudFront só serve `index.html`, então não fica público; versionamento guarda 30 dias de versões antigas).
-- Depois do `terraform apply`, rode `terraform output -raw cloud_json > ../cloud.json` e **faça commit do `cloud.json`** (não é segredo: só URL da API, id do cliente e região). O `build.py` injeta o arquivo como `CLOUD_CFG`; sem ele o botão de nuvem não aparece e o jogo segue 100% offline.
-- O `apply` também precisa do provedor `archive` (`terraform init` de novo).
-- Cada conta do jogo (personagens + baú) liga a um e-mail. Gravação em cima de versão antiga é recusada (409) e o jogador escolhe qual manter.
-
 ## Observações
 - O administrador (Ctrl+Shift+F10) vai junto no HTML publicado; a senha só evita abertura acidental.
 - Saves ficam no `localStorage` de cada origem: o da URL do CloudFront não é o do `file://`. Use Exportar/Importar do administrador.

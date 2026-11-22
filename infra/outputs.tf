@@ -18,12 +18,3 @@ output "S3_BUCKET" {
 output "CF_DISTRIBUTION_ID" {
   value = aws_cloudfront_distribution.site.id
 }
-
-# Valores do save na nuvem: salve como cloud.json na raiz do repositorio (ver infra/README.md)
-output "cloud_json" {
-  value = jsonencode({
-    api    = aws_apigatewayv2_api.save.api_endpoint
-    cid    = aws_cognito_user_pool_client.web.id
-    region = var.region
-  })
-}
