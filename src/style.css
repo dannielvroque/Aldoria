@@ -793,3 +793,24 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 /* ícones desenhados de armadura/acessório (ARMART em art.js): do tamanho do emoji que substituem */
 .ei > svg.aic, .it-ic > svg.aic { width: 1.35em; height: 1.35em; display: block; margin: auto; }
 .ei:has(> svg.aic) { line-height: 0; }
+
+/* ---------- toque: diálogos de serviço (Ferreiro, Joalheiro, Cavalariço, lojas) compactos, sem nada cortado ---------- */
+#ui.touch #p-dlg.svc .pb > .say, #ui.touch #p-dlg.svc .npc-id small, #ui.touch #p-dlg.svc .pf-foot { display: none; }
+#ui.touch #p-dlg.svc .ph { padding: 5px 8px; gap: 8px; }
+#ui.touch #p-dlg.svc .npc-ic { width: 30px; height: 30px; font-size: 16px; border-width: 1.5px; }
+#ui.touch #p-dlg.svc .npc-id h2 { font-size: 16px; }
+#ui.touch #p-dlg.svc .pb { padding: 6px 9px 10px; }
+#ui.touch #p-dlg .pb h3 { flex-wrap: wrap; gap: 1px 8px; margin: 4px 0 5px; } #ui.touch #p-dlg .pb h3 small { flex: 1 1 100%; line-height: 1.25; }
+#ui.touch #p-dlg .btn small { display: block; font-size: 10px; opacity: .85; } /* preço e "+2 → +3" nos botões dos serviços */
+#ui.touch #p-dlg .shop-r { flex-wrap: wrap; row-gap: 5px; }
+#ui.touch #p-dlg .shop-r .it-t { flex: 1 1 55%; }
+#ui.touch #p-dlg .it-t b, #ui.touch #p-dlg .it-t small { white-space: normal; overflow: visible; }
+#ui.touch #p-dlg .shop-r .btn { min-width: 0; flex: 1 0 auto; padding: 5px 8px; }
+#ui.touch #p-dlg .jw-box { margin: 6px 0; padding: 6px 8px; }
+#ui.touch #p-dlg .jw-st { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; } #ui.touch #p-dlg .jw-st .btn { padding: 5px 6px; font-size: 12px; text-align: left; }
+#ui.touch #p-dlg .jw-st .btn small { display: inline; }
+#ui.touch #p-dlg.svc .pb > .btn.primary { width: 100%; margin-top: 4px; }
+#ui.touch #p-dlg .dim.pad { font-size: 11.5px; line-height: 1.3; }
+#ui.touch #p-dlg .jw-st .btn { flex-direction: row; justify-content: flex-start; align-items: center; gap: 5px; padding: 4px 7px; }
+#ui.touch #p-dlg .jw-st .btn small { margin-left: auto; }
+#ui.touch #p-dlg .shop-r:has(.btn + .btn + .btn) .it-t { flex-basis: calc(100% - 46px); } /* 3 botões (×1/×10/×50): todos juntos na linha de baixo */
