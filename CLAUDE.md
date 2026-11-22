@@ -52,6 +52,12 @@ Interface e textos do jogo em português do Brasil.
 ## Contas e save
 - Várias contas no mesmo navegador (“⇄ Trocar conta”), vários personagens por conta, baú compartilhado (Guarda de Carga). Chaves `localStorage`: `aldoria_save_v1` (save antigo), `aldoria_account_v1`/`aldoria_accounts_v2` (contas), `aldoria_auto_v1` (modo automático), `aldoria_gfx` (qualidade gráfica, tecla G), `aldoria_eco` (economia de energia: ~40 FPS e resolução um pouco menor; padrão ligada no toque, botão na Pausa), `aldoria_admin_v1` (administrador).
 
+## Save na nuvem (cloud.js)
+- Opcional: só aparece se existir `cloud.json` na raiz (saída `cloud_json` do Terraform; `build.py` injeta como `CLOUD_CFG`). Sem ele o jogo é 100% offline.
+- `src/cloud.js` (`Cloud`): login Cognito por e-mail/senha via `fetch` (SignUp, ConfirmSignUp, USER_PASSWORD_AUTH, refresh, ForgotPassword) e API `GET/PUT /save`. Sessão em `localStorage` `aldoria_cloud_v1`.
+- `game.js` (bloco "save na nuvem"): `ACC.cloud` (e-mail), `ACC.ct` (versão da nuvem), `ACC.dirty`. `save()` → `cloudMark` → envio após 15 s, ao sair do app (`visibilitychange`) e ao voltar ao menu. `cloudPull` reconcilia ao entrar e ao abrir o jogo; conflito (409) → `cloudResolve`. UI no menu (`cloudHtml`/`cloudAct` em ui.js).
+- Infra em `infra/cloud.tf` + `infra/lambda/save.mjs` (valida o formato, limite 2 MB; checagem antitrapaça ainda não existe).
+
 ## Interface (estilo WYD, só como mecânica genérica)
 - Inventário [I] = janela “Equipamento” (slots em volta do personagem, “+N”, mochila em grade, ouro na base); Banco abre ao lado; Ferreiro e Joalheiro abrem junto com o Equipamento.
 - Teclas: clique anda/ataca/fala; 1–5, 8, 9 habilidades; 6/7 poção de vida/mana; Espaço/Tab atacar/trocar alvo; F falar; Z (ou T) automático; X montar; I/C/V/M/Q equipamento/personagem/habilidades/mapa/missões; G qualidade gráfica; Ctrl+Shift+F10 administrador.
