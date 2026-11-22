@@ -5,15 +5,16 @@ Saída: tabela no terminal. Serve para ajustar mobStats/ELITE_M (data.js) e acom
 import os, sys, json
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HTML = 'file:///' + os.path.join(ROOT, 'dist', 'aldoria.html').replace(os.sep, '/')
+HTML = 'file:///' + os.environ.get('HTML', os.path.join(ROOT, 'dist', 'aldoria.html')).replace(os.sep, '/')  # HTML=outro build para comparar antes/depois
 LEVELS = [int(x) for x in (sys.argv[1] if len(sys.argv) > 1 else '1,3,5,8,12,20,30,40,50').split(',')]
 DLV = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 TRIALS = int(os.environ.get("TRIALS", "4"))
 HPF = float(os.environ.get("HPF", "1"))  # multiplica a vida dos monstros no teste (para achar o fator ideal antes de mudar o jogo)
 SK = os.environ.get("SK", "1") == "1"  # 1: automático de ataque e habilidades ligado (como no jogo); 0: só ataque básico
 GEAR = os.environ.get("GEAR", "tier")  # tier: itens Comuns da fase; carry: equipamento da fase anterior no fim dela (nv 50, Épico, +9), como quem acabou de evoluir
+SKL = os.environ.get("SKL", "1")  # nível das habilidades aprendidas: 1 ou cap (teto do nível, como um jogador que investe os pontos)
 TIER = int(os.environ.get("TIER", "0"))  # fase do personagem (0 Mortal .. 3 Supremo); monstros e itens acompanham
-JS = """([levels, dlv, trials, TIER, GEAR, SK, HPF]) => { const TM = TMUL[TIER]; const d = Game._dbg, G = d.G, p = G.player, out = {};
+JS = """([levels, dlv, trials, TIER, GEAR, SK, HPF, SKL]) => { const TM = TMUL[TIER]; const d = Game._dbg, G = d.G, p = G.player, out = {};
   const far = G.mobs.filter(m => !m.dead && !m.boss && Math.hypot(m.x, m.z) > 120).slice(0, 3); const m = far[0];
   for (const o of G.mobs) if (o !== m && Math.hypot(o.x - m.x, o.z - m.z) < 60) { o.dead = true; o.respawnAt = 1e9; } // isola o monstro do teste (vizinhos entrariam na luta)
   G.state = 'play'; G.auto.attack = true; G.auto.skills = true; G.auto.hp = false; G.auto.mp = false;
@@ -23,7 +24,7 @@ JS = """([levels, dlv, trials, TIER, GEAR, SK, HPF]) => { const TM = TMUL[TIER];
         p.cls = cls; p.tier = TIER; p.lvl = lvForEff(L, TIER); p.eq = { w: null, h: null, a: null, l: null, g: null, b: null, c: null };
         for (const s of ['w', 'h', 'a', 'l', 'g', 'b', 'c']) { if (GEAR === 'carry' && TIER > 0) { const it = buildItem(s, cls, 50, 3, s === 'w' ? WTYPES[cls][0] : undefined, TIER - 1); it.plus = 9; p.eq[s] = it; } else p.eq[s] = buildItem(s, cls, L, 0, s === 'w' ? WTYPES[cls][0] : undefined, TIER); }
         const ap = apAt(p.lvl), mn = CLASSES[cls].main, A = { str: 0, dex: 0, int: 0, vit: 0, spi: 0 }; A[mn] = Math.round(ap * .7); A.vit = ap - A[mn]; p.attr = A;
-        p.sk = CLASSES[cls].skills.map((_, i) => SK_LEARN[i].lvl <= L && !(CLASSES[cls].skills[i].tier > 0) ? 1 : 0); p.cd = p.cd.map(() => 0);
+        p.sk = CLASSES[cls].skills.map((_, i) => SK_LEARN[i].lvl <= L && !(CLASSES[cls].skills[i].tier > 0) ? (SKL === 'cap' ? skCap(L) : 1) : 0); p.cd = p.cd.map(() => 0);
         d.recalc(); p.hp = p.maxHp; p.mp = p.maxMp; G.dead = false; p.shield = { hp: 0, t: 0 }; for (const k in p.buffs) p.buffs[k].t = 0;
         const ml = Math.max(1, L + dlv + (kind === 'champ' ? 1 : 0)), s = mobStats(ml, kind === 'elite' ? ELITE_M : kind === 'champ' ? { hpm: 7, atkm: 1.9, xpm: 18, hpk: ELITE_HPK } : kind === 'boss' ? { hpm: 13, atkm: 1.7, xpm: 14, hpk: BOSS_HPK } : null);
         m.lvl = ml; m.bhp = s.hp; m.batk = s.atk; m.def = s.def; m.maxHp = s.hp * TM * HPF; m.hp = s.hp * TM * HPF; m.atk = s.atk * TM; m.dead = false; m.state = 'chase'; m.stun = 0; m.slow = 0; m.dots = []; m.mark = 0; m.warn = null;
@@ -40,7 +41,7 @@ with sync_playwright() as pw:
     b = pw.chromium.launch(channel='msedge', headless=True, args=['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
     pg = b.new_context().new_page(); errs = []; pg.on('pageerror', lambda e: errs.append(str(e)[:300]))
     pg.goto(HTML); pg.wait_for_function("typeof Game !== 'undefined'"); pg.evaluate("Game.newGame('vanguard')"); pg.wait_for_timeout(1200)
-    r = pg.evaluate(JS, [LEVELS, DLV, TRIALS, TIER, GEAR, SK, HPF]); b.close()
+    r = pg.evaluate(JS, [LEVELS, DLV, TRIALS, TIER, GEAR, SK, HPF, SKL]); b.close()
 if errs: print('ERROS:', errs)
 print('Luta real (mobs de nível jogador%+d); cada célula: segundos para matar / %% da vida perdida / mortes' % DLV)
 for kind in ('normal', 'elite', 'champ', 'boss'):
