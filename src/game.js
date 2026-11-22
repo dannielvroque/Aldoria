@@ -771,7 +771,7 @@ const Game = (() => {
     p.mount = p.lastMount = mid; recalc(); p.dash = null; cmd = null; sfx('level'); UI.toast('Montado: ' + MOUNTS[mid].n); UI.refreshPanels();
   }
   function toMenu() {
-    if (G.state === 'play') { save(); cloudPush(); G.state = 'menu'; G.dead = false; cmd = null; UI.closeAll(); UI.hideDeath(); UI.showMenu(hasSave()); }
+    if (G.state === 'play') { save(); G.state = 'menu'; G.dead = false; cmd = null; UI.closeAll(); UI.hideDeath(); UI.showMenu(hasSave()); }
   }
   const qualityName = () => R.q.name;
   function enhance(slot) { // aceita o espaço equipado ('w', 'h'...) ou o id de um item (equipado ou na mochila)
@@ -1618,7 +1618,6 @@ const Game = (() => {
     window.addEventListener('orientationchange', () => { setTimeout(() => R.resize(true), 350); setTimeout(() => R.resize(true), 900); });
     window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
     window.addEventListener('beforeunload', () => { if (G.state === 'play') save(); });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { if (G.state === 'play') save(); cloudPush(); } }); // celular: ao sair do app, envia já
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     canvas.addEventListener('mousedown', e => {
       if (performance.now() - touchT.last < 800) return; // toque já tratado; ignora o mouse sintético
@@ -1699,64 +1698,6 @@ const Game = (() => {
   function switchAccount(name) { return createAccount(name); }
   function logoutAccount() { accsLoad(); ACC = null; ACCS.cur = null; accWrite(); }
   function deleteAccount(name) { accsLoad(); const n = String(name).toLowerCase(); ACCS.list = ACCS.list.filter(x => x.name.toLowerCase() !== n); if (ACC && ACC.name.toLowerCase() === n) { ACC = null; ACCS.cur = null; } accWrite(); }
-
-  /* ---------- save na nuvem (cloud.js) ----------
-     Uma conta do jogo (personagens + baú) é ligada ao e-mail do login: ACC.cloud = e-mail, ACC.ct = versão da nuvem da última sincronização,
-     ACC.dirty = há mudança local ainda não enviada. A nuvem recusa (409) gravação feita em cima de versão antiga: aí o jogador escolhe qual manter. */
-  let cloudTimer = 0, cloudBusy = false, cloudMsg = '', cloudConflict = null, cloudRev = 0;
-  const accPack = A => ({ name: A.name, chars: A.chars, bank: A.bank, last: A.last });
-  const cloudLinked = A => !!(A && Cloud.available && A.cloud && A.cloud === Cloud.email());
-  const cloudNote = () => { try { UI.cloudChanged(); } catch (e) { /* UI ainda não pronta */ } };
-  function cloudMark() {
-    if (!cloudLinked(ACC) || cloudConflict) return;
-    ACC.dirty = true; cloudRev++; clearTimeout(cloudTimer); cloudTimer = setTimeout(() => cloudPush(), 15000);
-  }
-  async function cloudPush(force) {
-    clearTimeout(cloudTimer); const A = ACC;
-    if (cloudBusy || !cloudLinked(A) || (cloudConflict && !force) || (!A.dirty && !force)) return;
-    const rev = cloudRev; cloudBusy = true; cloudMsg = 'Enviando…'; cloudNote();
-    try {
-      const r = await Cloud.put(accPack(A), A.ct, force);
-      if (r.ok) { A.ct = r.t; A.dirty = cloudRev !== rev; cloudConflict = null; cloudMsg = 'Sincronizado'; }
-      else { cloudConflict = { acc: A.name, cloud: r.cloud }; cloudMsg = 'Conflito'; UI.toast('☁ Outro dispositivo salvou: escolha qual versão manter no menu'); }
-    } catch (e) { cloudMsg = e.message || 'Falha ao enviar'; cloudTimer = setTimeout(() => cloudPush(), 60000); }
-    cloudBusy = false; accWrite(); cloudNote();
-  }
-  const accUniq = n => { n = String(n || 'Jogador').slice(0, 18); let m = n, i = 2; while (ACCS.list.some(x => x.name.toLowerCase() === m.toLowerCase())) m = n.slice(0, 16) + i++; return m; };
-  function cloudApply(A, c) { const d = JSON.parse(JSON.stringify(c.data)); A.chars = d.chars; A.bank = d.bank; A.last = d.last; accFix(A); A.ct = c.t; A.dirty = false; }
-  /* depois do login (e ao abrir o jogo já logado): reconcilia a conta local com a da nuvem. Só no menu, nunca com personagem em jogo. */
-  async function cloudPull(enter) {
-    const em = Cloud.email(); if (!em || G.state === 'play' || cloudBusy) return;
-    cloudBusy = true; cloudMsg = 'Sincronizando…'; cloudNote();
-    try {
-      const c = await Cloud.get(); accsLoad();
-      let A = ACCS.list.find(x => x.cloud === em);
-      if (!c) { // nuvem vazia: sobe a conta ativa (se ainda não for de outro e-mail) ou cria uma nova
-        if (!A) { A = ACC && !ACC.cloud ? ACC : null; if (!A) { A = { name: accUniq(em.split('@')[0]), chars: [], bank: { items: [], gold: 0 } }; ACCS.list.push(A); } A.cloud = em; A.ct = 0; }
-        A.dirty = true; cloudRev++; if (enter) { ACC = A; ACCS.cur = A.name; } cloudBusy = false; accWrite(); await cloudPush(true); return;
-      }
-      if (!A) { A = accFix(JSON.parse(JSON.stringify(c.data))); A.name = accUniq(A.name); A.cloud = em; A.ct = c.t; A.dirty = false; ACCS.list.push(A); }
-      else if (A.dirty && A.ct !== c.t) { cloudConflict = { acc: A.name, cloud: c }; cloudMsg = 'Conflito'; }
-      else if (c.t !== (A.ct | 0)) cloudApply(A, c);
-      if (enter && !cloudConflict) { ACC = A; ACCS.cur = A.name; }
-      if (cloudConflict) { ACC = A; ACCS.cur = A.name; }
-      if (!cloudConflict) cloudMsg = 'Sincronizado';
-      accWrite();
-    } catch (e) { cloudMsg = e.message || 'Falha ao sincronizar'; }
-    cloudBusy = false; cloudNote();
-  }
-  async function cloudLogin(email, pw) {
-    try { await Cloud.login(email, pw); } catch (e) { return { ok: false, msg: e.message, code: e.code }; }
-    cloudConflict = null; await cloudPull(true); return { ok: true };
-  }
-  function cloudLogout() { clearTimeout(cloudTimer); Cloud.logout(); cloudConflict = null; cloudMsg = ''; cloudNote(); }
-  /* conflito: usar a versão da nuvem (descarta o que mudou aqui) ou manter esta (sobrescreve a nuvem) */
-  async function cloudResolve(useCloud) {
-    const k = cloudConflict; if (!k) return; accsLoad(); const A = ACCS.list.find(x => x.name === k.acc); if (!A) { cloudConflict = null; return; }
-    if (useCloud) { cloudApply(A, k.cloud); cloudConflict = null; cloudMsg = 'Sincronizado'; accWrite(); cloudNote(); UI.showMenu(hasSave()); }
-    else { ACC = A; A.ct = k.cloud.t; A.dirty = true; cloudRev++; cloudConflict = null; await cloudPush(true); UI.showMenu(hasSave()); }
-  }
-  function cloudInfo() { return { on: Cloud.available, email: Cloud.email(), linked: cloudLinked(ACC), busy: cloudBusy, msg: cloudMsg, conflict: !!cloudConflict, pending: !!(ACC && ACC.dirty) }; }
   const hasSave = () => { const a = account(); return !!(a && a.chars.length); };
   function snapshot() {
     const p = G.player;
@@ -1766,9 +1707,9 @@ const Game = (() => {
     if (G.state !== 'play' || !G.player || !ACC) return;
     let c = ACC.chars.find(x => x.id === G.charId);
     if (!c) { c = { id: G.charId || ('c' + Date.now().toString(36)) }; G.charId = c.id; ACC.chars.push(c); }
-    c.data = snapshot(); ACC.last = c.id; cloudMark(); accWrite();
+    c.data = snapshot(); ACC.last = c.id; accWrite();
   }
-  function deleteChar(id) { if (!ACC) return; ACC.chars = ACC.chars.filter(c => c.id !== id); cloudMark(); accWrite(); }
+  function deleteChar(id) { if (!ACC) return; ACC.chars = ACC.chars.filter(c => c.id !== id); accWrite(); }
   /* baú compartilhado entre os personagens da conta */
   const BANK_MAX = 120, bankMax = () => Math.max(BANK_MAX, (ACC && ACC.bank && ACC.bank.max) | 0);
   function bankPut(id) {
@@ -2560,7 +2501,6 @@ const Game = (() => {
     UI.init(); initInput(); loadAuto(); newPlayer('vanguard'); populate();
     last = bgLast = performance.now(); requestAnimationFrame(frame); startBgTicker();
     UI.showMenu(hasSave());
-    if (Cloud.email()) cloudPull(!accounts().length).then(() => { if (G.state === 'menu') UI.showMenu(hasSave()); });
   }
   /* ---------- encontros aleatórios (encounters.js) ---------- */
   const encFree = (x, z) => isLand(x, z) && coastD(x, z) > 20 && !inSafe(x, z) && !SITES.some(q => Math.hypot(q.x - x, q.z - z) < 14) && !VILLAGES.some(v => Math.hypot(v.cx - x, v.cz - z) < (v.r || v.hs || 9) + 22) && zoneAt(x, z) && zoneAt(x, z).id !== 'town';
@@ -2577,7 +2517,7 @@ const Game = (() => {
     fx: { pillar: fxPillar, burst: fxBurst },
   });
   return {
-    boot, hasSave, _adminHook, cloudInfo, cloudLogin, cloudLogout, cloudResolve, cloudPush: () => cloudPush(), account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
+    boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
     mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, nearNpc, gpsGo, gpsCancel, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };

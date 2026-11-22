@@ -2,7 +2,7 @@
 const UI = (() => {
   let root, ctx, W = 1280, H = 720, lastHeavy = 0, mmDpr = 1;
   const E = {};                       // referências de DOM em cache
-  const st = { cloud: { open: false, mode: 'login', email: '', msg: '', busy: false }, menu: false, death: false, panel: null, npc: null, msg: null, confirmDel: false, hasSave: false };
+  const st = { menu: false, death: false, panel: null, npc: null, msg: null, confirmDel: false, hasSave: false };
   const MM = 150;                     // tamanho do minimapa (px CSS)
   const ZCOL = { town: '#8d7c52', field: '#4d7a3a', forest: '#2c5a44', ruins: '#5b4a70', oasis: '#a08a55', dunes: '#c49a52', frostv: '#8a97ab', tundra: '#b9cbe0', forge: '#5a4748', ashlands: '#3a2424' };
   const NPC_IC = { enc: '❗', quest: '🔮', shop: '💰', smith: '⚒️', jewel: '💎', portal: '🌀', story: '📖', trainer: '📚', bank: '🗝️', armor: '🧵', weapon: '🗡️', stable: '🐴' };
@@ -264,58 +264,6 @@ const UI = (() => {
   }
   function hideCreate() { setVis(E.create, false); }
 
-  /* ---------- nuvem: login e status (cloud.js / Game.cloud*) ---------- */
-  function cloudHtml() {
-    const I = Game.cloudInfo(); if (!I.on) return '';
-    const c = st.cloud;
-    if (I.email && !c.open) {
-      let h = `<div class="cloud"><small>☁ ${esc(I.email)} · ${esc(I.msg || (I.linked ? (I.pending ? 'Alterações a enviar' : 'Sincronizado') : 'Conta local (não ligada à nuvem)'))}</small>`;
-      if (I.conflict) h += `<div class="cloud-warn">Outro dispositivo salvou esta conta. Qual versão manter?<div><button class="btn primary" data-a="cl-cloud">Usar a da nuvem</button><button class="btn" data-a="cl-mine">Manter esta e sobrescrever</button></div></div>`;
-      return h + `<button class="btn ghost" data-a="cl-out">Sair da nuvem</button></div>`;
-    }
-    if (!c.open) return `<div class="cloud"><button class="btn" data-a="cl-open" title="Entre para jogar a mesma conta em qualquer aparelho">☁ Entrar / criar conta na nuvem</button></div>`;
-    const inp = (id, ph, type, val) => `<input id="${id}" type="${type || 'text'}" placeholder="${ph}" value="${esc(val || '')}" autocomplete="${type === 'password' ? 'current-password' : 'off'}" ${c.busy ? 'disabled' : ''}>`;
-    const em = inp('cl-email', 'E-mail', 'email', c.email), pw = inp('cl-pw', 'Senha (mín. 8, com letras e números)', 'password'), cd = inp('cl-code', 'Código do e-mail', 'text');
-    const B = (a, t, pr) => `<button class="btn${pr ? ' primary' : ''}" data-a="${a}"${c.busy ? ' disabled' : ''}>${t}</button>`;
-    let h = '<div class="cloud"><b>☁ Conta na nuvem</b><small>O mesmo login abre seus personagens e o baú em qualquer aparelho.</small>';
-    if (c.mode === 'login') h += em + pw + B('cl-login', 'Entrar', 1) + B('cl-mode-signup', 'Criar conta') + B('cl-mode-forgot', 'Esqueci a senha');
-    else if (c.mode === 'signup') h += em + pw + B('cl-signup', 'Criar conta', 1) + B('cl-mode-login', 'Já tenho conta');
-    else if (c.mode === 'confirm') h += `<small>Enviamos um código para ${esc(c.email)}.</small>` + cd + B('cl-confirm', 'Confirmar', 1) + B('cl-resend', 'Reenviar código');
-    else if (c.mode === 'forgot') h += em + B('cl-forgot', 'Enviar código', 1) + B('cl-mode-login', 'Voltar');
-    else if (c.mode === 'reset') h += `<small>Código enviado para ${esc(c.email)}.</small>` + cd + inp('cl-pw', 'Nova senha', 'password') + B('cl-reset', 'Trocar senha', 1);
-    h += (c.msg ? `<div class="cloud-msg">${esc(c.msg)}</div>` : '') + `<button class="btn ghost" data-a="cl-close">Fechar</button></div>`;
-    return h;
-  }
-  async function cloudAct(a) {
-    const c = st.cloud, v = id => { const e = root.querySelector('#' + id); return e ? e.value : ''; };
-    if (a === 'cl-open') { c.open = true; c.msg = ''; c.mode = 'login'; return renderMenuActions(); }
-    if (a === 'cl-close') { c.open = false; c.msg = ''; return renderMenuActions(); }
-    if (a === 'cl-out') { Game.cloudLogout(); return renderMenuActions(); }
-    if (a === 'cl-cloud') return Game.cloudResolve(true);
-    if (a === 'cl-mine') return Game.cloudResolve(false);
-    if (a.startsWith('cl-mode-')) { c.email = v('cl-email') || c.email; c.mode = a.slice(8); c.msg = ''; return renderMenuActions(); }
-    const email = (v('cl-email') || c.email).trim(), pw = v('cl-pw'), code = v('cl-code');
-    if (a !== 'cl-confirm' && a !== 'cl-resend' && a !== 'cl-reset' && !/^\S+@\S+\.\S+$/.test(email)) { c.msg = 'Digite um e-mail válido.'; return renderMenuActions(); }
-    c.email = email; c.busy = true; c.msg = 'Aguarde…'; renderMenuActions();
-    try {
-      if (a === 'cl-login') {
-        const r = await Game.cloudLogin(email, pw);
-        if (r.ok) { c.open = false; c.msg = ''; c.busy = false; return showMenu(Game.hasSave()); }
-        if (r.code === 'UserNotConfirmedException') { c.mode = 'confirm'; await Cloud.resend(email).catch(() => { }); }
-        c.msg = r.msg;
-      } else if (a === 'cl-signup') { await Cloud.signUp(email, pw); c.mode = 'confirm'; c.msg = 'Conta criada! Digite o código enviado ao seu e-mail.'; c.pw = pw; }
-      else if (a === 'cl-confirm') {
-        await Cloud.confirm(email, code);
-        if (c.pw) { const r = await Game.cloudLogin(email, c.pw); c.pw = ''; if (r.ok) { c.open = false; c.msg = ''; c.busy = false; return showMenu(Game.hasSave()); } }
-        c.mode = 'login'; c.msg = 'E-mail confirmado. Agora é só entrar.';
-      } else if (a === 'cl-resend') { await Cloud.resend(email); c.msg = 'Código reenviado.'; }
-      else if (a === 'cl-forgot') { await Cloud.forgot(email); c.mode = 'reset'; c.msg = 'Código enviado ao seu e-mail.'; }
-      else if (a === 'cl-reset') { await Cloud.reset(email, code, pw); c.mode = 'login'; c.msg = 'Senha trocada. Entre com a nova senha.'; }
-    } catch (e) { c.msg = e.message; }
-    c.busy = false; renderMenuActions();
-  }
-  function cloudChanged() { if (st.menu && !st.cloud.busy && !(root.querySelector('.cloud input:focus'))) renderMenuActions(); }
-
   function renderMenuActions() {
     const A = Game.account();
     let h = '';
@@ -329,7 +277,7 @@ const UI = (() => {
           : `<button class="btn primary" data-a="acc-enter" data-id="${esc(a.name)}">Entrar</button><button class="btn ghost" data-a="accdel-ask" data-id="${esc(a.name)}" title="Apagar conta">🗑</button>`) + '</div>';
         h += '</div><small>Ou crie uma conta nova:</small>';
       }
-      h += `<div class="cr-name"><input id="acc-name" maxlength="18" placeholder="Nome da conta"><button class="btn${L.length ? '' : ' primary'}" data-a="acc-create">Criar conta</button></div>${cloudHtml()}</div>`;
+      h += `<div class="cr-name"><input id="acc-name" maxlength="18" placeholder="Nome da conta"><button class="btn${L.length ? '' : ' primary'}" data-a="acc-create">Criar conta</button></div></div>`;
       setBody(E.menuAct, h); return;
     }
     h += `<div class="acc"><div class="acc-h"><span>Conta</span><b>${esc(A.name)}</b><small>${A.chars.length} personagem(ns) · baú: ${A.bank.items.length} itens, ${fmt(A.bank.gold)} ouro</small><button class="btn ghost" data-a="acc-out" title="Sair desta conta e escolher ou criar outra">⇄ Trocar conta</button></div><div class="acc-list">`;
@@ -341,7 +289,7 @@ const UI = (() => {
       h += '</div>';
     }
     if (!A.chars.length) h += '<div class="dim pad">Nenhum personagem ainda.</div>';
-    h += `</div><button class="btn${A.chars.length ? '' : ' primary'} big" data-a="newchar"${A.chars.length >= 8 ? ' disabled' : ''}>✦ Novo personagem</button>${cloudHtml()}</div>`;
+    h += `</div><button class="btn${A.chars.length ? '' : ' primary'} big" data-a="newchar"${A.chars.length >= 8 ? ' disabled' : ''}>✦ Novo personagem</button></div>`;
     setBody(E.menuAct, h);
   }
 
@@ -1212,7 +1160,6 @@ const UI = (() => {
       case 'delask': st.confirmDel = d.id; renderMenuActions(); return;
       case 'delno': st.confirmDel = false; renderMenuActions(); return;
       case 'delyes': Game.deleteSave(d.id); st.confirmDel = false; showMenu(Game.hasSave()); return;
-      case 'cl-open': case 'cl-close': case 'cl-out': case 'cl-cloud': case 'cl-mine': case 'cl-login': case 'cl-signup': case 'cl-confirm': case 'cl-resend': case 'cl-forgot': case 'cl-reset': case 'cl-mode-login': case 'cl-mode-signup': case 'cl-mode-forgot': cloudAct(a); return;
       case 'acc-enter': Game.switchAccount(d.id); st.confirmDel = false; showMenu(Game.hasSave()); return;
       case 'acc-out': Game.logoutAccount(); st.confirmAcc = null; showMenu(Game.hasSave()); return;
       case 'accdel-ask': st.confirmAcc = d.id; renderMenuActions(); return;
@@ -1678,7 +1625,7 @@ const UI = (() => {
   }
 
   return {
-    init, cloudChanged, showMenu, hideMenu, showCreate, hideCreate, syncCreate, update, log, float, toast, bigToast, setEvents, levelUp, refreshPanels,
+    init, showMenu, hideMenu, showCreate, hideCreate, syncCreate, update, log, float, toast, bigToast, setEvents, levelUp, refreshPanels,
     openDialog, closeAll, showDeath, hideDeath, mapToWorld,
     isBlocking: () => st.menu || st.death || !!st.modal,
     paused: () => st.modal === 'pause',
