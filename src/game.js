@@ -417,7 +417,7 @@ const Game = (() => {
       const goal = q.kill || 1;
       if ((q.zone && !m.boss && m.zone === q.zone) || (q.boss && m.boss && m.id === q.boss)) {
         st.prog = Math.min(goal, st.prog + 1);
-        if (st.prog >= goal) { st.state = 'ready'; UI.log('Missão concluída: ' + q.n + '. Retorne a um Ancião.', 'quest'); UI.toast('Missão concluída!'); }
+        if (st.prog >= goal) { st.state = 'ready'; UI.log('Missão concluída: ' + q.n + '. Retorne a um Ancião.', 'quest'); UI.toast('📜 Secundária concluída: ' + q.n + TX('', ' · entregue pelo ❗')); }
         else UI.log(q.n + ': ' + st.prog + '/' + goal, 'quest');
       }
     }
@@ -1548,13 +1548,15 @@ const Game = (() => {
   /* ---------- entrada ---------- */
   function cycleTarget() {
     const p = G.player, list = G.mobs.filter(m => !m.dead && Math.hypot(m.x - p.x, m.z - p.z) < 25).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
-    if (!list.length) { tmob = null; return; }
+    if (!list.length) { tmob = null; if (IS_TOUCH) UI.toast('🎯 Nenhum monstro por perto'); return; }
     const i = list.indexOf(tmob); tmob = list[(i + 1) % list.length];
+    if (IS_TOUCH) UI.toast('🎯 Alvo: ' + tmob.name + ' · Nv ' + dispLv(tmob.lvl, G.player.tier)); // no toque o registro fica escondido
   }
+  const TALK_R = 7;
+  function nearNpc() { const p = G.player; let b = null, bd = TALK_R; if (p) for (const n of NPCS) { const d = Math.hypot(n.x - p.x, n.z - p.z); if (d < bd) { bd = d; b = n; } } return b; }
   function talkNearest() {
-    const p = G.player; let b = null, bd = 6;
-    for (const n of NPCS) { const d = Math.hypot(n.x - p.x, n.z - p.z); if (d < bd) { bd = d; b = n; } }
-    if (b) { cmd = null; UI.openDialog(b.id); } else if (throttle('nonpc', 1)) UI.log('Nenhum NPC por perto.', 'sys');
+    const b = nearNpc();
+    if (b) { cmd = null; UI.openDialog(b.id); } else if (throttle('nonpc', 1)) { UI.log('Nenhum NPC por perto.', 'sys'); if (IS_TOUCH) UI.toast('💬 Ninguém por perto para conversar'); }
   }
 
   /* ---------- toque (celular/tablet): joystick, câmera por arrasto, pinça e botões de ação ---------- */
@@ -2498,7 +2500,7 @@ const Game = (() => {
   });
   return {
     boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, gpsGo, gpsCancel, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, nearNpc, gpsGo, gpsCancel, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();

@@ -655,8 +655,151 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
   #ui.touch .tacts { bottom: calc(130px + env(safe-area-inset-bottom)); }
   #ui.touch .qarrow { display: none; }
 }
+/* toque: sem dicas de teclado; nomes e nível numa linha só; pausa em largura útil */
+#ui.touch .ph kbd, #ui.touch .btn small { display: none; }
+#ui.touch .pf-top { flex-wrap: nowrap; white-space: nowrap; gap: 4px; }
+#ui.touch .pf-name, #ui.touch .tf-name { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#ui.touch .pf-tier { display: none; } #ui.touch .pf-lv, #ui.touch .tf-lv { white-space: nowrap; flex: none; }
+#ui.touch .tf-top { font-size: 13px; gap: 6px; }
+#ui.touch .zone { width: max-content; max-width: 150px; align-self: flex-end; font-size: 11px; line-height: 1.2; text-align: right; }
+#ui.touch #p-pause { width: min(340px, calc(100% - 24px)); }
+#ui.touch #p-pause .btn { white-space: normal; }
+/* toque: botão de objetivo (❗) no lugar do 🤖 repetido, minimapa abre o mapa, aviso com o que fazer agora */
+#ui .tobj, #ui .objpop, #ui .maplg { display: none; }
+#ui.touch .maplg { display: block; }
+#ui.touch .tobj { display: block; }
+#ui.touch .btns [data-a="p-auto"] { display: none; }
+#ui.touch .mm { pointer-events: auto; cursor: pointer; }
+#ui.touch .objpop:not(.off) { display: block; position: absolute; left: calc(8px + env(safe-area-inset-left)); right: calc(8px + env(safe-area-inset-right)); top: calc(232px + env(safe-area-inset-top)); z-index: 20; padding: 10px 12px; pointer-events: auto; font-size: 13px; line-height: 1.35; max-height: 45%; overflow: auto; border-color: var(--gold); }
+#ui.touch .objpop b { display: block; color: var(--gold); font: 600 14px var(--serif); }
+#ui.touch .objpop p { margin: 4px 0; } #ui.touch .objpop ul { margin: 4px 0; padding-left: 16px; } #ui.touch .objpop small { color: var(--mut); }
+#ui.touch .objpop .where { color: #ffe27a; }
+#ui.touch .objpop .op-b { display: flex; gap: 8px; margin-top: 8px; } #ui.touch .objpop .op-b .btn { flex: 1; padding: 8px 6px; font-size: 13px; }
+#ui.touch .objpop .op-b.col { flex-direction: column; } #ui.touch .objpop .op-b.col:empty { display: none; }
+#ui.touch { --s: 34px; }
+#ui.touch .sb { --s: 34px; gap: 5px; } #ui.touch .sbg { gap: 4px; }
+#ui.touch .slot .qty, #ui.touch .slot .mpc { font-size: 10px; } #ui.touch .slot .lk { font-size: 12px; }
+@media (orientation: landscape) { #ui.touch .objpop:not(.off) { top: 8px; left: 50%; right: auto; transform: translateX(-50%); width: min(360px, 50%); } }
+@media (orientation: portrait) {
+  #ui.touch .sb { --s: 30px; gap: 4px; row-gap: 4px; bottom: calc(6px + env(safe-area-inset-bottom)); }
+  #ui.touch .joy { bottom: calc(60px + env(safe-area-inset-bottom)); } #ui.touch .tacts { bottom: calc(60px + env(safe-area-inset-bottom)); }
+  #ui.touch .pf { width: 198px; }
+  #ui.touch .tf { top: calc(104px + env(safe-area-inset-top)); width: 192px; }
+  #ui.touch .btns { position: static; display: grid; grid-template-columns: repeat(4, 36px); gap: 4px; width: auto; }
+}
+@media (orientation: portrait) { /* mapa em retrato: mapa em cima, lista de regiões embaixo (rola com o painel) */
+  #ui.touch .map-w { flex-direction: column; }
+  #ui.touch .map-cw { width: 100%; }
+  #ui.touch .map-c { aspect-ratio: auto; height: min(62vh, 540px); }
+  #ui.touch .map-side { min-width: 0; max-height: none; overflow: visible; }
+}
 #ui.touch .panel.win { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; animation: none; }
 #ui.touch .panel.win .ph { cursor: default; }
+
+/* ---------- toque: HUD compacto, menu recolhível (☰) e avisos que cabem na tela ---------- */
+#ui .fabrow { display: none; }
+#ui.touch .fabrow { display: flex; gap: 6px; align-self: flex-end; pointer-events: auto; }
+#ui.touch .fabrow button { width: 38px; height: 38px; border-radius: 50%; font-size: 18px; line-height: 1; padding: 0; border: 1.5px solid var(--gold); background: rgba(14, 12, 22, .8); color: #fff; }
+#ui.touch .fabrow .fab.on { background: rgba(100, 78, 30, .92); }
+#ui.touch .btns { display: none; }
+#ui.touch .btns.open { display: grid; position: absolute; top: calc(100% + 6px); right: 0; left: auto; width: max-content; grid-template-columns: repeat(4, 38px); gap: 6px; padding: 8px; border-radius: 18px; background: rgba(14, 12, 22, .9); border: 1px solid var(--gold-d); z-index: 12; transform-origin: top right; animation: fabpop .16s ease-out; }
+#ui.touch .btns.open button { width: 38px; height: 38px; min-width: 0; min-height: 0; }
+@keyframes fabpop { from { transform: scale(.2); opacity: 0; } }
+#ui.touch .pf { width: 158px; padding: 4px 6px; gap: 6px; }
+#ui.touch .pf-ic { width: 28px; height: 28px; font-size: 16px; border-width: 1.5px; }
+#ui.touch .pf-main { gap: 2px; }
+#ui.touch .pf .bar { height: 12px; } #ui.touch .pf .bar span { font-size: 9px; } #ui.touch .pf .bar.xp { height: 4px; }
+#ui.touch .pf-name { font-size: 11.5px; } #ui.touch .pf-lv { font-size: 11px; } #ui.touch .pf-gold { font-size: 10px; line-height: 1; }
+#ui.touch .tf { width: 158px; padding: 4px 6px 5px; }
+#ui.touch .tf-top { font-size: 11.5px; margin-bottom: 2px; gap: 4px; } #ui.touch .tf-lv { font-size: 10px; } #ui.touch .tf-ic { width: 20px; height: 20px; }
+#ui.touch .tf .bar { height: 11px; } #ui.touch .tf .bar span { font-size: 8.5px; }
+@media (orientation: portrait) { #ui.touch .tf { top: calc(76px + env(safe-area-inset-top)); } }
+#ui.touch .tfs { left: calc(172px + env(safe-area-inset-left)); right: auto; top: calc(6px + env(safe-area-inset-top)); }
+#ui.touch .toast { white-space: normal; text-align: center; width: max-content; max-width: calc(100% - 24px); padding: 6px 12px; font-size: 14px; top: calc(31% + env(safe-area-inset-top)); }
+#ui.touch .evtoast { min-width: 0; width: calc(100% - 24px); max-width: 340px; padding: 8px 14px; top: calc(16% + env(safe-area-inset-top)); }
+#ui.touch .evtoast b { font-size: 17px; overflow-wrap: anywhere; } #ui.touch .evtoast small { font-size: 12px; overflow-wrap: anywhere; }
+#ui.touch .banner { top: 40%; }
+#ui.touch .banner b { font-size: 34px; letter-spacing: .04em; } #ui.touch .banner small { font-size: 11px; letter-spacing: .2em; }
+#ui.touch .evbar { top: auto; bottom: calc(52px + env(safe-area-inset-bottom)); max-width: calc(100% - 16px); } #ui.touch .evbar .ev { font-size: 11px; padding: 2px 8px; }
+
+/* ---------- toque: cartão do item (atributos e ações ao tocar num item) ---------- */
+.itcard { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(300px, calc(100% - 24px)); max-height: 72%; overflow: auto; z-index: 50; padding: 10px 12px; pointer-events: auto; font-size: 13px; line-height: 1.35; border-color: var(--gold); }
+.itcard .ic-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; } .itcard .ic-h b { font: 700 14px var(--serif); }
+.itcard .ic-h .x { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--gold-d); background: rgba(255, 255, 255, .06); color: #fff; padding: 0; }
+.itcard ul { list-style: none; margin: 6px 0; padding: 0; } .itcard li { padding: 1px 0; color: #e6dcc4; }
+.itcard li.up { color: #8be08b; } .itcard li.dn { color: #ff9a8a; } .itcard li.bad { color: #ff7a6a; } .itcard li.val { color: #e8d28a; margin-top: 3px; }
+.itcard .ic-b { display: flex; flex-wrap: wrap; gap: 6px; } .itcard .ic-b .btn { flex: 1 1 calc(50% - 6px); padding: 8px 6px; font-size: 13px; } .itcard .ic-b .btn.primary { flex-basis: 100%; }
+.itcard .ic-q { color: #ffcf8a; margin: 6px 0; } .itcard .bad { color: #ff8a80; }
+
+/* ---------- mapa: GPS (toque marca o destino) ---------- */
+.map-c { touch-action: none; }
+.map-gps { position: absolute; top: 8px; left: 8px; right: 56px; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; background: rgba(16, 12, 22, .88); border: 1px solid var(--gold-d); font-size: 12.5px; pointer-events: auto; }
+.map-gps span { flex: 1; min-width: 0; line-height: 1.2; } .map-gps .btn { padding: 6px 10px; font-size: 12.5px; flex: none; }
+
+/* ---------- toque: mochila sem estourar a largura e serviços (Baú/Ferreiro/Joalheiro) empilhados no retrato ---------- */
+#ui.touch .bag { grid-template-columns: repeat(8, minmax(0, 1fr)); } #ui.touch .bag.mats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+#ui.touch .bankg { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+#ui.touch .bi .ei { font-size: 19px; } #ui.touch .bi .ar { font-size: 8px; }
+@media (orientation: portrait) {
+  #ui.touch.side #p-dlg { left: 50% !important; top: 6px !important; transform: translateX(-50%) !important; width: calc(100% - 12px) !important; max-height: calc(46% - 6px) !important; z-index: 27; }
+  #ui.touch.sidebank #p-inv .eqbox, #ui.touch.sidebank #p-inv .tabs + .dim { display: none; } /* com o Baú aberto a mochila precisa aparecer (o boneco só atrapalha) */
+  #ui.touch.side #p-inv { left: 50% !important; top: calc(46% + 6px) !important; transform: translateX(-50%) !important; width: calc(100% - 12px) !important; height: calc(54% - 12px); max-height: calc(54% - 12px) !important; z-index: 26; }
+}
+
+/* ---------- toque: Baú e Equipamento compactos (mais quadradinhos na tela) ---------- */
+#ui.touch #p-dlg:has(.bankw) .say, #ui.touch #p-dlg:has(.bankw) .npc-id small, #ui.touch #p-dlg:has(.bankw) .pf-foot { display: none; }
+#ui.touch #p-dlg:has(.bankw) .ph { padding: 5px 8px; gap: 8px; }
+#ui.touch #p-dlg:has(.bankw) .npc-ic { width: 28px; height: 28px; font-size: 15px; border-width: 1.5px; }
+#ui.touch #p-dlg:has(.bankw) .npc-id h2 { font-size: 15px; }
+#ui.touch #p-dlg:has(.bankw) .pb { padding: 6px 8px 8px; }
+#ui.touch .bankw { gap: 5px; }
+#ui.touch .bankg { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; padding: 4px; }
+#ui.touch .bankg .bi .ei { font-size: 15px; }
+#ui.touch .bpages button { width: 26px; height: 22px; font-size: 12px; } #ui.touch .bpages small { font-size: 10px; }
+#ui.touch .bgold { padding: 4px 6px; gap: 3px 8px; } #ui.touch .bgold .bg-r span { width: 46px; font-size: 11px; } #ui.touch .bgold .btn { padding: 3px 7px; font-size: 11px; } #ui.touch .bgold .igold b { font-size: 14px; }
+#ui.touch.sidebank #p-inv .ph { padding: 5px 10px; } #ui.touch.sidebank #p-inv .ph h2 { font-size: 15px; }
+#ui.touch.sidebank #p-inv .pb { padding: 6px 8px 8px; }
+#ui.touch.sidebank #p-inv .eqw { gap: 5px; }
+#ui.touch.sidebank #p-inv .itabs button { padding: 3px 10px; font-size: 12px; }
+#ui.touch.sidebank #p-inv .bag { gap: 3px; padding: 4px; }
+#ui.touch.sidebank #p-inv .foot-note { font-size: 11px; margin: 0; padding: 0; line-height: 1.2; }
+#ui.touch.sidebank #p-inv .igold { padding: 3px 8px; } #ui.touch.sidebank #p-inv .igold b { font-size: 14px; }
+#ui.touch.sidebank #p-inv .bag.cons { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+#ui.touch.sidebank #p-inv .eqbox, #ui.touch.sidebank #p-inv .tabs + .dim { display: none; }
+@media (orientation: landscape) {
+  #ui.touch .bgold { grid-template-columns: 1fr; } #ui.touch .bgold .igold { grid-row: auto; } #ui.touch .bgold .bg-r .btn { flex: 1; min-width: 0; padding: 3px 4px; }
+}
+
+/* ---------- toque: Inventário sem o boneco (equipados em 4×2) e Personagem/Missões/Níveis compactos ---------- */
+#ui.touch .eqbox.flat { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: 50px; gap: 5px; padding: 5px; }
+#ui.touch .eqbox.flat .es.mnt { width: auto; height: auto; justify-self: stretch; }
+#ui.touch .eqbox.flat .es .ei { font-size: 22px; margin-top: -9px; } #ui.touch .eqbox.flat .es small { font-size: 9.5px; }
+#ui.touch #p-inv .eqw { gap: 6px; } #ui.touch #p-inv .itabs button { padding: 4px 12px; font-size: 13px; }
+#ui.touch #p-inv .foot-note { display: none; } #ui.touch #p-inv .igold { padding: 4px 10px; } #ui.touch #p-inv .igold b { font-size: 16px; }
+#ui.touch #p-char .ph, #ui.touch #p-quest .ph, #ui.touch #p-lv .ph, #ui.touch #p-inv .ph { padding: 5px 10px; } 
+#ui.touch #p-char .ph h2, #ui.touch #p-quest .ph h2, #ui.touch #p-lv .ph h2, #ui.touch #p-inv .ph h2 { font-size: 16px; }
+#ui.touch #p-char .pb, #ui.touch #p-quest .pb, #ui.touch #p-lv .pb { padding: 7px 8px 9px; font-size: 12px; }
+#ui.touch .pb h3 { font-size: 13px; margin: 7px 0 4px; } #ui.touch .pb h3 small { font-size: 10px; }
+#ui.touch .ch-head { gap: 8px; margin-bottom: 6px; } #ui.touch .ch-ic { width: 40px; height: 40px; font-size: 22px; } #ui.touch .ch-head h3 { font-size: 16px; } #ui.touch .role { font-size: 11px; }
+#ui.touch .stats { gap: 3px 6px; } #ui.touch .stat { padding: 3px 6px; font-size: 11.5px; }
+#ui.touch .setb { margin: 5px 0 6px; padding: 4px 8px; font-size: 11px; }
+#ui.touch .attrs { gap: 3px; } #ui.touch .attr { gap: 6px; padding: 4px 6px; } #ui.touch .attr .ai { font-size: 16px; width: 20px; }
+#ui.touch .attr .at b { font-size: 12px; } #ui.touch .attr .at small { font-size: 9.5px; line-height: 1.15; } #ui.touch .attr .av { font-size: 14px; min-width: 22px; }
+#ui.touch .attr .btn.mini { padding: 5px 7px; font-size: 11px; }
+#ui.touch .tabs { gap: 4px; margin-bottom: 6px; } #ui.touch .tab { padding: 4px 8px; font-size: 11.5px; }
+#ui.touch .au-intro, #ui.touch .lv-intro { font-size: 11px; margin-bottom: 5px; line-height: 1.3; }
+#ui.touch .qc { padding: 6px 8px; margin-bottom: 5px; } #ui.touch .qc-h b { font-size: 12.5px; } #ui.touch .qc-t, #ui.touch .qc-step { font-size: 11.5px; } #ui.touch .qc-r, #ui.touch .qc-go { font-size: 11px; }
+#ui.touch .qc .btn { margin-top: 5px; padding: 6px 10px; } #ui.touch .badge { font-size: 9.5px; padding: 1px 6px; }
+#ui.touch .chap { padding: 4px 7px; margin-bottom: 3px; font-size: 11.5px; gap: 6px; } #ui.touch .chap small { font-size: 10px; white-space: nowrap; }
+#ui.touch .achs { grid-template-columns: 1fr; gap: 4px; } #ui.touch .ach { padding: 5px 7px; } #ui.touch .ach > span { font-size: 16px; } #ui.touch .ach small { font-size: 10.5px; }
+#ui.touch .lv-t { gap: 3px; } #ui.touch .lv-r { gap: 7px; padding: 4px 7px; font-size: 12px; } #ui.touch .lv-n { min-width: 50px; font-size: 12px; } #ui.touch .lv-r small { font-size: 10px; }
+/* toque: 💬 apagado quando não há ninguém por perto para conversar */
+#ui.touch .tact.off { opacity: .4; }
+#ui.touch .tact.near { border-color: #ffe08a; box-shadow: 0 0 10px rgba(255, 224, 138, .7); }
+/* ❗: História e Secundárias em blocos separados (não confundir as duas) */
+#ui.touch .objpop .op-k { display: block; margin: 6px 0 1px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+#ui.touch .objpop .op-k:first-child { margin-top: 0; }
+#ui.touch .objpop li.ok { color: #9fe08a; }
 
 </style>
 </head>
@@ -1212,7 +1355,7 @@ class Renderer {
     this.resize(true); return this.q.name;
   }
   resize(force) {
-    const dpr = Math.min(window.devicePixelRatio || 1, this.coarse ? 1.5 : 2) * this.q.scale, w = Math.max(2, Math.floor(innerWidth * dpr)), h = Math.max(2, Math.floor(innerHeight * dpr));
+    const dpr = Math.min(window.devicePixelRatio || 1, this.coarse ? (this.eco ? 1.4 : 1.5) : 2) * this.q.scale, w = Math.max(2, Math.floor(innerWidth * dpr)), h = Math.max(2, Math.floor(innerHeight * dpr));
     if (force || this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w; this.canvas.height = h; this.W = w; this.H = h; this.buildTargets();
     }
@@ -1463,6 +1606,8 @@ class Renderer {
 /* ---- data.js ---- */
 'use strict';
 /* ===== Dados do jogo (100% originais) ===== */
+/* aparelho de toque (mesmo critério de initTouch em game.js): textos não citam teclas nem mouse. TX(teclado, toque) escolhe o texto */
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window, TX = (k, t) => IS_TOUCH ? t : k;
 /* escala do mundo: tudo além da vila (raio 15) fica WS vezes mais longe. SCR leva um raio "antigo" para o mundo novo; UNS faz o inverso */
 /* WS 4.25 = mapa 2,5x maior que a versão 1.7. DENS: objetos espalhados (árvores, capim) — um pouco menos densos por m² que antes,
    o mundo é desenhado em blocos (world.js + engine.js) e só os blocos à vista vão para a GPU. MOB_K: quantos monstros a mais por zona */
@@ -1510,12 +1655,12 @@ const CLASSES = {
     res: { n: 'Fúria', c: 'fury' }, // recurso no lugar da mana (só rótulo e cor; regenera ao acertar)
     range: 2.6, weapon: 'Espada e escudo', col: [.85, .3, .25], atkType: 'melee',
     skills: [
-      { n: 'Golpe Pesado', ic: '🗡️', mp: 6, cd: 3, k: 'melee', rng: 2.8, m: 4.2, d: 'Golpe brutal com 420% de dano.' },
+      { n: 'Golpe Pesado', ic: '🗡️', mp: 6, cd: 3, k: 'melee', rng: 2.8, m: 4.2, d: 'Golpe brutal com 420% de dano; quem está ao redor do alvo leva 60%.' },
       { n: 'Investida', ic: '🐂', mp: 10, cd: 7, k: 'dash', rng: 13, m: 2.4, stun: 1.4, d: 'Avança até o alvo, causa dano e atordoa.' },
       { n: 'Bloqueio com Escudo', ic: '🛡️', mp: 12, cd: 18, k: 'shield', dur: 8, sh: .35, refl: .5, d: 'Ergue o escudo: absorve dano igual a 35% da vida por 8 s e devolve 50% do que absorve ao agressor.' },
       { n: 'Grito de Guerra', ic: '📢', mp: 14, cd: 25, k: 'buff', dur: 15, atk: .2, def: .35, d: '+20% ataque e +35% defesa por 15 s.' },
       { n: 'Giro de Lâminas', ic: '🌀', mp: 18, cd: 8, k: 'aoe_self', r: 4.6, m: 3.6, d: 'Gira as armas e acerta todos ao redor (360%).' },
-      { n: 'Golpe Executor', ic: '🪓', mp: 16, cd: 9, k: 'melee', rng: 2.8, m: 3.8, exec: .3, leech: .2, d: 'Golpe de 380% (dobra se o alvo tiver menos de 30% de vida) e devolve 20% em vida.' },
+      { n: 'Golpe Executor', ic: '🪓', mp: 16, cd: 9, k: 'melee', rng: 2.8, m: 3.8, exec: .3, leech: .2, d: 'Golpe de 380% (dobra se o alvo tiver menos de 30% de vida), devolve 20% em vida e atinge quem está ao redor (60%).' },
       { n: 'Fúria Berserker', ic: '😡', mp: 30, cd: 40, k: 'buff', dur: 14, atk: .5, def: .1, aspd: .35, leech: .1, tier: 1, d: '+50% ataque, +35% velocidade de ataque e roubo de vida por 14 s. (Imortal)' },
     ],
   },
@@ -1523,30 +1668,30 @@ const CLASSES = {
     name: 'Arcanista', icon: '🔮', role: 'À distância · Magia elemental', main: 'int',
     desc: 'Mago de inteligência e mana: fogo, gelo, raio, barreira e meteoro. Muito dano, pouca vida.',
     base: { hp: 120, mp: 110, atk: 14, def: 3, crit: .06, dodge: 0, aspd: 1 }, grow: { hp: 28, mp: 13, atk: 3.6, def: 1.1 },
-    range: 13, weapon: 'Cajado', col: [.35, .5, .95], atkType: 'proj',
+    range: 9.5, weapon: 'Cajado', col: [.35, .5, .95], atkType: 'proj',
     skills: [
-      { n: 'Bola de Fogo', ic: '🔥', mp: 6, cd: 1.2, k: 'proj', rng: 14, m: 1.8, col: [1, .5, .15], d: 'Projétil de fogo rápido (180%).' },
-      { n: 'Lança de Gelo', ic: '🧊', mp: 10, cd: 4, k: 'proj', rng: 14, m: 2.1, slow: .5, sdur: 3, col: [.6, .9, 1], d: 'Lança gélida (210%) que deixa o alvo 50% mais lento.' },
-      { n: 'Corrente de Raios', ic: '⚡', mp: 16, cd: 6, k: 'proj', rng: 15, m: 2.2, multi: 3, col: [.75, .85, 1], d: 'Raio que salta para mais 3 inimigos próximos.' },
+      { n: 'Bola de Fogo', ic: '🔥', mp: 6, cd: 1.2, k: 'proj', rng: 10, m: 1.8, col: [1, .5, .15], d: 'Projétil de fogo rápido (180%) que explode e queima quem está perto do alvo (60%).' },
+      { n: 'Lança de Gelo', ic: '🧊', mp: 10, cd: 4, k: 'proj', rng: 10, m: 2.1, slow: .5, sdur: 3, col: [.6, .9, 1], d: 'Lança gélida (210%) que deixa o alvo 50% mais lento; estilhaços atingem quem está perto (60%).' },
+      { n: 'Corrente de Raios', ic: '⚡', mp: 16, cd: 6, k: 'proj', rng: 11, m: 2.2, multi: 3, col: [.75, .85, 1], d: 'Raio que salta para mais 3 inimigos próximos.' },
       { n: 'Barreira Arcana', ic: '🔰', mp: 25, cd: 25, k: 'shield', dur: 10, sh: .45, d: 'Barreira que absorve 45% da vida por 10 s.' },
       { n: 'Nova Glacial', ic: '❄️', mp: 24, cd: 10, k: 'aoe_self', r: 5.4, m: 2, slow: .55, sdur: 4, col: [.6, .9, 1], d: 'Explosão de gelo ao redor que congela (−55% de velocidade).' },
-      { n: 'Tempestade de Fogo', ic: '🌋', mp: 30, cd: 12, k: 'aoe_ground', rng: 16, r: 4.8, m: 3, delay: .6, dot: 4, col: [1, .45, .1], d: 'Chamas caem sobre a área e queimam por 4 s.' },
-      { n: 'Meteoro', ic: '☄️', mp: 60, cd: 28, k: 'aoe_ground', rng: 18, r: 7.5, m: 7, delay: 1.3, col: [1, .35, .1], tier: 1, d: 'Meteoro devastador em grande área (700%). (Imortal)' },
+      { n: 'Tempestade de Fogo', ic: '🌋', mp: 30, cd: 12, k: 'aoe_ground', rng: 12, r: 4.8, m: 3, delay: .6, dot: 4, col: [1, .45, .1], d: 'Chamas caem sobre a área e queimam por 4 s.' },
+      { n: 'Meteoro', ic: '☄️', mp: 60, cd: 28, k: 'aoe_ground', rng: 13, r: 7.5, m: 7, delay: 1.3, col: [1, .35, .1], tier: 1, d: 'Meteoro devastador em grande área (700%). (Imortal)' },
     ],
   },
   huntress: {
     name: 'Caçadora', icon: '🏹', role: 'À distância · Crítico e esquiva', main: 'dex',
     desc: 'Arqueira ágil: crítico alto, ataques rápidos e esquiva. Só usa arcos e bestas.',
     base: { hp: 100, mp: 75, atk: 11, def: 5, crit: .18, dodge: .12, aspd: 1.25 }, grow: { hp: 20, mp: 9, atk: 2.9, def: 1.5 },
-    range: 14, weapon: 'Arco', col: [.35, .8, .4], atkType: 'proj',
+    range: 10.5, weapon: 'Arco', col: [.35, .8, .4], atkType: 'proj',
     skills: [
-      { n: 'Tiro Rápido', ic: '🎯', mp: 4, cd: 1, k: 'proj', rng: 15, m: 1.6, col: [1, .95, .6], d: 'Flecha rápida e precisa (160%).' },
-      { n: 'Flecha Perfurante', ic: '➡️', mp: 10, cd: 5, k: 'pierce', rng: 17, m: 2.3, col: [.9, 1, .7], d: 'Flecha que atravessa todos na linha (230%).' },
+      { n: 'Tiro Rápido', ic: '🎯', mp: 4, cd: 1, k: 'proj', rng: 11, m: 1.6, col: [1, .95, .6], d: 'Flecha rápida e precisa (160%); quem está perto do alvo leva 60%.' },
+      { n: 'Flecha Perfurante', ic: '➡️', mp: 10, cd: 5, k: 'pierce', rng: 12, m: 2.3, col: [.9, 1, .7], d: 'Flecha que atravessa todos na linha (230%).' },
       { n: 'Passo Ágil', ic: '💨', mp: 10, cd: 9, k: 'dash', free: 8, spd: .35, dodge: .35, sdur: 4, d: 'Salta para frente: +35% de velocidade e +35% de esquiva por 4 s.' },
-      { n: 'Marca do Caçador', ic: '🔻', mp: 12, cd: 14, k: 'mark', rng: 16, dur: 10, v: .3, d: 'O alvo recebe +30% de dano por 10 s.' },
-      { n: 'Chuva de Flechas', ic: '🌧️', mp: 24, cd: 14, k: 'aoe_ground', rng: 17, r: 6, m: 3.6, delay: .6, col: [1, .95, .6], d: 'Saraivada de flechas em área.' },
+      { n: 'Marca do Caçador', ic: '🔻', mp: 12, cd: 14, k: 'mark', rng: 11, dur: 10, v: .3, d: 'O alvo recebe +30% de dano por 10 s.' },
+      { n: 'Chuva de Flechas', ic: '🌧️', mp: 24, cd: 14, k: 'aoe_ground', rng: 12, r: 6, m: 3.6, delay: .6, col: [1, .95, .6], d: 'Saraivada de flechas em área.' },
       { n: 'Olho de Águia', ic: '🦅', mp: 20, cd: 30, k: 'buff', dur: 15, crit: .2, aspd: .4, d: '+20% de crítico e +40% de velocidade de ataque por 15 s.' },
-      { n: 'Disparo Crítico', ic: '💥', mp: 35, cd: 16, k: 'proj', rng: 22, m: 4.5, crit: 1, col: [1, .6, .3], tier: 1, d: 'Flecha certeira de 450% que sempre é crítica. (Imortal)' },
+      { n: 'Disparo Crítico', ic: '💥', mp: 35, cd: 16, k: 'proj', rng: 15, m: 4.5, crit: 1, col: [1, .6, .3], tier: 1, d: 'Flecha certeira de 450% que sempre é crítica e atinge quem está perto (60%). (Imortal)' },
     ],
   },
   tamer: {
@@ -1556,7 +1701,7 @@ const CLASSES = {
     range: 11, weapon: 'Cetro', col: [.7, .55, 1], atkType: 'proj',
     skills: [
       { n: 'Invocar Lobo', ic: '🐺', mp: 22, cd: 10, k: 'summon', pet: 'wolf', dur: 90, d: 'Chama um lobo ágil para lutar por você.' },
-      { n: 'Raio Espiritual', ic: '✴️', mp: 7, cd: 2.5, k: 'proj', rng: 13, m: 2.6, col: [.7, .55, 1], focus: true, d: 'Raio de 260%; sua invocação foca o alvo.' },
+      { n: 'Raio Espiritual', ic: '✴️', mp: 7, cd: 2.5, k: 'proj', rng: 13, m: 2.6, col: [.7, .55, 1], focus: true, d: 'Raio de 260% que também atinge quem está perto do alvo (60%); sua invocação foca o alvo.' },
       { n: 'Elo Vital', ic: '💜', mp: 20, cd: 14, k: 'heal', p: .3, pp: .5, d: 'Cura 30% da sua vida e 50% da vida da invocação.' },
       { n: 'Enxame', ic: '🐝', mp: 22, cd: 11, k: 'aoe_ground', rng: 14, r: 5, m: 3.4, delay: .3, dot: 4, col: [.9, .85, .2], d: 'Enxame de insetos que castiga a área por 4 s.' },
       { n: 'Invocar Golem', ic: '🗿', mp: 40, cd: 35, k: 'summon', pet: 'golem', dur: 60, d: 'Golem de pedra que provoca e protege você.' },
@@ -3863,17 +4008,17 @@ const CHAPTERS = [
 ];
 const MAIN = [
   // ---- Prólogo (Campo de Treinamento, nível 1 a 29): tutorial. Etapas 'do' contam um evento do jogo (ver mainEv em game.js) ----
-  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'O Instrutor do campo', t: 'Fale com o Instrutor Brann, na clareira do campo (clique nele ou aperte F perto dele).',
+  { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'O Instrutor do campo', t: TX('Fale com o Instrutor Brann, na clareira do campo (clique nele ou aperte F perto dele).', 'Fale com o Instrutor Brann, na clareira do campo (toque nele ou no botão 💬 perto dele).'),
     say: 'Bem-vindo ao Campo de Treinamento! Esta ilha é cercada por um lago: aqui os novatos aprendem sem perigo de verdade. Vou ensinar o básico; depois é com você. Primeiro, ande um pouco.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'move', nm: 'Ande pelo campo', t: 'Clique no chão para andar (a roda do mouse dá zoom; segurar o botão direito gira a câmera). Afaste-se uns 12 passos.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['gremlin'], n: 3, t: 'Clique num Gremlin (ou aperte Espaço) para atacar. Derrote 3 Gremlins.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'open:inv', nm: 'Abra o Equipamento', t: 'Aperte I para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores. Dá para abrir C, V, M e B juntos e arrastar as janelas pelo título.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'move', nm: 'Ande pelo campo', t: TX('Clique no chão para andar (a roda do mouse dá zoom; segurar o botão direito gira a câmera). Afaste-se uns 12 passos.', 'Toque no chão ou use o joystick para andar (arraste a tela para girar a câmera e use a pinça para o zoom). Afaste-se uns 12 passos.') },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['gremlin'], n: 3, t: TX('Clique num Gremlin (ou aperte Espaço) para atacar. Derrote 3 Gremlins.', 'Toque num Gremlin (ou no botão ⚔️) para atacar. Derrote 3 Gremlins.') },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'open:inv', nm: 'Abra o Equipamento', t: TX('Aperte I para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores. Dá para abrir C, V, M e B juntos e arrastar as janelas pelo título.', 'Toque em 🎒 (canto superior direito) para abrir o Equipamento. Suas peças são de grau 0, com poder 1; os monstros deixam peças melhores.') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'camp_trainer', n: 'O Mestre de Habilidades', t: 'Fale com o Mestre de Habilidades, ao lado do instrutor.',
-    say: 'Cada nível dá pontos de habilidade. Escolha uma habilidade aqui e gaste seus pontos nela: ela vai para a barra de atalhos (teclas 1 a 5, 8 e 9).' },
+    say: 'Cada nível dá pontos de habilidade. Escolha uma habilidade aqui e gaste seus pontos nela: ela vai para a barra de atalhos' + TX(' (teclas 1 a 5, 8 e 9).', ' (toque no ícone para usar).') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'learn', nm: 'Aprenda uma habilidade', t: 'No diálogo do Mestre de Habilidades, aprenda uma habilidade.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'skill', nm: 'Use a habilidade', t: 'Use a habilidade da barra de atalhos (tecla 1, 2...) num monstro.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'skill', nm: 'Use a habilidade', t: TX('Use a habilidade da barra de atalhos (tecla 1, 2...) num monstro.', 'Toque no ícone da habilidade na barra de atalhos com um monstro como alvo.') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'kill', mobs: ['lizard'], n: 4, t: 'Minilagartos são mais rápidos. Derrote 4 deles: deixam poções e pedras de refino.' },
-  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'potion', nm: 'Use uma poção', t: 'Aperte 6 para usar uma Poção de Vida (7 é a de Mana). Elas curam 40% do máximo.' },
+  { ch: 'c0', nw: 1, lvl: 1, k: 'do', ev: 'potion', nm: 'Use uma poção', t: TX('Aperte 6 para usar uma Poção de Vida (7 é a de Mana). Elas curam 40% do máximo.', 'Toque na poção de vida ❤️ (a de mana é a 💙). Elas curam 40% do máximo.') },
   { ch: 'c0', nw: 1, lvl: 1, k: 'talk', npc: 'instr', n: 'Formatura', t: 'Volte ao Instrutor Brann.',
     say: 'Você já sabe o essencial. Continue caçando gremlins e lagartos até o nível 29: com ele, atravesse a ponte, vá até Aldoria e fale com o Capitão Roderic. Se quiser sair antes, o portão está aberto, mas as cidades só têm missões a partir do 29.' },
   // ---- Capítulo I (1–10) ----
@@ -3892,9 +4037,9 @@ const MAIN = [
   // ---- Capítulo II (11–20) ----
   { ch: 'c2', lvl: 11, k: 'talk', npc: 'elric', n: 'O guarda-florestal', t: 'Viaje ao Posto de Brumavale e fale com o guarda-florestal Elric.',
     say: 'A floresta está doente. As aranhas tecem teias negras e os goblins roubam tudo que brilha. Me ajude a entender o que está acontecendo.' },
-  { ch: 'c2', lvl: 12, k: 'kill', mobs: ['spider'], n: 10, t: 'Derrote 10 Aranhas Tecelãs.' },
-  { ch: 'c2', lvl: 13, k: 'collect', mobs: ['spider'], item: 'Seda Envenenada', n: 6, ch_: .5, t: 'Colete 6 Sedas Envenenadas para Elric estudar a doença.' },
-  { ch: 'c2', lvl: 14, k: 'collect', mobs: ['goblin'], item: 'Mapa Goblin', n: 1, ch_: .2, t: 'Os goblins desenham mapas dos tesouros que roubam. Pegue um.' },
+  { ch: 'c2', lvl: 14, k: 'kill', mobs: ['spider'], n: 10, t: 'Derrote 10 Aranhas Tecelãs.' },
+  { ch: 'c2', lvl: 15, k: 'collect', mobs: ['spider'], item: 'Seda Envenenada', n: 6, ch_: .5, t: 'Colete 6 Sedas Envenenadas para Elric estudar a doença.' },
+  { ch: 'c2', lvl: 15, k: 'collect', mobs: ['goblin'], item: 'Mapa Goblin', n: 1, ch_: .2, t: 'Os goblins desenham mapas dos tesouros que roubam. Pegue um.' },
   { ch: 'c2', lvl: 15, k: 'talk', npc: 'elric', n: 'O mapa dos goblins', t: 'Mostre o Mapa Goblin a Elric.',
     say: 'Este X marca o coração da floresta — onde vive o Guardião. Mas o caminho é vigiado pelos Lobos Alfa e pela Rainha Aranha.' },
   { ch: 'c2', lvl: 15, k: 'explore', nw: 1, x: LM.ancient[0], z: LM.ancient[1], r: 9, place: 'Árvore Anciã', t: 'Siga o mapa goblin até a Árvore Anciã, a oeste da vila, no meio da floresta.' },
@@ -3909,7 +4054,7 @@ const MAIN = [
   { ch: 'c3', lvl: 21, k: 'kill', mobs: ['orc', 'goblin'], n: 14, t: 'Derrote 14 Orcs Selvagens ou Goblins na floresta.' },
   { ch: 'c3', lvl: 25, k: 'talk', npc: 'sahr_q', n: 'O Oásis de Sahr', t: 'Viaje ao Oásis de Sahr, a leste (pela estrada ou pelo portal da praça), e fale com o Ancião Rahim.',
     say: 'Os escorpiões cavam cada vez mais fundo, como se procurassem algo. E as múmias... elas carregam ataduras com o mesmo símbolo do seu cristal.' },
-  { ch: 'c3', lvl: 25, k: 'kill', mobs: ['scorpion', 'jackal'], n: 12, t: 'Derrote 12 Escorpiões ou Chacais nas Dunas de Kharim.' },
+  { ch: 'c3', lvl: 27, k: 'kill', mobs: ['scorpion', 'jackal'], n: 12, t: 'Derrote 12 Escorpiões ou Chacais nas Dunas de Kharim.' },
   { ch: 'c3', lvl: 27, k: 'collect', mobs: ['mummy'], item: 'Atadura Selada', n: 6, ch_: .45, t: 'Colete 6 Ataduras Seladas das Múmias Ressecadas.' },
   { ch: 'c3', lvl: 28, k: 'explore', x: LM.pyramid[0], z: LM.pyramid[1], r: 10, place: 'Pirâmide Soterrada', t: 'Encontre a Pirâmide Soterrada a sudeste do oásis.' },
   { ch: 'c3', lvl: 29, k: 'elite', zone: 'dunes', n: 1, t: 'Derrote uma elite do deserto — a Hidra guarda o Covil, perto da pirâmide.' },
@@ -5937,8 +6082,9 @@ const UI = (() => {
     <div class="bar hp"><i></i><span></span></div>
   </div>
   <div class="tr">
-    <div class="mm"><canvas width="${MM}" height="${MM}"></canvas></div>
+    <div class="mm"${TX('', ' data-a="p-map" title="Abrir o mapa"')}><canvas width="${MM}" height="${MM}"></canvas></div>
     <div class="zone"></div>
+    <div class="fabrow"><button data-a="obj" class="tobj" title="O que fazer agora">❗</button><button data-a="fab" class="fab" title="Menu">☰</button></div>
     <div class="btns">
       <button data-a="p-inv" title="Inventário [I]">🎒</button>
       <button data-a="p-quest" title="Missões [Q]">📜</button>
@@ -5947,10 +6093,11 @@ const UI = (() => {
       <button data-a="p-look" title="Montarias [H]">🐎</button>
       <button data-a="p-auto" title="Automático [T]">🤖</button>
       <button data-a="mute" title="Som [N]">🔊</button>
-      <button data-a="pause" title="Menu / Pausa [Esc]">☰</button>
+      <button data-a="pause" title="Menu / Pausa [Esc]">${TX('☰', '⏸')}</button>
     </div>
     <div class="qt glass off"><div class="qt-h">Missão</div><div class="qt-n"></div><div class="qt-p"></div></div>
   </div>
+  <div class="objpop glass off"></div>
   <div class="auto-badge off" data-a="p-auto" title="Modo automático ativo [T] · Z liga/desliga o combate automático"></div>
   <div class="sb"></div>
   <div class="log"></div>
@@ -5963,7 +6110,7 @@ const UI = (() => {
     <button class="tact" data-k="Tab" title="Trocar alvo">🎯</button>
     <button class="tact" data-k="KeyF" title="Falar">💬</button>
     <button class="tact" data-k="KeyZ" title="Automático">🤖</button>
-    <button class="tact" data-k="KeyX" title="Montar">🐎</button>
+    <button class="tact" data-k="KeyX" title="Montar">🏇</button>
   </div>
   <button class="tfs" title="Tela cheia">⛶</button>
 </div>
@@ -5978,7 +6125,7 @@ const UI = (() => {
 <div class="panel off" id="p-auto"><div class="ph"><h2>🤖 Automático</h2><kbd>T</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel lv off" id="p-lv"><div class="ph"><h2>📊 Níveis e Regiões</h2><kbd>B</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
 <div class="panel tree off" id="p-tree"><div class="ph"><h2>🌳 Árvore de Habilidades</h2><kbd>V</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div></div>
-<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button></div></div><div class="map-side"></div></div></div></div>
+<div class="panel map off" id="p-map"><div class="ph"><h2>🗺️ Mapa de Aldoria</h2><kbd>M</kbd><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"><div class="map-w"><div class="map-cw"><canvas class="map-c" width="1520" height="1040"></canvas><div class="map-zb"><button data-a="mapz" data-d="in" title="Aproximar">+</button><button data-a="mapz" data-d="out" title="Afastar">−</button><button data-a="mapme" title="Centralizar em mim">◎</button><button data-a="maplg" class="maplg" title="Legenda">?</button></div><div class="map-gps off"></div></div><div class="map-side"></div></div></div></div>
 <div class="panel dlg off" id="p-dlg"><div class="ph"><div class="npc-ic"></div><div class="npc-id"><h2></h2><small></small></div><button class="x" data-a="close" title="Fechar [Esc]">✕</button></div><div class="pb"></div><div class="pf-foot"><button class="btn" data-a="close">Despedir-se</button></div></div>
 <div class="death off"><div class="death-in"><h1>Você caiu</h1><p>Suas forças se esvaem... mas Aldoria ainda precisa de você.</p><button class="btn primary" data-a="respawn">Voltar à vila</button></div></div>
 <div class="menu off"></div>
@@ -5991,7 +6138,7 @@ const UI = (() => {
     E.hp = q('.pf .bar.hp i'); E.hpT = q('.pf .bar.hp span'); E.mp = q('.pf .bar.mp i'); E.mpT = q('.pf .bar.mp span'); E.xp = q('.pf .bar.xp i'); E.evbar = q('.evbar'); E.evtoast = q('.evtoast'); E.hud = q('.hud');
     E.tfName = q('.tf-name'); E.tfIc = q('.tf-ic'); E.tfLv = q('.tf-lv'); E.tfHp = q('.tf .bar i'); E.tfHpT = q('.tf .bar span');
     E.zone = q('.zone'); E.qt = q('.qt'); E.qtN = q('.qt-n'); E.qtP = q('.qt-p'); E.mute = q('[data-a=mute]');
-    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]') };
+    E.btn = { lv: q('[data-a=p-lv]'), inv: q('[data-a=p-inv]'), quest: q('[data-a=p-quest]'), char: q('[data-a=p-char]'), auto: q('.btns [data-a=p-auto]'), look: q('.btns [data-a=p-look]'), obj: q('.fabrow [data-a=obj]') }; E.objPop = q('.objpop'); E.mm = q('.mm'); E.fab = q('.fab'); E.btns = q('.btns'); E.fabrow = q('.fabrow');
     E.badge = q('.auto-badge'); E.qa = q('.qarrow'); E.qaAr = q('.qa-ar'); E.qaD = q('.qa-d');
     E.npcIc = q('.npc-ic'); E.npcN = q('.npc-id h2'); E.npcR = q('.npc-id small');
     ctx = q('.mm canvas').getContext('2d');
@@ -6011,7 +6158,7 @@ const UI = (() => {
     E.slots.forEach(s => { s.$cdv = s.querySelector('.cdv'); s.$cdt = s.querySelector('.cdt'); s.$mpc = s.querySelector('.mpc'); s.$ic = s.querySelector('.ic'); s.$qty = s.querySelector('.qty'); });
 
     buildMenu();
-    [E.sb, q('.btns'), E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
+    [E.sb, E.btns, E.fabrow, E.mm, E.objPop, E.badge, q('.tacts'), q('.tfs'), q('.joy'), E.p_inv, E.p_char, E.p_quest, E.p_auto, E.p_look, E.p_tree, E.p_map, E.p_lv, E.p_pause, E.p_dlg, E.death, E.menu, E.create].forEach(shield);
     WIN_KEYS.forEach(k => { E['p_' + k].addEventListener('pointerdown', () => winFront(k), true); E['p_' + k].querySelector('.ph').addEventListener('pointerdown', ev => winDrag(k, ev)); });
   }
 
@@ -6020,7 +6167,7 @@ const UI = (() => {
       <div class="menu-crest">⚜</div>
       <h1>Aldoria</h1><div class="sub">Uma saga de ação nas terras esquecidas</div>
       <div class="menu-act"></div>
-      <div class="keys"><span><kbd>Clique esq.</kbd> mover / atacar</span><span><kbd>Clique dir.</kbd> girar câmera</span><span><kbd>Roda</kbd> zoom</span><span><kbd>1–5</kbd> habilidades</span><span><kbd>6</kbd><kbd>7</kbd> poções</span><span><kbd>I</kbd><kbd>C</kbd><kbd>V</kbd><kbd>M</kbd><kbd>B</kbd> janelas (várias, arrastáveis)</span><span><kbd>X</kbd> montaria</span><span><kbd>F</kbd> falar</span></div>
+      <div class="keys">${IS_TOUCH ? '<span>Toque no chão ou use o joystick para andar · botões à direita: atacar, falar, montar</span><span>Arraste para girar a câmera · pinça: zoom</span>' : '<span><kbd>Clique esq.</kbd> mover / atacar</span><span><kbd>Clique dir.</kbd> girar câmera</span><span><kbd>Roda</kbd> zoom</span><span><kbd>1–5</kbd> habilidades</span><span><kbd>6</kbd><kbd>7</kbd> poções</span><span><kbd>I</kbd><kbd>C</kbd><kbd>V</kbd><kbd>M</kbd><kbd>B</kbd> janelas (várias, arrastáveis)</span><span><kbd>X</kbd> montaria</span><span><kbd>F</kbd> falar</span>'}</div>
     </div>`;
     E.menuAct = E.menu.querySelector('.menu-act');
   }
@@ -6134,7 +6281,7 @@ const UI = (() => {
       if (free) { winPlace(k); el.style.zIndex = 14 + st.wins.indexOf(k); }
       else if (w) { el.style.left = ''; el.style.top = ''; el.style.zIndex = ''; }
     });
-    setCls(root, 'side', st.modal === 'dlg' && !!st.side);
+    setCls(root, 'side', st.modal === 'dlg' && !!st.side); setCls(root, 'sidebank', st.modal === 'dlg' && st.side === 'bank');
     st.panel = st.modal || st.wins[st.wins.length - 1] || null;
     WIN_BTN.forEach(k => setCls(E.btn[k], 'on', st.wins.includes(k)));
   }
@@ -6188,17 +6335,18 @@ const UI = (() => {
   const plusB = it => it.plus ? `<em class="pl${it.plus >= 10 ? ' anc' : ''}">+${it.plus}</em>` : '';
   function renderInv(G) {
     const p = G.player, eq = p.eq || {}, ic = SLOT_IC(p.cls), tab = st.invTab || 'bag';
-    let l = '<div class="eqbox">';
+    const flat = IS_TOUCH; // toque: sem o boneco, equipados numa grade 4×2 (arma, elmo, peitoral, calça / luvas, botas, acessório, montaria)
+    let l = `<div class="eqbox${flat ? ' flat' : ''}">`;
     for (const s of SLOT_ORDER) {
-      const it = eq[s], [cx, ry] = EQ_POS[s], pos = `grid-column:${cx + 1};grid-row:${ry + 1}`;
+      const it = eq[s], [cx, ry] = EQ_POS[s], pos = flat ? '' : `grid-column:${cx + 1};grid-row:${ry + 1}`;
       if (it) { const [a, sel] = sideAct(it, s);
         l += `<div class="es has${sel ? ' sel' : ''}" style="${pos};--rc:${rcol(it)}" data-a="${a}" data-s="${s}" data-id="${it.id}" data-cm="${it.id}" data-drag="eq" draggable="true" title="${esc(itemTip(it, null, true))}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}<small>${SLOTS[s]}</small></div>`; }
       else l += `<div class="es" style="${pos}" data-drop="${s}"><span class="ei dim">${ic[s]}</span><small>${SLOTS[s]}</small></div>`;
     }
-    l += `<div class="portrait" style="grid-column:2;grid-row:1/4"><canvas class="pv" width="420" height="560" title="Prévia do personagem equipado. Arraste para girar."></canvas><b>${esc(p.name || CLASSES[p.cls].name)}</b><small>${esc(TIERS[p.tier] || '')} · Nv ${p.lvl}</small></div>`;
-    { const mid = p.lastMount, M_ = mid && MOUNTS[mid], lv = M_ ? Game.mountLv(mid) : 0;
-      l += M_ ? `<div class="es has mnt" style="grid-column:2;grid-row:4" data-a="p-look" title="${esc(M_.n + ' · Nível ' + lv + '\n' + mountBonusTxt(M_, lv) + '\nClique: abrir Montarias [H]')}"><span class="ei">${M_.ic}</span><em class="pl">Nv${lv}</em><small>Montaria</small></div>`
-        : `<div class="es mnt" style="grid-column:2;grid-row:4" data-a="p-look"><span class="ei dim">🐎</span><small>Montaria</small></div>`; }
+    if (!flat) l += `<div class="portrait" style="grid-column:2;grid-row:1/4"><canvas class="pv" width="420" height="560" title="Prévia do personagem equipado. Arraste para girar."></canvas><b>${esc(p.name || CLASSES[p.cls].name)}</b><small>${esc(TIERS[p.tier] || '')} · Nv ${p.lvl}</small></div>`;
+    { const mid = p.lastMount, M_ = mid && MOUNTS[mid], lv = M_ ? Game.mountLv(mid) : 0, mp = flat ? '' : 'grid-column:2;grid-row:4';
+      l += M_ ? `<div class="es has mnt" style="${mp}" data-a="p-look" title="${esc(M_.n + ' · Nível ' + lv + '\n' + mountBonusTxt(M_, lv) + '\nClique: abrir Montarias [H]')}"><span class="ei">${M_.ic}</span><em class="pl">Nv${lv}</em><small>Montaria</small></div>`
+        : `<div class="es mnt" style="${mp}" data-a="p-look"><span class="ei dim">🐎</span><small>Montaria</small></div>`; }
     l += '</div>';
     let g = '';
     if (tab === 'bag') {
@@ -6220,7 +6368,7 @@ const UI = (() => {
       g = `<div class="bag mats">${g}</div><div class="dim pad">Pedras de adicional caem de monstros. Leve-as ao Joalheiro.</div>`;
     }
     const tabs = `<div class="itabs"><button class="${tab === 'bag' ? 'on' : ''}" data-a="itab" data-k="bag">Mochila <small>${p.inv.length}/${BAG}</small></button><button class="${tab === 'mat' ? 'on' : ''}" data-a="itab" data-k="mat">Materiais</button></div>`;
-    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : 'Clique ou arraste para equipar · botão direito: opções.';
+    const hint = st.side === 'bank' ? TX('Clique num item da mochila para guardar no baú.', 'Toque num item da mochila e escolha "Guardar no baú".') : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para ver os atributos e escolher: equipar, guardar, vender ou mover.');
     setBody(E.b_inv, `<div class="eqw">${l}${tabs}${g}<div class="foot-note">${hint}</div><div class="igold"><span>🪙</span><b>${fmt(p.gold)}</b><small>ouro</small></div></div>`);
     { const cv = E.b_inv.querySelector('canvas.pv'); if (cv && Game.portrait) { if (st.pvYaw == null) st.pvYaw = .6; Game.portrait(cv, st.pvYaw); } }
   }
@@ -6243,7 +6391,7 @@ const UI = (() => {
       h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${A.d}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
     }
     h += `</div><button class="btn ghost mini" data-a="attr-reset" title="Devolve todos os pontos">↺ Redistribuir (💰 ${fmt(50 * Math.round(ELV()))})</button>`;
-    h += `<div class="dim pad">Habilidades: tecla <kbd>V</kbd></div>`;
+    h += `<div class="dim pad">${TX('Habilidades: tecla <kbd>V</kbd>', 'Habilidades: fale com o Mestre de Habilidades')}</div>`;
     setBody(E.b_char, h);
   }
 
@@ -6265,8 +6413,10 @@ const UI = (() => {
     const q = (typeof Game !== 'undefined' && Game._dbg && Game._dbg.R) ? Game._dbg.R.q.name : '';
     let h = '<div class="pause-b">';
     h += '<button class="btn primary" data-a="close">▶ Continuar jogando</button>';
-    h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b> <small>[G]</small></button>`;
-    h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'} <small>[N]</small></button>`;
+    h += TX('', '<button class="btn" data-a="p-auto">🤖 Configurar automático</button>');
+    h += TX('', `<button class="btn" data-a="eco">🔋 Economia de energia: <b>${Game.ecoOn() ? 'Ligada' : 'Desligada'}</b><i style="display:block;font:11px var(--sans);color:var(--mut)">40 FPS e menos calor; desligue para 60 FPS</i></button>`);
+    h += `<button class="btn" data-a="gfx">🖼 Qualidade gráfica: <b>${q}</b>${TX(' <small>[G]</small>', '')}</button>`;
+    h += `<button class="btn" data-a="mute">${G.mute ? '🔇 Som desligado' : '🔊 Som ligado'}${TX(' <small>[N]</small>', '')}</button>`;
     { const V = Game.getVol ? Game.getVol() : {}; h += '<div class="mixer">' + [['master', '🔊 Geral'], ['sfx', '⚔ Efeitos'], ['amb', '🌿 Ambiente'], ['music', '🎵 Música']].map(([k, n]) => `<label><span>${n}</span><input type="range" min="0" max="100" value="${Math.round((V[k] == null ? 1 : V[k]) * 100)}" data-vol="${k}"></label>`).join('') + '</div>'; }
     h += '<button class="btn" data-a="tomenu">🏠 Salvar e voltar ao menu inicial</button></div>';
     h += '<div class="au-intro">O progresso é salvo automaticamente a cada poucos segundos e ao voltar ao menu.</div>';
@@ -6406,6 +6556,7 @@ const UI = (() => {
   const zlv = z => ZLV[z.id] || (z.lv ? 'Nv ' + DLV(z.lv[0]) + '–' + DLV(z.lv[1]) : '');
   const REG_LV = { aldoria: 'Níveis 1–50 (treino, campos, floresta e ruínas)', desert: 'Níveis 26–40', snow: 'Níveis 37–50', volcano: 'Níveis 48–60' };
   function objectivePos(G) {
+    if (G.gps) return [G.gps.x, G.gps.z, G.gps.n]; // o destino do GPS (escolha do jogador) vale mais que o objetivo da história
     const s = G.main && MAIN[G.main.i];
     if (!s || ELV() < s.lvl) { // sem passo da história: missão ativa (monstro mais próximo da zona dela)
       const q = QUESTS.find(q => G.quests[q.id] && G.quests[q.id].state === 'active' && q.zone); if (!q) return null;
@@ -6422,6 +6573,35 @@ const UI = (() => {
     if (!ms.length) return null;
     const p = G.player; ms.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
     return [ms[0].x, ms[0].z, s.item || ms[0].name];
+  }
+  /* celular: botões da direita ficam recolhidos no botão ☰ e se abrem como um balão; escolher uma opção (ou tocar fora) recolhe de novo */
+  function fabSync() { setCls(E.btns, 'open', !!st.fabOpen); setCls(E.fab, 'on', !!st.fabOpen); setText(E.fab, st.fabOpen ? '✕' : '☰'); }
+  function mapToggle() { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
+  /* celular: botão ❗ "o que fazer agora". Mostra a etapa da história, o destino (já marcado no minimapa) e atalhos para o mapa e as missões */
+  const objKey = G => G.main ? G.main.i + ':' + G.main.prog : '';
+  function renderObj(G) {
+    const M = G.main, s = M && MAIN[M.i], ob = st.obj; let h = '<small class="op-k">📖 História</small>';
+    if (s && ELV() >= s.lvl) { const tg = stepGoal(s), pr = Math.min(M.prog, tg); h += `<b>${esc(stepTitle(s))}</b><p>${esc(s.t)}</p>${tg > 1 ? `<small>Progresso: ${pr}/${tg}</small>` : ''}`; }
+    else if (s) h += `<b>Próxima etapa da história</b><p>Disponível no nível ${DLV(s.lvl)}. Enquanto isso, faça missões e suba de nível.</p>`;
+    else h += '<b>História concluída</b><p>Você completou as Crônicas de Aldoria.</p>';
+    const aq = QUESTS.filter(q => G.quests[q.id] && (G.quests[q.id].state === 'active' || G.quests[q.id].state === 'ready'));
+    if (aq.length) h += '<small class="op-k">📜 Missões secundárias</small><ul>' + aq.slice(0, 3).map(q => { const qs = G.quests[q.id], tg = qTarget(q), rd = qs.state === 'ready';
+      return `<li${rd ? ' class="ok"' : ''}>${esc(q.n)} · ${rd ? '✔ ' + tg + '/' + tg + ', pronta para entregar' : Math.min(qs.prog || 0, tg) + '/' + tg + (q.zone && ZN[q.zone] ? ' (' + ZN[q.zone].name + ')' : '')}</li>`; }).join('') + '</ul>';
+    if (ob && G.player) { const d = Math.hypot(ob[0] - G.player.x, ob[1] - G.player.z); h += `<p class="where">📍 ${esc(ob[2] || 'Objetivo')} · ${d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m'} <small>(marcado no minimapa)</small></p>`; }
+    const rq = QUESTS.filter(q => G.quests[q.id] && G.quests[q.id].state === 'ready'), rd = G.daily ? G.daily.list.filter(d => d.done && !d.claimed).length : 0;
+    let btns = rq.map(q => `<button class="btn primary" data-a="qturn" data-id="${q.id}">✅ Entregar: ${esc(q.n)}</button>`).join('');
+    if (rd) btns += `<button class="btn primary" data-a="dailyall">🎁 Resgatar ${rd} diário(s)</button>`;
+    if (G.gps || (s && ELV() >= s.lvl && s.k !== 'do')) btns += `<button class="btn ${btns ? '' : 'primary'}" data-a="go">🧭 ${G.gps ? 'Seguir o GPS' : 'Ir até lá'}</button>`;
+    if (G.gps) btns += '<button class="btn" data-a="gpscancel">✕ Cancelar GPS</button>';
+    h += `<div class="op-b col">${btns}</div><div class="op-b"><button class="btn" data-a="p-map">🗺️ Mapa</button><button class="btn" data-a="p-quest">📜 Missões</button></div>`;
+    if (E.objPop._h !== h) { E.objPop._h = h; E.objPop.innerHTML = h; }
+  }
+  function objSync(G) {
+    if (!IS_TOUCH || !E.objPop) return;
+    const open = st.objOpen && G.state === 'play' && !st.modal && !G.dead;
+    if (open) { st.objSeen = objKey(G); renderObj(G); }
+    setVis(E.objPop, open);
+    setCls(E.btn.obj, 'pulse', !open && !!st.obj && st.objSeen !== objKey(G));
   }
   /* ---------- terreno do mapa (M e minimapa): a grade de 4 m do world.js é amostrada com interpolação bilinear
      direto na resolução da tela, então a costa e as fronteiras ficam lisas em qualquer zoom (nada de bitmap ampliado) ---------- */
@@ -6535,6 +6715,33 @@ const UI = (() => {
     cv.addEventListener('mousedown', e => { drag = [e.clientX, e.clientY]; });
     window.addEventListener('mouseup', () => { drag = null; });
     window.addEventListener('mousemove', e => { if (!drag || !st.mapK) return; const s = sc(); st.mapC = [st.mapC[0] - (e.clientX - drag[0]) * s / st.mapK, st.mapC[1] - (e.clientY - drag[1]) * s / st.mapK]; drag = [e.clientX, e.clientY]; st.mapView = 'free'; mapClamp(); mapReq(); });
+    /* toque: um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca o destino do GPS.
+       Dedos "fantasma" (soltar perdido, aba trocada) são descartados: sem isso qualquer toque virava pinça e o mapa pulava de lugar. */
+    const pts = new Map(); let tap = null, pinch = 0;
+    const drop = id => { pts.delete(id); if (pts.size < 2) pinch = 0; if (!pts.size) tap = null; };
+    const fresh = () => { const t = performance.now(); for (const [id, q] of pts) if (t - q.t > 1500) drop(id); };
+    cv.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch') return; e.preventDefault(); fresh(); try { cv.setPointerCapture(e.pointerId); } catch (x) { }
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
+      if (pts.size === 1) tap = { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false };
+      else { tap = null; const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+    });
+    cv.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'touch' || !pts.has(e.pointerId) || !st.mapK) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() }); const s = sc();
+      if (pts.size === 1) { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true; if (!tap || tap.moved) { st.mapC = [st.mapC[0] - (e.clientX - prev.x) * s / st.mapK, st.mapC[1] - (e.clientY - prev.y) * s / st.mapK]; st.mapView = 'free'; mapClamp(); mapReq(); } }
+      else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = cv.getBoundingClientRect(); if (pinch > 4 && d > 4) { mapZoom(Math.max(.6, Math.min(1.6, d / pinch)), ((a.x + b.x) / 2 - r.left) * s, ((a.y + b.y) / 2 - r.top) * s); mapReq(); } pinch = d; }
+    });
+    const up = e => { if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return; const t0 = tap; const n = pts.size; drop(e.pointerId); if (t0 && !t0.moved && n === 1 && e.timeStamp - t0.t < 600) mapTap(t0.x, t0.y); }; // tempo pelo carimbo do evento: quadro lento não atrasa a conta
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => drop(e.pointerId)); cv.addEventListener('lostpointercapture', e => drop(e.pointerId));
+    window.addEventListener('pointerup', e => { if (pts.has(e.pointerId)) drop(e.pointerId); }); window.addEventListener('pointercancel', e => drop(e.pointerId)); window.addEventListener('blur', () => { pts.clear(); tap = null; pinch = 0; });
+  }
+  function mapTap(cx, cy) { const w = mapToWorld(cx, cy);  if (!w) return; st.mapPin = w; mapGpsSync(); mapReq(); }
+  const fmDist = d => d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m';
+  function mapGpsSync() { // barra do mapa: confirma o destino tocado, ou mostra o GPS ativo
+    const el = E.p_map && E.p_map.querySelector('.map-gps'); if (!el || !G.player) return; const pin = st.mapPin, g = G.gps, p = G.player; let h = '';
+    if (pin) h = `<span>📍 ${fmDist(Math.hypot(pin[0] - p.x, pin[1] - p.z))}${coastD(pin[0], pin[1]) < 2 ? ' · água: vou até a margem' : ''}</span><button class="btn primary" data-a="gpsgo">Ir até aqui</button><button class="btn" data-a="gpsx">✕</button>`;
+    else if (g) h = `<span>🧭 ${esc(g.n)} · ${fmDist(Math.hypot(g.x - p.x, g.z - p.z))}</span><button class="btn" data-a="gpscancel">Cancelar GPS</button>`;
+    if (el._h !== h) { el._h = h; el.innerHTML = h; } setVis(el, !!h);
   }
   /* ponto do mundo sob (clientX, clientY) no mapa M aberto, ou null (usado pelo teleporte do painel do administrador) */
   function mapToWorld(cx, cy) {
@@ -6563,6 +6770,7 @@ const UI = (() => {
       c.beginPath(); c.arc(0, 0, 8, 0, 7); c.fillStyle = '#ffd84a'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#3a2508'; c.stroke(); c.fillStyle = '#3a2508'; c.fillRect(-1.3, -5, 2.6, 6); c.fillRect(-1.3, 2.4, 2.6, 2.4); c.restore(); },
     me(c, x, y, u, a) { c.save(); c.translate(x, y); c.scale(u, u); c.beginPath(); c.arc(0, 0, 15, 0, 7); c.fillStyle = 'rgba(79,209,255,.22)'; c.fill(); c.rotate(-(a || 0) + Math.PI);
       c.beginPath(); c.moveTo(0, -13); c.lineTo(8.5, 9); c.lineTo(0, 4); c.lineTo(-8.5, 9); c.closePath(); c.fillStyle = '#4fd1ff'; c.fill(); c.lineWidth = 2.2; c.strokeStyle = '#fff'; c.stroke(); c.restore(); },
+    pin(c, x, y, u) { c.save(); c.translate(x, y); c.scale(u * 1.2, u * 1.2); c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-11, -14, -9, -26, 0, -26); c.bezierCurveTo(9, -26, 11, -14, 0, 0); c.fillStyle = '#e53935'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#fff'; c.stroke(); c.beginPath(); c.arc(0, -17, 3.6, 0, 7); c.fillStyle = '#fff'; c.fill(); c.restore(); },
     mob(c, x, y, u, el) { c.beginPath(); c.arc(x, y, (el ? 3.6 : 2.6) * u, 0, 7); c.fillStyle = el ? '#ffcf4a' : '#ff5a4a'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(30,10,5,.85)'; c.stroke(); },
     road(c, x, y, u) { c.lineCap = 'round'; c.beginPath(); c.moveTo(x - 9 * u, y + 3 * u); c.quadraticCurveTo(x, y - 5 * u, x + 9 * u, y + 1 * u); c.lineWidth = 5 * u; c.strokeStyle = 'rgba(70,44,18,.75)'; c.stroke(); c.lineWidth = 3 * u; c.strokeStyle = '#e3c890'; c.stroke(); },
   };
@@ -6635,17 +6843,17 @@ const UI = (() => {
       if (w !== cv.width || h !== cv.height) { if (st.mapK) st.mapK *= w / cv.width; cv.width = w; cv.height = h; }
     }
     mapEvents(cv); if (!st.mapK) mapViewSet(st.mapView || 'world'); mapClamp();
-    const Wc = cv.width, Hc = cv.height, K = st.mapK, C0 = st.mapC, view = st.mapView, zoom = K / MAP_FIT(), u = rc.width > 10 ? Wc / rc.width : 1, tg = terrGrid();
+    const Wc = cv.width, Hc = cv.height, K = st.mapK, C0 = st.mapC, view = st.mapView, zoom = K / MAP_FIT(), u = rc.width > 10 ? Wc / rc.width : 1, ue = u * (IS_TOUCH ? .62 : 1), showLg = !IS_TOUCH || !!st.mapLeg, tg = terrGrid(); // ue: ícones menores no celular
     const toS = (x, z) => [Wc / 2 + (x - C0[0]) * K, Hc / 2 + (z - C0[1]) * K];
     const inView = (x, z, m) => { const q = toS(x, z), e = (m || 40) * u; return q[0] > -e && q[1] > -e && q[0] < Wc + e && q[1] < Hc + e; };
     c.drawImage(mapBase(cv, Wc, Hc, K, C0, u), 0, 0);
     const occ = [], L = [], ic = [];
     // legenda (canto inferior esquerdo) e área dos botões de zoom (canto superior direito) não recebem rótulos
     const lgR = 17 * u, lgW = 122 * u, lgP = 8 * u, lgRows = Math.ceil(MAP_LEG.length / 2), lgBox = [8 * u, Hc - 8 * u - lgRows * lgR - lgP * 2 - 14 * u, 8 * u + lgW * 2 + lgP * 2, Hc - 8 * u];
-    occ.push(lgBox, [Wc - 52 * u, 0, Wc, 132 * u]);
+    occ.push([Wc - 52 * u, 0, Wc, 132 * u]); if (showLg) occ.push(lgBox);
     // monstros só de perto (de longe viram ruído; a zona e a faixa de nível já dizem o que há ali)
-    if (zoom >= 6) for (const m of G.mobs) { if (m.dead || m.boss || !inView(m.x, m.z, 4) || Math.hypot(m.x - p.x, m.z - p.z) > 140) continue; const [x, y] = toS(m.x, m.z); MI.mob(c, x, y, u, m.elite || m.champ); }
-    const add = (kind, x, z, r, lab, arg) => { if (!inView(x, z)) return; const [sx, sy] = toS(x, z); ic.push([kind, sx, sy, arg]); occ.push([sx - r * u, sy - r * u, sx + r * u, sy + r * u]); if (lab) L.push(Object.assign({ x: sx, y: sy, r }, lab)); };
+    if (zoom >= 6) for (const m of G.mobs) { if (m.dead || m.boss || !inView(m.x, m.z, 4) || Math.hypot(m.x - p.x, m.z - p.z) > 140) continue; const [x, y] = toS(m.x, m.z); MI.mob(c, x, y, ue, m.elite || m.champ); }
+    const add = (kind, x, z, r, lab, arg) => { if (!inView(x, z)) return; const [sx, sy] = toS(x, z); ic.push([kind, sx, sy, arg]); occ.push([sx - r * ue, sy - r * ue, sx + r * ue, sy + r * ue]); if (lab) L.push(Object.assign({ x: sx, y: sy, r }, lab)); };
     const POI = '600 # system-ui, sans-serif', SERIF = '700 # Georgia, serif';
     for (const l of LANDMARKS) { if (/Lagoa/.test(l.n)) add('lake', l.x, l.z, 7, { t: l.n, pr: 45, fs: 12, font: POI, col: '#cfeeff', bg: 1 }); else add('mark', l.x, l.z, 5, { t: l.n, pr: 40, fs: 12, font: POI, col: '#f1e2bd', bg: 1 }); }
     for (const s of SITES) { const lair = s.k === 'lair'; add(lair ? 'lair' : 'dungeon', s.x, s.z, 10, { t: s.n, pr: lair ? 66 : 70, fs: 12.5, font: POI, col: lair ? '#ffe7a0' : '#c4f3ff', bg: 1 }); }
@@ -6661,21 +6869,24 @@ const UI = (() => {
       for (const [id, x, z, pr] of pts) { if (!inView(x, z, 0) || (zoom >= 3 && inTownSq(x, z, 12))) continue; const [sx, sy] = toS(x, z), zn = ZN[id]; L.push({ x: sx, y: sy, t: zn.name, sub: zlv(zn), pr, fs: 15, font: '600 italic # Georgia, serif', col: '#fff6e0' }); } }
     // objetivo e jogador por cima de tudo
     const ob = objectivePos(G), pu = 1 + .12 * Math.sin(performance.now() / 200);
-    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); occ.push([x - 15 * u, y - 15 * u, x + 15 * u, y + 15 * u]); L.push({ x, y, r: 16, t: ob[2], pr: 100, fs: 13, font: '700 # system-ui, sans-serif', col: '#ffe066', bg: 1, edge: 'rgba(255,216,74,.6)' }); }
-    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); occ.push([x - 14 * u, y - 14 * u, x + 14 * u, y + 14 * u]); }
-    for (const [k, x, y, a] of ic) MI[k](c, x, y, u, a);
-    placeLabels(c, L, occ, Wc, Hc, u);
-    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); MI.obj(c, x, y, u, pu); }
-    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); MI.me(c, x, y, u, p.rot); }
+    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); occ.push([x - 15 * ue, y - 15 * ue, x + 15 * ue, y + 15 * ue]); L.push({ x, y, r: 16, t: ob[2], pr: 100, fs: 13, font: '700 # system-ui, sans-serif', col: '#ffe066', bg: 1, edge: 'rgba(255,216,74,.6)' }); }
+    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); occ.push([x - 14 * ue, y - 14 * ue, x + 14 * ue, y + 14 * ue]); }
+    if (G.gps) { const rt = [[p.x, p.z]].concat(G.gps.wp.slice(G.gps.i)); c.save(); c.setLineDash([7 * u, 6 * u]); c.lineWidth = 3 * u; c.lineJoin = 'round'; c.strokeStyle = 'rgba(79,209,255,.95)'; c.beginPath(); rt.forEach((q, i) => { const [x, y] = toS(q[0], q[1]); if (i) c.lineTo(x, y); else c.moveTo(x, y); }); c.stroke(); c.restore(); }
+    for (const [k, x, y, a] of ic) MI[k](c, x, y, ue, a);
+    placeLabels(c, L, occ, Wc, Hc, u * (IS_TOUCH ? .85 : 1));
+    if (ob && inView(ob[0], ob[1])) { const [x, y] = toS(ob[0], ob[1]); MI.obj(c, x, y, ue, pu); }
+    if (st.mapPin) { const [x, y] = toS(st.mapPin[0], st.mapPin[1]); MI.pin(c, x, y, ue); }
+    mapGpsSync();
+    if (inView(p.x, p.z)) { const [x, y] = toS(p.x, p.z); MI.me(c, x, y, ue, p.rot); }
     else { // jogador fora da vista: seta na borda apontando para ele
       const [x, y] = toS(p.x, p.z), a = Math.atan2(y - Hc / 2, x - Wc / 2), m = 18 * u, ex = Math.max(m, Math.min(Wc - m, Wc / 2 + Math.cos(a) * Wc)), ey = Math.max(m, Math.min(Hc - m, Hc / 2 + Math.sin(a) * Hc));
       c.save(); c.translate(ex, ey); c.rotate(a); c.beginPath(); c.moveTo(11 * u, 0); c.lineTo(-6 * u, 7 * u); c.lineTo(-6 * u, -7 * u); c.closePath(); c.fillStyle = '#4fd1ff'; c.fill(); c.lineWidth = 2 * u; c.strokeStyle = '#fff'; c.stroke(); c.restore(); }
-    // legenda
-    rrect(c, lgBox[0], lgBox[1], lgBox[2] - lgBox[0], lgBox[3] - lgBox[1], 7 * u); c.fillStyle = 'rgba(16,12,22,.82)'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(255,226,160,.3)'; c.stroke();
+    // legenda (no celular só quando o botão ? está ligado)
+    if (showLg) { rrect(c, lgBox[0], lgBox[1], lgBox[2] - lgBox[0], lgBox[3] - lgBox[1], 7 * u); c.fillStyle = 'rgba(16,12,22,.82)'; c.fill(); c.lineWidth = u; c.strokeStyle = 'rgba(255,226,160,.3)'; c.stroke();
     c.font = '700 ' + (10 * u) + 'px system-ui, sans-serif'; c.fillStyle = '#e9c97a'; c.textAlign = 'left'; c.fillText('LEGENDA', lgBox[0] + lgP, lgBox[1] + lgP + 8 * u);
     MAP_LEG.forEach(([k, n], i) => { const col = i % 2, row = i >> 1, x = lgBox[0] + lgP + col * lgW, y = lgBox[1] + lgP + 14 * u + row * lgR + lgR / 2;
       c.save(); c.translate(x + 9 * u, y); c.scale(.62, .62); c.translate(-(x + 9 * u), -y); MI[k](c, x + 9 * u, y, u, k === 'me' ? Math.PI : undefined); c.restore();
-      c.font = '600 ' + (11.5 * u) + 'px system-ui, sans-serif'; c.fillStyle = '#efe4cc'; c.textBaseline = 'middle'; c.fillText(n, x + 22 * u, y); c.textBaseline = 'alphabetic'; });
+      c.font = '600 ' + (11.5 * u) + 'px system-ui, sans-serif'; c.fillStyle = '#efe4cc'; c.textBaseline = 'middle'; c.fillText(n, x + 22 * u, y); c.textBaseline = 'alphabetic'; }); }
     // escala + dica
     { let m = 10; for (const s of [10, 20, 50, 100, 200, 500]) if (s * K <= 120 * u) m = s; const bw = m * K, x1 = Wc - 12 * u, x0 = x1 - bw, y = Hc - 14 * u;
       rrect(c, x0 - 10 * u, y - 30 * u, bw + 20 * u, 40 * u, 6 * u); c.fillStyle = 'rgba(16,12,22,.72)'; c.fill();
@@ -6686,7 +6897,8 @@ const UI = (() => {
     const here = regionAt(p.x, p.z), zn = G.zone, one = REG[view] || null;
     let h = '<div class="tabs map-tabs">' + [['world', '🌍 Continente']].concat(REGIONS.map(g => [g.id, g.n.replace(/^(Reino|Deserto|Cratera) d[eo] /, '')])).map(([id, l]) => `<button class="tab${view === id ? ' on' : ''}" data-a="mapv" data-id="${id}">${esc(l)}</button>`).join('') + '</div>';
     h += `<div class="ms-h">Você está em</div><div class="ms-b">${esc(zn ? zn.name : '')}<small>${esc(here.n)}${zn ? ' · ' + zlv(zn) : ''}</small></div>`;
-    if (ob) h += `<div class="ms-h">Objetivo da história</div><div class="ms-b obj">❗ ${esc(ob[2])}<small>${esc(stepLine(MAIN[G.main.i]))}</small></div>`;
+    if (ob && G.gps) h += `<div class="ms-h">Destino do GPS</div><div class="ms-b obj">🧭 ${esc(ob[2])}<small>${fmDist(Math.hypot(ob[0] - G.player.x, ob[1] - G.player.z))} · o personagem anda sozinho; mexer no joystick pausa</small></div>`;
+    else if (ob) h += `<div class="ms-h">Objetivo da história</div><div class="ms-b obj">❗ ${esc(ob[2])}<small>${esc(stepLine(MAIN[G.main.i]))}</small></div>`;
     h += `<div class="ms-h">${one ? 'Zonas e monstros' : 'Biomas'}</div>`;
     if (one) for (const z of one.zones) h += `<div class="ms-r"><b>${esc(z.name)}</b><small>${zlv(z)}</small>${MOBS[z.id] ? `<small class="mobs">${MOBS[z.id].map(m => esc(m.n)).join(', ')}${ELITES[z.id] ? '<br>★ Elites: ' + ELITES[z.id].map(m => esc(m.n)).join(', ') : ''}</small>` : '<small class="mobs">Vila segura</small>'}</div>`;
     for (const g of (one ? [] : REGIONS)) {
@@ -6761,7 +6973,7 @@ const UI = (() => {
       h += `<h3>${id === 'weapon' ? 'Armas' : 'Roupas e armaduras'} <small>💰 ${fmt(p.gold)} · comuns, sem refino</small></h3><div class="shop">`;
       for (const { it, price } of list) {
         const e = p.eq[it.slot], d = cmpDelta(it, e);
-        h += `<div class="shop-r"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b>${esc(itemName(it))}</b><small>${SLOTS[it.slot]} · ${istr(it)}${d == null ? ' · <i class="ar new">●</i> espaço vazio' : d > 0 ? ' · <i class="ar up">▲ melhor</i>' : ''}</small></div><button class="btn" data-a="buyitem" data-s="${it.slot}" data-w="${it.wt || ''}" data-g="${it.grade}"${p.gold < price ? ' disabled' : ''}>Comprar<small>💰 ${fmt(price)}</small></button></div>`;
+        h += `<div class="shop-r"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b>${esc(itemName(it))}</b><small>${SLOTS[it.slot]} · ${istr(it)}${d == null ? ' · <i class="ar new">●</i> espaço vazio' : d > 0 ? ' · <i class="ar up">▲ melhor</i>' : d < 0 ? ' · <i class="ar dn">▼ pior</i>' : ''}</small></div><button class="btn" data-a="buyitem" data-s="${it.slot}" data-w="${it.wt || ''}" data-g="${it.grade}"${p.gold < price ? ' disabled' : ''}>Comprar<small>💰 ${fmt(price)}</small></button></div>`;
       }
       h += '</div><div class="dim pad">O estoque acompanha o seu nível: grau atual e o anterior.</div>';
     } else if (id === 'stable') {
@@ -6779,7 +6991,7 @@ const UI = (() => {
         else if (!it) g += `<div class="bi empty" data-zone="bank" data-slot="${i}"></div>`;
         else g += `<div class="bi it r${it.rar}${noUse(it) ? ' nouse' : ''}${st.carry && st.carry.id === it.id ? ' carry' : ''}" data-zone="bank" data-slot="${i}" data-a="bank-take" data-id="${it.id}" data-drag="bank" draggable="true" title="${esc(itemTip(it, p.eq[it.slot], false).split('\n').slice(0, -1).join('\n') + '\nClique para pegar e mover · Shift+clique: retirar')}" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}</div>`;
       }
-      h += `<div class="bankw"><div class="bpages">${Array.from({ length: np }, (_, i) => `<button class="${i === pg ? 'on' : ''}" data-a="bank-page" data-n="${i}">${i + 1}</button>`).join('')}<small>${B.items.length}/${mx} · clique para pegar e mover</small></div><div class="bag bankg" data-drop="bank">${g}</div>`;
+      h += `<div class="bankw"><div class="bpages">${Array.from({ length: np }, (_, i) => `<button class="${i === pg ? 'on' : ''}" data-a="bank-page" data-n="${i}">${i + 1}</button>`).join('')}<small>${B.items.length}/${mx} · ${TX('clique para pegar e mover', 'toque num item: retirar ou mover')}</small></div><div class="bag bankg" data-drop="bank">${g}</div>`;
       const Bt = (n, lab, dis) => `<button class="btn" data-a="bank-gold" data-n="${n}"${dis ? ' disabled' : ''}>${lab}</button>`;
       h += `<div class="bgold"><div class="igold"><span>💰</span><b>${fmt(B.gold)}</b><small>ouro no baú</small></div><div class="bg-r"><span>Guardar</span>${Bt(100, '100', p.gold < 100)}${Bt(1000, '1.000', p.gold < 1000)}${Bt(p.gold, 'Tudo', p.gold <= 0)}</div><div class="bg-r"><span>Retirar</span>${Bt(-100, '100', B.gold < 100)}${Bt(-1000, '1.000', B.gold < 1000)}${Bt(-B.gold, 'Tudo', B.gold <= 0)}</div></div></div>`;
     } else if (id === 'shop') {
@@ -6794,7 +7006,8 @@ const UI = (() => {
       if (!p.inv.length) h += '<div class="dim pad">Sua mochila está vazia.</div>';
       const ic = SLOT_IC(p.cls);
       p.inv.forEach(it => {
-        h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
+        const d = cmpDelta(it, p.eq[it.slot]), cm = d == null ? '<i class="ar new">●</i> espaço vazio' : d > 0 ? '<i class="ar up">▲ melhor que o equipado</i>' : d < 0 ? '<i class="ar dn">▼ pior que o equipado</i>' : '<i class="ar eq">＝ igual ao equipado</i>';
+        h += `<div class="shop-r" title="${esc(itemTip(it, (p.eq || {})[it.slot], false).split('\n').slice(0, -1).join('\n'))}"><span class="it-ic">${iconOf(it, ic)}</span><div class="it-t"><b style="color:${rcol(it)}">${esc(itemName(it))}</b><small>${istr(it)}<br>${cm}</small></div><button class="btn" data-a="sell" data-id="${it.id}">Vender<small>💰 ${fmt(itemValue(it))}</small></button></div>`;
       });
       h += '</div>';
     } else if (nid === 'selene') { // Refinador: fundir peças iguais em Ancient
@@ -6849,6 +7062,7 @@ const UI = (() => {
     if (typeof G === 'undefined' || !G.player || !st.panel) return;
     const on = k => st.wins.includes(k);
     if (on('inv') || (st.modal === 'dlg' && st.side)) renderInv(G);
+    if (st.card) cardRender();
     if (on('char')) renderChar(G);
     if (on('quest')) renderQuest(G);
     if (on('map')) renderMap(G);
@@ -6863,6 +7077,7 @@ const UI = (() => {
   /* ---------- ações (cliques delegados) ---------- */
   function act(a, d) {
     let r;
+    if (a.startsWith('card-')) { cardAct(a, d); return; }
     switch (a) {
       case 'close': if (d && d._k) winClose(d._k); else closeAll(); return;
       case 'p-inv': togglePanel('inv'); return;
@@ -6870,10 +7085,21 @@ const UI = (() => {
       case 'p-quest': togglePanel('quest'); return;
       case 'p-auto': togglePanel('auto'); return;
       case 'p-look': togglePanel('look'); return;
+      case 'p-map': mapToggle(); return;
+      case 'go': { if (!Game.goObjective()) UI.toast('Não há para onde ir agora.'); return; }
+      case 'qturn': Game.turnInQuest(d.id); refreshPanels(); return;
+      case 'dailyall': if (G.daily) G.daily.list.forEach((x, k) => { if (x.done && !x.claimed) Game.claimDaily(k); }); refreshPanels(); return;
+      case 'maplg': st.mapLeg = !st.mapLeg; renderMap(G); return;
+      case 'gpsgo': { const pin = st.mapPin; if (pin) { const v = VILLAGES.find(q => Math.hypot(q.cx - pin[0], q.cz - pin[1]) < 40); st.mapPin = null; if (Game.gpsGo(pin[0], pin[1], v ? v.n : 'Destino')) winClose('map'); else renderMap(G); } return; }
+      case 'gpsx': st.mapPin = null; renderMap(G); return;
+      case 'gpscancel': Game.gpsCancel(); st.mapPin = null; renderMap(G); objSync(G); return;
+      case 'obj': st.objOpen = !st.objOpen; objSync(G); return;
+      case 'fab': st.fabOpen = !st.fabOpen; fabSync(); return;
       case 'p-lv': togglePanel('lv'); return;
       case 'lvtab': st.lvTab = +d.id; refreshPanels(); return;
       case 'pause': showPanel('pause'); return;
       case 'gfx': Game.cycleQuality(); refreshPanels(); return;
+      case 'eco': Game.toggleEco(); refreshPanels(); return;
       case 'tomenu': Game.toMenu(); return;
       case 'look': Game.setLook(d.k, +d.v); return;
       case 'mount': Game.toggleMount(d.id); return;
@@ -6992,6 +7218,56 @@ const UI = (() => {
     m.style.left = Math.min(c.x, (W || innerWidth) - w - 6) + 'px'; m.style.top = Math.min(c.y, (H || innerHeight) - hh - 6) + 'px';
   }
   function cmClose() { st.cm = null; cmRender(); }
+  /* celular: tocar num item (mochila, baú ou equipado) abre um cartão com todos os atributos, a comparação com o que está equipado,
+     o valor de venda e as ações. No lugar do clique que "pega" o item e do botão direito. */
+  function cardItem(c) {
+    if (c.zone === 'bank') { const A = Game.account(), it = A && A.bank.items.find(x => x.id === c.id); return it ? { it, eq: null } : null; }
+    return Game.findItem(c.id);
+  }
+  function cardClose() { st.card = null; cardRender(); }
+  function cardRender() {
+    let m = root.querySelector('.itcard'); const c = st.card;
+    if (c && !st.wins.includes('inv') && !(st.modal === 'dlg' && st.side)) st.card = null;
+    const f = st.card && cardItem(st.card);
+    if (!f) { st.card = null; if (m) m.remove(); return; }
+    if (!m) { m = document.createElement('div'); m.className = 'itcard glass'; root.appendChild(m); shield(m); }
+    const p = G.player, it = f.it, inBank = c.zone === 'bank', lines = itemTip(it, f.eq ? null : p.eq[it.slot], !!f.eq).split('\n').slice(0, -1); // a última linha é dica de mouse
+    let h = `<div class="ic-h"><b style="color:${rcol(it)}">${esc(lines[0])}</b><button class="x" data-a="card-x" title="Fechar">✕</button></div><ul>`;
+    for (const l of lines.slice(1)) h += `<li class="${/não pode/.test(l) ? 'bad' : /\(\+/.test(l) ? 'up' : /\(-/.test(l) ? 'dn' : /^Valor/.test(l) ? 'val' : ''}">${esc(l)}</li>`;
+    h += '</ul>';
+    if (c.ask) h += `<div class="ic-q">Excluir para sempre?</div><div class="ic-b"><button class="btn bad" data-a="card-yes">Sim</button><button class="btn" data-a="card-no">Não</button></div>`;
+    else {
+      let b = '';
+      if (f.eq) b += `<button class="btn primary" data-a="card-un" data-s="${f.eq}">Desequipar</button>`;
+      else if (inBank) b += `<button class="btn primary" data-a="card-take">Retirar do baú</button>`;
+      else {
+        b += `<button class="btn primary" data-a="card-eq"${noUse(it) ? ' disabled' : ''}>Equipar</button>`;
+        if (st.side === 'bank') b += `<button class="btn" data-a="card-put">Guardar no baú</button>`;
+        if (shopNear()) b += `<button class="btn" data-a="card-sell">Vender 💰 ${fmt(itemValue(it))}</button>`;
+      }
+      if (!f.eq) b += `<button class="btn" data-a="card-mv">Mover</button>`;
+      if (!f.eq && !inBank) b += `<button class="btn bad" data-a="card-del">Excluir</button>`;
+      h += `<div class="ic-b">${b}</div>`;
+    }
+    if (m._h !== h) { m._h = h; m.innerHTML = h; } // só remonta se mudou (senão o botão some entre o toque e o clique)
+  }
+  function cardAct(a, d) {
+    const c = st.card; if (!c && a !== 'card-x') return; let r = null;
+    switch (a) {
+      case 'card-x': cardClose(); return;
+      case 'card-del': c.ask = true; cardRender(); return;
+      case 'card-no': c.ask = false; cardRender(); return;
+      case 'card-yes': r = Game.deleteItem(c.id); break;
+      case 'card-un': r = Game.unequip(d.s); break;
+      case 'card-eq': r = Game.equip(c.id); break;
+      case 'card-put': r = Game.bankPut(c.id); break;
+      case 'card-take': r = Game.bankTake(c.id); break;
+      case 'card-sell': r = Game.sellItem(c.id); break;
+      case 'card-mv': st.carry = { id: c.id, from: c.zone === 'eq' ? 'bag' : c.zone }; cardClose(); carryRender(); refreshPanels(); toast('Toque num espaço vazio ou em outro item para soltar.'); return;
+    }
+    if (r && r.ok === false && r.msg) toast(r.msg);
+    cardClose(); refreshPanels();
+  }
 
   /* ---------- log, flutuantes, toast, banner ---------- */
   const floats = { free: [], used: [] };
@@ -7208,6 +7484,7 @@ const UI = (() => {
       const k = (G.zone ? G.zone.name : '') + '|' + night + '|' + h + ':' + m + '|' + G.weather;
       if (E.zone._k !== k) { E.zone._k = k; E.zone.innerHTML = esc(G.zone ? G.zone.name : '') + ' · ' + WX_IC[night ? 'moon' : 'sun'] + ' ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + (WX_IC[G.weather] ? ' ' + WX_IC[G.weather] : ''); } }
     setText(E.mute, G.mute ? '🔇' : '🔊');
+    if (IS_TOUCH) { const tb = E.talkBtn || (E.talkBtn = root.querySelector('.tact[data-k="KeyF"]')); if (tb) { const n = Game.nearNpc(); setCls(tb, 'off', !n); setCls(tb, 'near', !!n); } }
     updateSkills(p); updateQuest(G); drawMap(G);
     const A = G.auto || {}, any = A.attack || A.skills || A.hp || A.mp;
     setVis(E.badge, any);
@@ -7223,6 +7500,7 @@ const UI = (() => {
     const t = now();
     if (t - lastHeavy > 100) { lastHeavy = t; st.obj = G.state === 'play' ? objectivePos(G) : null; heavy(G); if (st.wins.includes('map')) renderMap(G); }
     if (G.vp) { updateLabels(G); updateFloats(G); updateArrow(G); }
+    objSync(G);
   }
 
   /* ---------- init ---------- */
@@ -7235,6 +7513,7 @@ const UI = (() => {
        Shift+clique faz a ação rápida de antes (equipar/guardar/retirar); Esc ou botão direito cancela. Com Ferreiro/Joalheiro abertos o clique só escolhe o item. */
     root.addEventListener('click', ev => {
       const T = ev.target; if (!T.closest) return; const cell = T.closest('.bi[data-zone]'), eqb = T.closest('.eqbox'), c = st.carry;
+      if (IS_TOUCH && !c && st.side !== 'smith' && st.side !== 'jewel') { const ie = T.closest('.bi.it[data-id], .es.has[data-id]'); if (ie) { ev.stopPropagation(); ev.preventDefault(); st.card = { id: +ie.dataset.id, zone: ie.dataset.zone || 'eq', ask: false }; cardRender(); return; } }
       if (c) {
         const it = carryItem();
         if (cell && it) { ev.stopPropagation(); ev.preventDefault(); st.carry = null; carryRender(); if (cell.dataset.zone === c.from && +cell.dataset.slot === it.pos) refreshPanels(); else Game.itemMove(c.from, c.id, cell.dataset.zone, +cell.dataset.slot); return; }
@@ -7246,6 +7525,8 @@ const UI = (() => {
     window.addEventListener('mousemove', ev => { if (st.carry) { const g = root.querySelector('.carry-ghost'); if (g) { g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px'; } } });
     root.addEventListener('click', ev => {
       const t = ev.target.closest('[data-a]');
+      if (st.fabOpen && t && t.dataset.a !== 'fab') { st.fabOpen = false; fabSync(); } // escolheu uma opção do menu: recolhe
+      if (st.objOpen && t && t.dataset.a !== 'obj') { st.objOpen = false; objSync(G); } // qualquer outro botão da interface fecha o aviso de objetivo
       if (!t || t.disabled || !root.contains(t)) return;
       { const pn = t.closest('.panel'); if (pn && t.dataset.a === 'close') t.dataset._k = pn.id.slice(2); }
       act(t.dataset.a, t.dataset);
@@ -7280,6 +7561,7 @@ const UI = (() => {
     root.addEventListener('mousedown', ev => { if (st.cm && !ev.target.closest('.ctxm')) cmClose(); }, true);
     root.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('button, .btn, .bi, .es') && Game.sound) Game.sound('click', { force: true }); }, true);
     root.addEventListener('input', ev => { const t = ev.target; if (t.dataset && t.dataset.vol) { Game.setVol(t.dataset.vol, t.value / 100); return; } if (!t.dataset || !t.dataset.ci) return; if (t.dataset.ci === 'cr') Game.createSet('hcx', t.value); else Game.setLook('hcx', t.value); });
+    addEventListener('pointerdown', () => { if (st.objOpen) { st.objOpen = false; objSync(G); } if (st.fabOpen) { st.fabOpen = false; fabSync(); } }); // toque no jogo (fora da interface) fecha o aviso de objetivo
     addEventListener('keydown', ev => {
       if (ev.ctrlKey || ev.altKey || ev.metaKey || st.menu) return;
       const k = ev.key.toLowerCase();
@@ -7295,7 +7577,7 @@ const UI = (() => {
       else if (k === 'b') togglePanel('lv');
       else if (k === 'n') Game.toggleMute();
       else if (k === 'v') togglePanel('tree');
-      else if (k === 'm') { if (!st.wins.includes('map') && typeof G !== 'undefined' && G.player && !st.mapK) mapViewSet('world'); togglePanel('map'); }
+      else if (k === 'm') mapToggle();
     });
     showPanel(null);
   }
@@ -7336,6 +7618,9 @@ const Game = (() => {
   const IDM = M.id();
 
   let R = null, canvas = null, world = null, last = 0;
+  /* economia de energia: ~40 FPS e resolução um pouco menor, para o celular não esquentar. Padrão: ligada no toque (aldoria_eco) */
+  const ECO_MS = 1000 / 40; let ecoLast = 0, ecoAcc = 0;
+  let eco = IS_TOUCH; try { const s = localStorage.getItem('aldoria_eco'); if (s != null) eco = s === '1'; } catch (e) { }
   const obstacles = [], grid = new Map(), GC = 8, GOFF = 2048;
   const keys = {}, cam = { yaw: 0, dist: 15, x: 0, z: 0, init: false };
   const camPos = [0, 20, 20], fogCur = ZONES[0].fog.slice();
@@ -7721,7 +8006,8 @@ const Game = (() => {
     for (let i = 0; i < QUESTS.length; i++) {
       const q = QUESTS[i], st = G.quests[q.id];
       if (st.state === 'locked' && EL(G.player) >= q.lvl && (q.after ? G.quests[q.after].state === 'done' : (i === 0 || G.quests[QUESTS[i - 1].id].state === 'done'))) {
-        st.state = 'available'; if (!silent) UI.log('Nova missão disponível: ' + q.n + '. Fale com um Ancião.', 'quest');
+        if (IS_TOUCH) { st.state = 'active'; st.prog = 0; if (!silent) UI.log('Missão aceita: ' + q.n + '.', 'quest'); } // celular: aceita sozinha, sem ir ao Ancião
+        else { st.state = 'available'; if (!silent) UI.log('Nova missão disponível: ' + q.n + '. Fale com um Ancião.', 'quest'); }
       }
     }
   }
@@ -7731,7 +8017,7 @@ const Game = (() => {
       const goal = q.kill || 1;
       if ((q.zone && !m.boss && m.zone === q.zone) || (q.boss && m.boss && m.id === q.boss)) {
         st.prog = Math.min(goal, st.prog + 1);
-        if (st.prog >= goal) { st.state = 'ready'; UI.log('Missão concluída: ' + q.n + '. Retorne a um Ancião.', 'quest'); UI.toast('Missão concluída!'); }
+        if (st.prog >= goal) { st.state = 'ready'; UI.log('Missão concluída: ' + q.n + '. Retorne a um Ancião.', 'quest'); UI.toast('📜 Secundária concluída: ' + q.n + TX('', ' · entregue pelo ❗')); }
         else UI.log(q.n + ': ' + st.prog + '/' + goal, 'quest');
       }
     }
@@ -7755,13 +8041,39 @@ const Game = (() => {
   const curStep = () => MAIN[G.main.i] || null;
   const chapN = () => G.main.chaps.filter(k => k !== 'c0').length; // capítulos da história (o prólogo do campo de treino não conta)
   /* eventos do tutorial (etapas 'do' da história): ev = 'move' | 'open:<janela>' | 'learn' | 'skill' | 'potion' */
-  function mainEv(ev) { const s = G.main && curStep(); if (!s || !stepOpen(s) || s.k !== 'do' || s.ev !== ev) return; G.main.prog++; if (G.main.prog >= stepGoal(s)) stepDone(); }
+  function mainEv(ev) {
+    if (!G.main) return; (G.main.tut || (G.main.tut = {}))[ev] = 1; // o tutorial lembra o que o jogador já fez, mesmo fora da ordem (tutAuto fecha as etapas)
+    const s = curStep(); if (!s || !stepOpen(s) || s.k !== 'do' || s.ev !== ev) return; G.main.prog++; if (G.main.prog >= stepGoal(s)) stepDone();
+  }
+  /* prólogo por estado: cada etapa se completa sozinha se a condição já vale (aprendeu habilidade, abriu o equipamento, matou o bastante...),
+     então não trava quem fez as coisas fora da ordem. Roda a cada quadro enquanto a etapa atual é do prólogo. */
+  function tutAuto() {
+    for (let n = 0; n < 12; n++) {
+      const s = G.main && G.player && curStep(); if (!s || s.ch !== 'c0' || !stepOpen(s)) return;
+      const t = G.main.tut || (G.main.tut = {}), p = G.player, kills = G.rec ? G.rec.kill : 0, learned = p.sk.some(v => v > 0);
+      if (!t.move) { if (!G.main.mx) G.main.mx = [p.x, p.z]; else if (Math.hypot(p.x - G.main.mx[0], p.z - G.main.mx[1]) >= 12) t.move = 1; }
+      const first = s === MAIN.find(q => q.ch === 'c0');
+      const ok = s.k === 'do' ? (s.ev === 'learn' ? learned : !!t[s.ev])
+        : s.k === 'kill' ? kills >= (s.mobs[0] === 'gremlin' ? 3 : 7)
+        : s.k === 'talk' ? (s.npc === 'camp_trainer' ? learned : first && (learned || kills > 0))
+        : false;
+      if (!ok) return;
+      stepDone(true);
+    }
+  }
   const stepOpen = s => s && EL(G.player) >= s.lvl;
-  function stepDone() {
+  /* quem passou do nível do campo (29) sem terminar o prólogo (ex.: subiu caçando, ou o save é antigo) não precisa voltar lá: pula para a história de Aldoria */
+  function skipPrologue() {
+    const s = G.main && G.player && curStep(); if (!s || s.ch !== 'c0' || (EL(G.player) < CAMP.endLv && !G.player.tier)) return;
+    const i = MAIN.findIndex(q => q.ch !== 'c0'); if (i < 0) return;
+    G.main.i = i; G.main.prog = 0; G.main.mx = null; if (!G.main.chaps.includes('c0')) G.main.chaps.push('c0');
+    UI.log('O treinamento ficou para trás: sua história continua em Aldoria.', 'quest'); UI.refreshPanels();
+  }
+  function stepDone(quiet) { // quiet: etapa fechada automaticamente (tutAuto), sem som nem aviso de cada uma
     const s = curStep(); if (!s) return;
     const p = G.player, r = stepReward(s);
-    p.gold += r.gold; track('gold', r.gold); track('quest', 1);
-    UI.log('História: ' + stepTitle(s) + ' concluída (+' + fmt(r.xp) + ' XP, +' + fmt(r.gold) + ' ouro).', 'quest'); sfx('quest');
+    p.gold += r.gold; track('gold', r.gold); if (!quiet) track('quest', 1);
+    UI.log('História: ' + stepTitle(s) + ' concluída (+' + fmt(r.xp) + ' XP, +' + fmt(r.gold) + ' ouro).', 'quest'); if (!quiet) sfx('quest');
     gainXp(r.xp);
     const nx = MAIN[s.i + 1];
     if (!nx || nx.ch !== s.ch) { // fim de capítulo
@@ -7772,7 +8084,7 @@ const Game = (() => {
       UI.toast('✦ ' + c.n.split('—')[0].trim() + ' concluído!'); UI.log('Capítulo concluído: ' + c.n + '. Recompensa: ' + fmt(c.rew.gold) + ' ouro e ' + itemName(it) + ' (' + RARITY[it.rar].n + ').', 'lvl');
       fxPillar(p.x, p.z, 1.4, [1, .85, .4], 1.6); fxRing(p.x, 1, p.z, .5, 8, 1, [1, .85, .4], .9, 2);
       track('chap', 0);
-    } else UI.toast('História: próxima etapa');
+    } else if (!quiet) UI.toast('História: próxima etapa');
     G.main.i++; G.main.prog = 0; G.main.mx = null;
     const n2 = curStep();
     if (n2 && !stepOpen(n2)) UI.log('Próxima etapa da história no nível ' + dispLv(n2.lvl, p.tier) + '.', 'quest');
@@ -7795,6 +8107,79 @@ const Game = (() => {
     if (stepOpen(s) && s.k === 'do' && s.ev === 'move') { const p = G.player; if (!G.main.mx) G.main.mx = [p.x, p.z]; else if (Math.hypot(p.x - G.main.mx[0], p.z - G.main.mx[1]) >= 12) mainEv('move'); return; }
     if (!stepOpen(s) || s.k !== 'explore') return;
     const p = G.player; if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) { UI.toast('Descoberto: ' + s.place); stepDone(); }
+  }
+  /* ---------- GPS: toque no mapa marca um destino; o personagem anda sozinho por uma rota pela terra ---------- */
+  function gpsRoute0(x0, z0, x1, z1) { // A* (8 vizinhos) numa grade de 20 m que só passa por terra; devolve pontos [x, z] suavizados, ou null
+    const S = 20, nx = Math.ceil((WB.x1 - WB.x0) / S), nz = Math.ceil((WB.z1 - WB.z0) / S), N = nx * nz;
+    const ci = x => Math.max(0, Math.min(nx - 1, Math.floor((x - WB.x0) / S))), cj = z => Math.max(0, Math.min(nz - 1, Math.floor((z - WB.z0) / S)));
+    const cx = i => WB.x0 + (i + .5) * S, cz = j => WB.z0 + (j + .5) * S, si = ci(x0), sj = cj(z0), ti = ci(x1), tj = cj(z1), s0 = sj * nx + si, t0 = tj * nx + ti;
+    const near = (v, x, z) => Math.abs(x - v.cx) < v.hs + 8 && Math.abs(z - v.cz) < v.hs + 8; // muralhas: a rota contorna vilas, só entra na do começo e na do destino
+    const avoid = VILLAGES.filter(v => isTown(v) && !near(v, x0, z0) && !near(v, x1, z1)), walled = (x, z) => avoid.some(v => near(v, x, z));
+    const ok = (i, j) => (j * nx + i === t0) || (coastD(cx(i), cz(j)) > 6 && !walled(cx(i), cz(j))), g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+    const open = [[Math.hypot(ti - si, tj - sj) * S, s0]]; g[s0] = 0; let found = false;
+    while (open.length) {
+      let b = 0; for (let q = 1; q < open.length; q++) if (open[q][0] < open[b][0]) b = q;
+      const [, cur] = open[b]; open[b] = open[open.length - 1]; open.pop(); if (done[cur]) continue; done[cur] = 1;
+      if (cur === t0) { found = true; break; }
+      const ci0 = cur % nx, cj0 = (cur / nx) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue; const i = ci0 + di, j = cj0 + dj; if (i < 0 || j < 0 || i >= nx || j >= nz || !ok(i, j)) continue;
+        if (di && dj && !(ok(ci0 + di, cj0) && ok(ci0, cj0 + dj))) continue; // diagonal não corta quina de água
+        const id = j * nx + i, ng = g[cur] + (di && dj ? 1.414 : 1) * S; if (ng < g[id]) { g[id] = ng; from[id] = cur; open.push([ng + Math.hypot(i - ti, j - tj) * S, id]); }
+      }
+    }
+    if (!found) return null;
+    const pts = []; for (let c = t0; c >= 0; c = from[c]) { pts.push([cx(c % nx), cz((c / nx) | 0)]); if (c === s0) break; } pts.reverse(); pts[pts.length - 1] = [x1, z1];
+    const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 8); for (let k = 1; k < n; k++) { const x = a[0] + (b[0] - a[0]) * k / n, z = a[1] + (b[1] - a[1]) * k / n; if (coastD(x, z) < 4 || walled(x, z)) return false; } return true; };
+    const out = []; let a = [x0, z0], k = 0; // puxa o fio: do ponto atual, vai ao ponto mais longe que ainda se alcança em linha reta
+    while (k < pts.length) { let far = k; for (let q = pts.length - 1; q > k; q--) if (clear(a, pts[q])) { far = q; break; } out.push(pts[far]); a = pts[far]; k = far + 1; }
+    return out;
+  }
+  /* o campo de treino é uma ilha de ponte estreita (~6 m, invisível na grade de 20 m): a rota entra e sai por ela passando pelo eixo da ponte */
+  function gpsRoute(x0, z0, x1, z1) {
+    const inCamp = (x, z) => Math.hypot(x - CAMP.x, z - CAMP.z) < CAMP.ro + 4, ax = d => [CAMP.x + CAMP.ux * d, CAMP.z + CAMP.uz * d];
+    const bridge = [ax(CAMP.ro + 8), ax(CAMP.ro), ax(CAMP.ri - 2)]; // da margem até o portão do campo
+    const a = inCamp(x0, z0), b = inCamp(x1, z1);
+    if (a && b) return [[x1, z1]];
+    if (b) { const r = gpsRoute0(x0, z0, bridge[0][0], bridge[0][1]); return r ? r.concat(bridge.slice(1), [[x1, z1]]) : null; }
+    if (a) { const r = gpsRoute0(bridge[0][0], bridge[0][1], x1, z1); return r ? bridge.slice().reverse().concat(r) : null; }
+    return gpsRoute0(x0, z0, x1, z1);
+  }
+  function gpsGo(x, z, name) {
+    const p = G.player; if (!p || G.dead) return false; const q = { x, z }; landClamp(q);
+    const r = gpsRoute(p.x, p.z, q.x, q.z); if (!r) { UI.toast('Não há caminho por terra até lá.'); return false; }
+    G.gps = { x: q.x, z: q.z, n: name || 'Destino', wp: r, i: 0, walk: true, chk: { t: G.t, x: p.x, z: p.z }, rb: 0 }; cmd = null; tmob = null;
+    UI.log('GPS: indo para ' + G.gps.n + ' (' + Math.round(Math.hypot(q.x - p.x, q.z - p.z)) + ' m).', 'sys'); return true;
+  }
+  function gpsCancel() { if (!G.gps) return; if (cmd && cmd.gps) cmd = null; G.gps = null; UI.log('GPS cancelado.', 'sys'); }
+  function gpsResume() { const g = G.gps; return !!g && gpsGo(g.x, g.z, g.n); }
+  function gpsTick(kd) { // a cada quadro: segue o próximo ponto da rota; o controle manual só pausa (o marcador continua)
+    const g = G.gps, p = G.player; if (!g || !p || G.dead) return;
+    if (kd || (cmd && !cmd.gps)) { g.walk = false; return; }
+    if (Math.hypot(g.x - p.x, g.z - p.z) < 4) { G.gps = null; if (cmd && cmd.gps) cmd = null; UI.toast('📍 Você chegou ao destino!'); sfx('quest'); return; }
+    if (!g.walk) return;
+    if (G.t - g.chk.t > 4) { // parado há 4 s: recalcula a rota (até 3 vezes) e, se continuar preso, desiste
+      if (Math.hypot(p.x - g.chk.x, p.z - g.chk.z) < 2) { if (++g.rb > 3) { G.gps = null; cmd = null; UI.toast('GPS parou: algo bloqueia o caminho.'); return; } const r = gpsRoute(p.x, p.z, g.x, g.z); if (r) { g.wp = r; g.i = 0; cmd = null; } }
+      g.chk = { t: G.t, x: p.x, z: p.z };
+    }
+    if (cmd) return;
+    while (g.i < g.wp.length - 1 && Math.hypot(g.wp[g.i][0] - p.x, g.wp[g.i][1] - p.z) < 6) g.i++;
+    const w = g.wp[g.i], d = Math.hypot(w[0] - p.x, w[1] - p.z), inT = (x, z) => VILLAGES.some(q => isTown(q) && inTG(q, x, z));
+    const k = d > 26 && !inT(p.x, p.z) && !inT(w[0], w[1]) ? 26 / d : 1; // passos de até 26 m fora das vilas: o desvio local do jogo só enxerga isso; dentro de vila usa a rota de portões
+    cmd = { type: 'move', x: p.x + (w[0] - p.x) * k, z: p.z + (w[1] - p.z) * k, gps: true };
+  }
+  /* um toque: vai até o objetivo da história (NPC, lugar, ou o monstro/chefe mais próximo do passo). Devolve false se não há para onde ir */
+  function goObjective() {
+    if (G.gps) return gpsResume();
+    const s = G.main && curStep(), p = G.player; if (!s || !stepOpen(s) || G.dead) return false;
+    if (s.k === 'talk') { const n = NPCS.find(x => x.id === s.npc); if (!n) return false; cmd = { type: 'npc', npc: n }; return true; }
+    if (s.k === 'explore') { cmd = { type: 'move', x: s.x, z: s.z }; return true; }
+    if (s.k === 'do') return false;
+    const ms = G.mobs.filter(m => !m.dead && (s.k === 'boss' ? m.boss && m.id === s.boss : s.k === 'elite' ? m.elite && m.zone === s.zone : !m.boss && (s.zone ? m.zone === s.zone : s.mobs.includes(m.id))));
+    if (!ms.length) return false;
+    ms.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z)); const m = ms[0], d = Math.hypot(m.x - p.x, m.z - p.z);
+    if (m.boss || m.elite) { if (d < 30) { tmob = m; cmd = { type: 'attack', mob: m }; } else { const k = (d - 26) / d; cmd = { type: 'move', x: p.x + (m.x - p.x) * k, z: p.z + (m.z - p.z) * k }; } return true; } // chefe/elite: chega perto, o ataque é decisão sua
+    tmob = m; cmd = { type: 'attack', mob: m }; return true;
   }
   function storyTalk(npc) {
     const s = curStep(); if (!stepOpen(s) || s.k !== 'talk' || s.npc !== npc) return;
@@ -7942,7 +8327,7 @@ const Game = (() => {
   function useMountItem(i) {
     const p = G.player, id = p.mbox && p.mbox[i]; if (!id || !MOUNTS[id]) return;
     p.mbox.splice(i, 1);
-    if (!p.mounts.includes(id)) { p.mounts.push(id); mountRec(id); if (!p.lastMount) p.lastMount = id; recalc(); sfx('level'); UI.toast(MOUNTS[id].n + ' adicionada à coleção!'); UI.log('Nova montaria: ' + MOUNTS[id].n + '! Veja em Montarias [H].', 'loot'); }
+    if (!p.mounts.includes(id)) { p.mounts.push(id); mountRec(id); if (!p.lastMount) p.lastMount = id; recalc(); sfx('level'); UI.toast(MOUNTS[id].n + ' adicionada à coleção!'); UI.log('Nova montaria: ' + MOUNTS[id].n + '! Veja em Montarias' + TX(' [H]', '') + '.', 'loot'); }
     else { const r = mountRec(id); mountXp(r.lv < MOUNT_MAXLV ? mountXpNeed(r.lv) - r.xp : 0, id); UI.log(MOUNTS[id].n + ' repetida: sua montaria ganhou experiência.', 'loot'); }
     save(); UI.refreshPanels();
   }
@@ -7955,7 +8340,7 @@ const Game = (() => {
     p.mbox = p.mbox || []; if (p.mbox.length >= 20) return;
     const had = p.mounts.includes(id); p.mbox.push(id); useMountItem(p.mbox.length - 1); // entra na coleção na hora (sem passo extra na mochila)
     UI.float(m.x, (m.hgt || 2) + 1.9, m.z, MOUNTS[id].ic + ' Montaria: ' + MOUNTS[id].n, 'xp'); UI.toast('Montaria encontrada: ' + MOUNTS[id].n + '!');
-    UI.log('★ Montaria ' + (had ? 'repetida: ela ganhou um nível de experiência. ' : 'nova! ') + 'Abra Montarias [H]: Equipar dá o bônus, X monta, e ela evolui com XP (lute montado ou cavalgue).', 'lvl');
+    UI.log('★ Montaria ' + (had ? 'repetida: ela ganhou um nível de experiência. ' : 'nova! ') + 'Abra Montarias' + TX(' [H]', ' (🐎)') + ': Equipar dá o bônus, ' + TX('X', 'o botão 🐎') + ' monta, e ela evolui com XP (lute montado ou cavalgue).', 'lvl');
   }
   function restMount() {
     const p = G.player, mx = mstMax(), cost = 30; if ((p.mst == null ? mx : p.mst) >= mx) return { ok: false, msg: 'Sua montaria já está descansada.' };
@@ -7966,7 +8351,7 @@ const Game = (() => {
     const p = G.player, m = MOUNTS[id]; if (!m || p.mounts.includes(id)) return;
     if (EL(p) < m.lvl) { UI.log('Requer nível ' + dispLv(m.lvl, p.tier) + '.', 'sys'); return; }
     if (p.gold < m.price) { UI.log('Ouro insuficiente.', 'sys'); return; }
-    p.gold -= m.price; p.mounts.push(id); if (!p.lastMount) { p.lastMount = id; recalc(); } sfx('coin'); UI.log('Você adquiriu: ' + m.n + '! Equipada! Pressione X para montar.', 'loot'); UI.toast(m.n + ' adquirido!'); save(); UI.refreshPanels();
+    p.gold -= m.price; p.mounts.push(id); if (!p.lastMount) { p.lastMount = id; recalc(); } sfx('coin'); UI.log('Você adquiriu: ' + m.n + '! Equipada! ' + TX('Pressione X', 'Toque no botão 🐎') + ' para montar.', 'loot'); UI.toast(m.n + ' adquirido!'); save(); UI.refreshPanels();
   }
   function dismount(quiet) { const p = G.player; if (!p || !p.mount) return; p.mount = null; recalc(); if (!quiet) UI.toast('Você desmontou'); }
   function equipMount(id) {
@@ -8139,8 +8524,10 @@ const Game = (() => {
     UI.float(m.x, m.hgt, m.z, crit ? d + '!' : String(d), crit ? 'crit' : 'dmg');
     if (m.hp <= 0) killMob(m);
   }
+  const CAMP_DMG0 = .7;
   function playerDmg(m, mult, skill, so) {
     let d = G.stats.atk * mult * (.9 + rnd() * .2) * 100 / (100 + m.def);
+    { const el = EL(G.player); if (el < CAMP.endLv) d *= CAMP_DMG0 + (1 - CAMP_DMG0) * Math.max(0, el - 1) / (CAMP.endLv - 1); } // campo de treino: o começo é mais duro (dano ×CAMP_DMG0 no nível 1, sobe até ×1 no nível 29)
     if (skill) d *= G.stats.skillMul;
     if (m.mark > 0) d *= 1 + m.markV;
     if (so && so.exec && m.hp < m.maxHp * so.exec) d *= 2; // golpe executor
@@ -8437,6 +8824,7 @@ const Game = (() => {
     if (!mouse.in) return null; const r = pickRay(mouse.x, mouse.y); if (!r || r.d[1] >= -1e-4) return null;
     const t = -r.o[1] / r.d[1]; return [r.o[0] + r.d[0] * t, r.o[2] + r.d[2] * t];
   }
+  const SPLASH_R = 3, SPLASH_M = .6; // habilidades de alvo único: raio (m) e fração do dano para quem está perto do alvo
   function useSkill(i) {
     const p = G.player; if (G.state !== 'play' || G.dead || p.dash) return;
     const s0 = CLASSES[p.cls].skills[i]; if (!s0) return;
@@ -8454,15 +8842,21 @@ const Game = (() => {
       return true;
     };
     const tooFar = () => { cmd = { type: 'attack', mob: m }; if (throttle('far', 1)) UI.log('Alvo fora de alcance.', 'sys'); };
+    /* dano em raio: golpe de alvo único também acerta quem está colado ao alvo (SPLASH_M do dano). s.splash = raio próprio; 0 desliga */
+    const splash = (t, mult) => {
+      const r = s.splash == null ? SPLASH_R : s.splash; if (!r || s.multi) return; let n = 0;
+      for (const mm of G.mobs) { if (mm.dead || mm === t || Math.hypot(mm.x - t.x, mm.z - t.z) > r + mm.rad * .5) continue; hitMob(mm, mult * SPLASH_M, true); n++; }
+      if (n || k === 'proj') fxDisc(t.x, t.z, .3, r, .3, col, .45);
+    };
     if (k === 'melee') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
-      face(m.x, m.z); spend(); const dd = hitMob(m, s.m, true, s); fxDisc(m.x, m.z, .3, 2.2, .3, col, .5);
+      face(m.x, m.z); spend(); const dd = hitMob(m, s.m, true, s); fxDisc(m.x, m.z, .3, 2.2, .3, col, .5); splash(m, s.m);
       if (s.leech && dd) { const v = Math.round(dd * s.leech); p.hp = Math.min(p.maxHp, p.hp + v); UI.float(p.x, 2.8, p.z, '+' + v, 'heal'); fxBurst(p.x, 1.2, p.z, [1, .25, .3], 10, 2, .15); }
     } else if (k === 'proj') {
       if (!needT()) return; if (!reach(m, s.rng)) return tooFar();
       face(m.x, m.z); spend();
       if (s.focus && pet) pet.focus = m;
-      launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 26, col, size: .4, arrow: p.cls === 'huntress', onHit: t => { hitMob(t, s.m, true, s); if (s.slow && !t.dead) { t.slow = s.sdur; t.slowV = s.slow; } } });
+      launch({ x: p.x, y: 1.6, z: p.z, tgt: m, speed: 26, col, size: .4, arrow: p.cls === 'huntress', onHit: t => { hitMob(t, s.m, true, s); if (s.slow && !t.dead) { t.slow = s.sdur; t.slowV = s.slow; } splash(t, s.m); } });
       if (s.multi) { // alvos extras próximos ao alvo principal
         const ex = G.mobs.filter(mm => !mm.dead && mm !== m && Math.hypot(mm.x - m.x, mm.z - m.z) < 9 && Math.hypot(mm.x - p.x, mm.z - p.z) < s.rng + 4).sort((a, b) => Math.hypot(a.x - m.x, a.z - m.z) - Math.hypot(b.x - m.x, b.z - m.z)).slice(0, s.multi);
         ex.forEach((t2, j) => launch({ x: p.x, y: 1.6, z: p.z, tgt: t2, speed: 24 - j, col, size: .34, arrow: p.cls === 'huntress', onHit: t => hitMob(t, s.m * .8, true) }));
@@ -8671,7 +9065,7 @@ const Game = (() => {
       }
       return;
     }
-    const spd = G.stats.spd * (p.mount ? 1 + mountSpd(p.mount) : 1) * (TST.spd ? 3 : 1), kd = keyDir();
+    const spd = G.stats.spd * (p.mount ? 1 + mountSpd(p.mount) : 1) * (TST.spd ? 3 : 1), kd = keyDir(); gpsTick(kd);
     const go = (tx, tz, speed, steer) => {
       const ftx = tx, ftz = tz;
       let routed = false; // rota da vila já desvia de tudo: sem desvio local, que oscila em ruas estreitas
@@ -8754,13 +9148,15 @@ const Game = (() => {
   /* ---------- entrada ---------- */
   function cycleTarget() {
     const p = G.player, list = G.mobs.filter(m => !m.dead && Math.hypot(m.x - p.x, m.z - p.z) < 25).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
-    if (!list.length) { tmob = null; return; }
+    if (!list.length) { tmob = null; if (IS_TOUCH) UI.toast('🎯 Nenhum monstro por perto'); return; }
     const i = list.indexOf(tmob); tmob = list[(i + 1) % list.length];
+    if (IS_TOUCH) UI.toast('🎯 Alvo: ' + tmob.name + ' · Nv ' + dispLv(tmob.lvl, G.player.tier)); // no toque o registro fica escondido
   }
+  const TALK_R = 7;
+  function nearNpc() { const p = G.player; let b = null, bd = TALK_R; if (p) for (const n of NPCS) { const d = Math.hypot(n.x - p.x, n.z - p.z); if (d < bd) { bd = d; b = n; } } return b; }
   function talkNearest() {
-    const p = G.player; let b = null, bd = 6;
-    for (const n of NPCS) { const d = Math.hypot(n.x - p.x, n.z - p.z); if (d < bd) { bd = d; b = n; } }
-    if (b) { cmd = null; UI.openDialog(b.id); } else if (throttle('nonpc', 1)) UI.log('Nenhum NPC por perto.', 'sys');
+    const b = nearNpc();
+    if (b) { cmd = null; UI.openDialog(b.id); } else if (throttle('nonpc', 1)) { UI.log('Nenhum NPC por perto.', 'sys'); if (IS_TOUCH) UI.toast('💬 Ninguém por perto para conversar'); }
   }
 
   /* ---------- toque (celular/tablet): joystick, câmera por arrasto, pinça e botões de ação ---------- */
@@ -8804,11 +9200,11 @@ const Game = (() => {
     const jend = e => { if (e.pointerId !== jid) return; jid = null; joy.on = false; joy.x = joy.y = 0; knob.style.transform = ''; };
     base.addEventListener('pointerup', jend); base.addEventListener('pointercancel', jend);
     ui.querySelectorAll('.tact').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); act(b.dataset.k); }));
-    // tela cheia + paisagem (quando o navegador permitir)
-    const fs = ui.querySelector('.tfs');
-    if (fs) fs.addEventListener('click', () => {
-      const d = document.documentElement;
-      try { if (document.fullscreenElement) document.exitFullscreen(); else { (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } } catch (e) { /* sem suporte */ }
+    // tela cheia (Android e iPad). O Safari do iPhone não tem a API: o botão some; lá o jeito é "Adicionar à Tela de Início" (abre sem barra de endereço)
+    const fs = ui.querySelector('.tfs'), de = document.documentElement, reqFs = de.requestFullscreen || de.webkitRequestFullscreen;
+    if (fs && !reqFs) fs.remove();
+    else if (fs) fs.addEventListener('click', () => {
+      try { if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document); else { const r = reqFs.call(de); if (r && r.catch) r.catch(() => { }); } } catch (e) { /* sem suporte */ }
     });
     window.addEventListener('blur', () => { joy.on = false; joy.x = joy.y = 0; });
   }
@@ -9198,6 +9594,7 @@ const Game = (() => {
     return true;
   }
   function startPlay() {
+    G.gps = null;
     wx.t = Math.min(wx.t, 60); G.state = 'play'; G.dead = false; G.wasSafe = false; portalLock = true; loadAuto(); autoHome = null; autoPause = 0; autoOut.hp = autoOut.mp = false; populate(); cam.init = false; lastZone = null; combatT = -99;
     UI.hideMenu(); UI.hideDeath(); UI.closeAll();
     evTick('load'); // mostra a faixa e o aviso "Evento ativo" se já houver evento rodando
@@ -9244,10 +9641,10 @@ const Game = (() => {
     let back = 0; for (let i = 0; i < p.sk.length; i++) { back += skSpent(i, p.sk[i]); p.sk[i] = 0; }
     p.gold -= cost; p.sp += back; UI.log('Habilidades redistribuídas: ' + back + ' pontos devolvidos. Fale com o Mestre de Habilidades.', 'sys'); UI.refreshPanels();
   }
-  function starterKit(evo) { // modo história: arma e roupa básicas do tier atual + 10 poções de cada
+  function starterKit(evo) { // modo história: arma e roupa completa (elmo, peitoral, calça, luvas, botas) básicas do tier atual + 10 poções de cada
     const p = G.player;
     p.eq.w = buildItem('w', p.cls, 1, 0, WTYPES[p.cls][0], p.tier);
-    for (const s of ['a', 'l', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier);
+    for (const s of ['h', 'a', 'l', 'g', 'b']) p.eq[s] = buildItem(s, p.cls, 1, 0, undefined, p.tier); // elmo, peitoral, calça, luvas e botas
     if (evo) { p.pots.hp = Math.max(p.pots.hp, 10); p.pots.mp = Math.max(p.pots.mp, 10); p.feed = Math.max(p.feed || 0, 5); }
     else { p.pots.hp = 10; p.pots.mp = 10; p.feed = 5; }
     if (!evo) { // personagem novo: peças de grau 0 com poder 1 (ataque 1, defesa 1) e sem extras; o poder de verdade vem dos drops
@@ -9258,7 +9655,7 @@ const Game = (() => {
   function newGame(cls, look, name) {
     if (!CLASSES[cls]) return; initAudio(); if (!ACC) accLoad(); if (!ACC) createAccount('Jogador'); G.charId = 'c' + Date.now().toString(36);
     { let mx = ITEM_UID; for (const it of ACC.bank.items) if (it.id >= mx) mx = it.id + 1; ITEM_UID = mx; } newPlayer(cls, look ? fixLook(Object.assign({}, look)) : look, name); starterKit(); G.player.x = CAMP.sx; G.player.z = CAMP.sz; startPlay();
-    UI.log('Bem-vindo a Aldoria, ' + G.player.name + '! Você está no Campo de Treinamento: fale com o Instrutor Brann (clique nele ou aperte F). Você começa sem habilidades: gaste os ' + SK_PTS_LEVEL + ' pontos com o Mestre de Habilidades, ao lado dele.', 'sys'); save();
+    UI.log('Bem-vindo a Aldoria, ' + G.player.name + '! Você está no Campo de Treinamento: fale com o Instrutor Brann (' + TX('clique nele ou aperte F', 'toque nele ou no botão 💬') + '). Você começa sem habilidades: gaste os ' + SK_PTS_LEVEL + ' pontos com o Mestre de Habilidades, ao lado dele.', 'sys'); save();
   }
   /* ---------- criação de personagem ---------- */
   const NAMES_M = ['Aldric', 'Bram', 'Cassian', 'Dorian', 'Evander', 'Fenris', 'Gareth', 'Hadrian', 'Ivor', 'Joren', 'Kael', 'Lucan', 'Magnus', 'Orin', 'Rowan', 'Soren', 'Tarik', 'Varian'];
@@ -9313,6 +9710,8 @@ const Game = (() => {
     save(); // grava conversões e presentes recebidos no load
   }
   function cycleQuality() { return R.setQuality(R.qi + 1); }
+  const ecoOn = () => eco;
+  function toggleEco() { eco = !eco; try { localStorage.setItem('aldoria_eco', eco ? '1' : '0'); } catch (e) { } R.eco = eco; R.resize(true); UI.log(eco ? 'Economia de energia ligada (40 FPS).' : 'Economia de energia desligada.', 'sys'); }
   function deleteSave(id) { deleteChar(id); UI.showMenu(hasSave()); }
   function toggleMute() { G.mute = !G.mute; SND.mute(G.mute); UI.log(G.mute ? 'Som desligado.' : 'Som ligado.', 'sys'); }
 
@@ -9661,8 +10060,10 @@ const Game = (() => {
   function frame(now) {
     requestAnimationFrame(frame);
     if (document.hidden) { last = now; return; }
+    if (eco) { ecoAcc += now - ecoLast; ecoLast = now; if (ecoAcc < ECO_MS - 5) return; ecoAcc = Math.min(ecoAcc - ECO_MS, ECO_MS); } // ~40 FPS: o acumulador alterna quadros (60 Hz desenha 2 de cada 3; 120 Hz, 1 de cada 3)
     const rdt = Math.max(0, (now - last) / 1000), dt = Math.min(.05, rdt); last = now; G.t += dt;
-    autoQuality(rdt);
+    if (!eco) autoQuality(rdt);
+    if (G.state === 'play') { skipPrologue(); tutAuto(); }
     if (G.state === 'play' && !UI.paused()) update(dt);
     updateCamera(dt); updateTime(dt); render(); weatherAudio();
     if (G.state === 'play') UI.update(G);
@@ -9673,6 +10074,7 @@ const Game = (() => {
       document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;background:#111;font:20px sans-serif;text-align:center;padding:20px">Seu navegador não suporta WebGL2, necessário para Aldoria.<br>' + e.message + '</div>');
       return;
     }
+    R.eco = eco; R.resize(true);
     registerExtraMeshes(R); registerOrganicMeshes(R); // meshes_extra.js: primitivas extras e malhas orgânicas, antes de modelos e mundo
     loadSkins(R);
     world = buildWorld(R, obstacles);
@@ -9698,7 +10100,7 @@ const Game = (() => {
   });
   return {
     boot, hasSave, _adminHook, account, accounts, createAccount, switchAccount, logoutAccount, deleteAccount, bankPut, bankTake, itemMove, fuseItems, bankGold, teleport, newGame, createOpen, createSet, createCls, createName, createRandomName, createRandom, createRot, createZoom, createToggle3d, createBack, createGo, continueGame, deleteSave, save, useSkill, usePotion, equip, unequip, sellItem, buy, enhance, jewel, deleteItem, findItem,
-    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
+    mainEv, sound: (n, o) => sfx(n, o), setVol: (k, v) => SND.setVol(k, v), getVol: () => SND.getVol(), soundNames: () => SND.names(), portrait, encDialog: id => ENC.dialog(id), encAct: (id, k) => ENC.act(id, k), addAttr, resetAttr, toMenu, cycleQuality, toggleEco, ecoOn, qualityName, setLook, buyMount, toggleMount, equipMount, useMountItem, restMount, mountLv, mstMax, mountXp, acceptQuest, goObjective, nearNpc, gpsGo, gpsCancel, turnInQuest, storyTalk, shopStock, buyItem, buyFeed, learnSkill, raiseSkill, resetSkills, claimDaily, dailyReward, canEvolve, evolve, respawn, toggleMute, setAuto, toggleAutoCombat,
     _dbg: { get enc() { return ENC; }, get world() { return world; }, sim(n, d) { for (let i = 0; i < n; i++) { G.t += d || .05; update(d || .05); } }, get R() { return R; }, get obstacles() { return obstacles; }, setTime(h) { G.tod = h; }, setWeather(id, lv) { wx.id = id; wx.t = 9999; wx.level = lv == null ? (id === 'rain' ? .65 : id === 'storm' ? 1 : 0) : lv; wx.fogK = id === 'fog' ? 1 : 0; }, wx, get mobs() { return G.mobs; }, get items() { return items; }, get pet() { return pet; }, get tmob() { return tmob; }, setTarget(m) { tmob = m; }, recalc, cam, pickRay, die, killMob, teleport, clickPortal, moveTo(x, z) { cmd = { type: 'move', x, z }; }, talkTo(id) { cmd = { type: 'npc', npc: NPCS.find(n => n.id === id) }; }, attack(m) { tmob = m; cmd = { type: 'attack', mob: m }; }, route(x, z, tx, tz) { const e = { x, z }; townRoute(e, tx, tz); return e.path; }, get cmd() { return cmd; }, checkGifts, dmgPlayer, xpFor, retierMobs, spawnPet, get G() { return G; } },
   };
 })();

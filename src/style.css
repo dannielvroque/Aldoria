@@ -759,3 +759,34 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 @media (orientation: landscape) {
   #ui.touch .bgold { grid-template-columns: 1fr; } #ui.touch .bgold .igold { grid-row: auto; } #ui.touch .bgold .bg-r .btn { flex: 1; min-width: 0; padding: 3px 4px; }
 }
+
+/* ---------- toque: Inventário sem o boneco (equipados em 4×2) e Personagem/Missões/Níveis compactos ---------- */
+#ui.touch .eqbox.flat { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: 50px; gap: 5px; padding: 5px; }
+#ui.touch .eqbox.flat .es.mnt { width: auto; height: auto; justify-self: stretch; }
+#ui.touch .eqbox.flat .es .ei { font-size: 22px; margin-top: -9px; } #ui.touch .eqbox.flat .es small { font-size: 9.5px; }
+#ui.touch #p-inv .eqw { gap: 6px; } #ui.touch #p-inv .itabs button { padding: 4px 12px; font-size: 13px; }
+#ui.touch #p-inv .foot-note { display: none; } #ui.touch #p-inv .igold { padding: 4px 10px; } #ui.touch #p-inv .igold b { font-size: 16px; }
+#ui.touch #p-char .ph, #ui.touch #p-quest .ph, #ui.touch #p-lv .ph, #ui.touch #p-inv .ph { padding: 5px 10px; } 
+#ui.touch #p-char .ph h2, #ui.touch #p-quest .ph h2, #ui.touch #p-lv .ph h2, #ui.touch #p-inv .ph h2 { font-size: 16px; }
+#ui.touch #p-char .pb, #ui.touch #p-quest .pb, #ui.touch #p-lv .pb { padding: 7px 8px 9px; font-size: 12px; }
+#ui.touch .pb h3 { font-size: 13px; margin: 7px 0 4px; } #ui.touch .pb h3 small { font-size: 10px; }
+#ui.touch .ch-head { gap: 8px; margin-bottom: 6px; } #ui.touch .ch-ic { width: 40px; height: 40px; font-size: 22px; } #ui.touch .ch-head h3 { font-size: 16px; } #ui.touch .role { font-size: 11px; }
+#ui.touch .stats { gap: 3px 6px; } #ui.touch .stat { padding: 3px 6px; font-size: 11.5px; }
+#ui.touch .setb { margin: 5px 0 6px; padding: 4px 8px; font-size: 11px; }
+#ui.touch .attrs { gap: 3px; } #ui.touch .attr { gap: 6px; padding: 4px 6px; } #ui.touch .attr .ai { font-size: 16px; width: 20px; }
+#ui.touch .attr .at b { font-size: 12px; } #ui.touch .attr .at small { font-size: 9.5px; line-height: 1.15; } #ui.touch .attr .av { font-size: 14px; min-width: 22px; }
+#ui.touch .attr .btn.mini { padding: 5px 7px; font-size: 11px; }
+#ui.touch .tabs { gap: 4px; margin-bottom: 6px; } #ui.touch .tab { padding: 4px 8px; font-size: 11.5px; }
+#ui.touch .au-intro, #ui.touch .lv-intro { font-size: 11px; margin-bottom: 5px; line-height: 1.3; }
+#ui.touch .qc { padding: 6px 8px; margin-bottom: 5px; } #ui.touch .qc-h b { font-size: 12.5px; } #ui.touch .qc-t, #ui.touch .qc-step { font-size: 11.5px; } #ui.touch .qc-r, #ui.touch .qc-go { font-size: 11px; }
+#ui.touch .qc .btn { margin-top: 5px; padding: 6px 10px; } #ui.touch .badge { font-size: 9.5px; padding: 1px 6px; }
+#ui.touch .chap { padding: 4px 7px; margin-bottom: 3px; font-size: 11.5px; gap: 6px; } #ui.touch .chap small { font-size: 10px; white-space: nowrap; }
+#ui.touch .achs { grid-template-columns: 1fr; gap: 4px; } #ui.touch .ach { padding: 5px 7px; } #ui.touch .ach > span { font-size: 16px; } #ui.touch .ach small { font-size: 10.5px; }
+#ui.touch .lv-t { gap: 3px; } #ui.touch .lv-r { gap: 7px; padding: 4px 7px; font-size: 12px; } #ui.touch .lv-n { min-width: 50px; font-size: 12px; } #ui.touch .lv-r small { font-size: 10px; }
+/* toque: 💬 apagado quando não há ninguém por perto para conversar */
+#ui.touch .tact.off { opacity: .4; }
+#ui.touch .tact.near { border-color: #ffe08a; box-shadow: 0 0 10px rgba(255, 224, 138, .7); }
+/* ❗: História e Secundárias em blocos separados (não confundir as duas) */
+#ui.touch .objpop .op-k { display: block; margin: 6px 0 1px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+#ui.touch .objpop .op-k:first-child { margin-top: 0; }
+#ui.touch .objpop li.ok { color: #9fe08a; }
