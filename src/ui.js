@@ -747,18 +747,27 @@ const UI = (() => {
     cv.addEventListener('mousedown', e => { drag = [e.clientX, e.clientY]; });
     window.addEventListener('mouseup', () => { drag = null; });
     window.addEventListener('mousemove', e => { if (!drag || !st.mapK) return; const s = sc(); st.mapC = [st.mapC[0] - (e.clientX - drag[0]) * s / st.mapK, st.mapC[1] - (e.clientY - drag[1]) * s / st.mapK]; drag = [e.clientX, e.clientY]; st.mapView = 'free'; mapClamp(); mapReq(); });
-    /* toque: um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca o destino do GPS */
+    /* toque: um dedo arrasta, dois dedos fazem pinça (zoom), toque curto marca o destino do GPS.
+       Dedos "fantasma" (soltar perdido, aba trocada) são descartados: sem isso qualquer toque virava pinça e o mapa pulava de lugar. */
     const pts = new Map(); let tap = null, pinch = 0;
-    cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) { } pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 1) tap = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false }; else { tap = null; const [a, b] = [...pts.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
-    cv.addEventListener('pointermove', e => {
-      if (e.pointerType !== 'touch' || !pts.has(e.pointerId) || !st.mapK) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); const s = sc();
-      if (pts.size === 1) { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true; if (!tap || tap.moved) { st.mapC = [st.mapC[0] - (e.clientX - prev[0]) * s / st.mapK, st.mapC[1] - (e.clientY - prev[1]) * s / st.mapK]; st.mapView = 'free'; mapClamp(); mapReq(); } }
-      else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), r = cv.getBoundingClientRect(); if (pinch > 0) { mapZoom(d / pinch, ((a[0] + b[0]) / 2 - r.left) * s, ((a[1] + b[1]) / 2 - r.top) * s); mapReq(); } pinch = d; }
+    const drop = id => { pts.delete(id); if (pts.size < 2) pinch = 0; if (!pts.size) tap = null; };
+    const fresh = () => { const t = performance.now(); for (const [id, q] of pts) if (t - q.t > 1500) drop(id); };
+    cv.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch') return; e.preventDefault(); fresh(); try { cv.setPointerCapture(e.pointerId); } catch (x) { }
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() });
+      if (pts.size === 1) tap = { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false };
+      else { tap = null; const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
     });
-    const up = e => { if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return; pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; if (tap && !tap.moved && pts.size === 0 && performance.now() - tap.t < 500) mapTap(tap.x, tap.y); if (!pts.size) tap = null; };
-    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => { pts.delete(e.pointerId); pinch = 0; tap = null; });
+    cv.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'touch' || !pts.has(e.pointerId) || !st.mapK) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now() }); const s = sc();
+      if (pts.size === 1) { if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap.moved = true; if (!tap || tap.moved) { st.mapC = [st.mapC[0] - (e.clientX - prev.x) * s / st.mapK, st.mapC[1] - (e.clientY - prev.y) * s / st.mapK]; st.mapView = 'free'; mapClamp(); mapReq(); } }
+      else if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = cv.getBoundingClientRect(); if (pinch > 4 && d > 4) { mapZoom(Math.max(.6, Math.min(1.6, d / pinch)), ((a.x + b.x) / 2 - r.left) * s, ((a.y + b.y) / 2 - r.top) * s); mapReq(); } pinch = d; }
+    });
+    const up = e => { if (e.pointerType !== 'touch' || !pts.has(e.pointerId)) return; const t0 = tap; const n = pts.size; drop(e.pointerId); if (t0 && !t0.moved && n === 1 && e.timeStamp - t0.t < 600) mapTap(t0.x, t0.y); }; // tempo pelo carimbo do evento: quadro lento não atrasa a conta
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => drop(e.pointerId)); cv.addEventListener('lostpointercapture', e => drop(e.pointerId));
+    window.addEventListener('pointerup', e => { if (pts.has(e.pointerId)) drop(e.pointerId); }); window.addEventListener('pointercancel', e => drop(e.pointerId)); window.addEventListener('blur', () => { pts.clear(); tap = null; pinch = 0; });
   }
-  function mapTap(cx, cy) { const w = mapToWorld(cx, cy); if (!w) return; st.mapPin = w; mapGpsSync(); mapReq(); }
+  function mapTap(cx, cy) { const w = mapToWorld(cx, cy);  if (!w) return; st.mapPin = w; mapGpsSync(); mapReq(); }
   const fmDist = d => d >= 1000 ? (d / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(d) + ' m';
   function mapGpsSync() { // barra do mapa: confirma o destino tocado, ou mostra o GPS ativo
     const el = E.p_map && E.p_map.querySelector('.map-gps'); if (!el || !G.player) return; const pin = st.mapPin, g = G.gps, p = G.player; let h = '';
@@ -920,7 +929,8 @@ const UI = (() => {
     const here = regionAt(p.x, p.z), zn = G.zone, one = REG[view] || null;
     let h = '<div class="tabs map-tabs">' + [['world', '🌍 Continente']].concat(REGIONS.map(g => [g.id, g.n.replace(/^(Reino|Deserto|Cratera) d[eo] /, '')])).map(([id, l]) => `<button class="tab${view === id ? ' on' : ''}" data-a="mapv" data-id="${id}">${esc(l)}</button>`).join('') + '</div>';
     h += `<div class="ms-h">Você está em</div><div class="ms-b">${esc(zn ? zn.name : '')}<small>${esc(here.n)}${zn ? ' · ' + zlv(zn) : ''}</small></div>`;
-    if (ob) h += `<div class="ms-h">Objetivo da história</div><div class="ms-b obj">❗ ${esc(ob[2])}<small>${esc(stepLine(MAIN[G.main.i]))}</small></div>`;
+    if (ob && G.gps) h += `<div class="ms-h">Destino do GPS</div><div class="ms-b obj">🧭 ${esc(ob[2])}<small>${fmDist(Math.hypot(ob[0] - G.player.x, ob[1] - G.player.z))} · o personagem anda sozinho; mexer no joystick pausa</small></div>`;
+    else if (ob) h += `<div class="ms-h">Objetivo da história</div><div class="ms-b obj">❗ ${esc(ob[2])}<small>${esc(stepLine(MAIN[G.main.i]))}</small></div>`;
     h += `<div class="ms-h">${one ? 'Zonas e monstros' : 'Biomas'}</div>`;
     if (one) for (const z of one.zones) h += `<div class="ms-r"><b>${esc(z.name)}</b><small>${zlv(z)}</small>${MOBS[z.id] ? `<small class="mobs">${MOBS[z.id].map(m => esc(m.n)).join(', ')}${ELITES[z.id] ? '<br>★ Elites: ' + ELITES[z.id].map(m => esc(m.n)).join(', ') : ''}</small>` : '<small class="mobs">Vila segura</small>'}</div>`;
     for (const g of (one ? [] : REGIONS)) {

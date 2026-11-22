@@ -509,11 +509,13 @@ const Game = (() => {
     const p = G.player; if (Math.hypot(p.x - s.x, p.z - s.z) < s.r) { UI.toast('Descoberto: ' + s.place); stepDone(); }
   }
   /* ---------- GPS: toque no mapa marca um destino; o personagem anda sozinho por uma rota pela terra ---------- */
-  function gpsRoute(x0, z0, x1, z1) { // A* (8 vizinhos) numa grade de 20 m que só passa por terra; devolve pontos [x, z] suavizados, ou null
+  function gpsRoute0(x0, z0, x1, z1) { // A* (8 vizinhos) numa grade de 20 m que só passa por terra; devolve pontos [x, z] suavizados, ou null
     const S = 20, nx = Math.ceil((WB.x1 - WB.x0) / S), nz = Math.ceil((WB.z1 - WB.z0) / S), N = nx * nz;
     const ci = x => Math.max(0, Math.min(nx - 1, Math.floor((x - WB.x0) / S))), cj = z => Math.max(0, Math.min(nz - 1, Math.floor((z - WB.z0) / S)));
     const cx = i => WB.x0 + (i + .5) * S, cz = j => WB.z0 + (j + .5) * S, si = ci(x0), sj = cj(z0), ti = ci(x1), tj = cj(z1), s0 = sj * nx + si, t0 = tj * nx + ti;
-    const ok = (i, j) => (j * nx + i === t0) || coastD(cx(i), cz(j)) > 6, g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+    const near = (v, x, z) => Math.abs(x - v.cx) < v.hs + 8 && Math.abs(z - v.cz) < v.hs + 8; // muralhas: a rota contorna vilas, só entra na do começo e na do destino
+    const avoid = VILLAGES.filter(v => isTown(v) && !near(v, x0, z0) && !near(v, x1, z1)), walled = (x, z) => avoid.some(v => near(v, x, z));
+    const ok = (i, j) => (j * nx + i === t0) || (coastD(cx(i), cz(j)) > 6 && !walled(cx(i), cz(j))), g = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), done = new Uint8Array(N);
     const open = [[Math.hypot(ti - si, tj - sj) * S, s0]]; g[s0] = 0; let found = false;
     while (open.length) {
       let b = 0; for (let q = 1; q < open.length; q++) if (open[q][0] < open[b][0]) b = q;
@@ -528,10 +530,20 @@ const Game = (() => {
     }
     if (!found) return null;
     const pts = []; for (let c = t0; c >= 0; c = from[c]) { pts.push([cx(c % nx), cz((c / nx) | 0)]); if (c === s0) break; } pts.reverse(); pts[pts.length - 1] = [x1, z1];
-    const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 8); for (let k = 1; k < n; k++) if (coastD(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n) < 4) return false; return true; };
+    const clear = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / 8); for (let k = 1; k < n; k++) { const x = a[0] + (b[0] - a[0]) * k / n, z = a[1] + (b[1] - a[1]) * k / n; if (coastD(x, z) < 4 || walled(x, z)) return false; } return true; };
     const out = []; let a = [x0, z0], k = 0; // puxa o fio: do ponto atual, vai ao ponto mais longe que ainda se alcança em linha reta
     while (k < pts.length) { let far = k; for (let q = pts.length - 1; q > k; q--) if (clear(a, pts[q])) { far = q; break; } out.push(pts[far]); a = pts[far]; k = far + 1; }
     return out;
+  }
+  /* o campo de treino é uma ilha de ponte estreita (~6 m, invisível na grade de 20 m): a rota entra e sai por ela passando pelo eixo da ponte */
+  function gpsRoute(x0, z0, x1, z1) {
+    const inCamp = (x, z) => Math.hypot(x - CAMP.x, z - CAMP.z) < CAMP.ro + 4, ax = d => [CAMP.x + CAMP.ux * d, CAMP.z + CAMP.uz * d];
+    const bridge = [ax(CAMP.ro + 8), ax(CAMP.ro), ax(CAMP.ri - 2)]; // da margem até o portão do campo
+    const a = inCamp(x0, z0), b = inCamp(x1, z1);
+    if (a && b) return [[x1, z1]];
+    if (b) { const r = gpsRoute0(x0, z0, bridge[0][0], bridge[0][1]); return r ? r.concat(bridge.slice(1), [[x1, z1]]) : null; }
+    if (a) { const r = gpsRoute0(bridge[0][0], bridge[0][1], x1, z1); return r ? bridge.slice().reverse().concat(r) : null; }
+    return gpsRoute0(x0, z0, x1, z1);
   }
   function gpsGo(x, z, name) {
     const p = G.player; if (!p || G.dead) return false; const q = { x, z }; landClamp(q);
@@ -552,7 +564,9 @@ const Game = (() => {
     }
     if (cmd) return;
     while (g.i < g.wp.length - 1 && Math.hypot(g.wp[g.i][0] - p.x, g.wp[g.i][1] - p.z) < 6) g.i++;
-    const w = g.wp[g.i]; cmd = { type: 'move', x: w[0], z: w[1], gps: true };
+    const w = g.wp[g.i], d = Math.hypot(w[0] - p.x, w[1] - p.z), inT = (x, z) => VILLAGES.some(q => isTown(q) && inTG(q, x, z));
+    const k = d > 26 && !inT(p.x, p.z) && !inT(w[0], w[1]) ? 26 / d : 1; // passos de até 26 m fora das vilas: o desvio local do jogo só enxerga isso; dentro de vila usa a rota de portões
+    cmd = { type: 'move', x: p.x + (w[0] - p.x) * k, z: p.z + (w[1] - p.z) * k, gps: true };
   }
   /* um toque: vai até o objetivo da história (NPC, lugar, ou o monstro/chefe mais próximo do passo). Devolve false se não há para onde ir */
   function goObjective() {
