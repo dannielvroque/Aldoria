@@ -315,7 +315,7 @@ const UI = (() => {
       if (free) { winPlace(k); el.style.zIndex = 14 + st.wins.indexOf(k); }
       else if (w) { el.style.left = ''; el.style.top = ''; el.style.zIndex = ''; }
     });
-    setCls(root, 'side', st.modal === 'dlg' && !!st.side);
+    setCls(root, 'side', st.modal === 'dlg' && !!st.side); setCls(root, 'sidebank', st.modal === 'dlg' && st.side === 'bank');
     st.panel = st.modal || st.wins[st.wins.length - 1] || null;
     WIN_BTN.forEach(k => setCls(E.btn[k], 'on', st.wins.includes(k)));
   }
@@ -401,7 +401,7 @@ const UI = (() => {
       g = `<div class="bag mats">${g}</div><div class="dim pad">Pedras de adicional caem de monstros. Leve-as ao Joalheiro.</div>`;
     }
     const tabs = `<div class="itabs"><button class="${tab === 'bag' ? 'on' : ''}" data-a="itab" data-k="bag">Mochila <small>${p.inv.length}/${BAG}</small></button><button class="${tab === 'mat' ? 'on' : ''}" data-a="itab" data-k="mat">Materiais</button></div>`;
-    const hint = st.side === 'bank' ? 'Clique num item da mochila para guardar no baú.' : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para ver os atributos e escolher: equipar, guardar, vender ou mover.');
+    const hint = st.side === 'bank' ? TX('Clique num item da mochila para guardar no baú.', 'Toque num item da mochila e escolha "Guardar no baú".') : st.side === 'smith' ? 'Escolha um item equipado ou da mochila para refinar.' : st.side === 'jewel' ? 'Escolha um item equipado ou da mochila para o adicional.' : TX('Clique ou arraste para equipar · botão direito: opções.', 'Toque num item para ver os atributos e escolher: equipar, guardar, vender ou mover.');
     setBody(E.b_inv, `<div class="eqw">${l}${tabs}${g}<div class="foot-note">${hint}</div><div class="igold"><span>🪙</span><b>${fmt(p.gold)}</b><small>ouro</small></div></div>`);
     { const cv = E.b_inv.querySelector('canvas.pv'); if (cv && Game.portrait) { if (st.pvYaw == null) st.pvYaw = .6; Game.portrait(cv, st.pvYaw); } }
   }
@@ -1023,7 +1023,7 @@ const UI = (() => {
         else if (!it) g += `<div class="bi empty" data-zone="bank" data-slot="${i}"></div>`;
         else g += `<div class="bi it r${it.rar}${noUse(it) ? ' nouse' : ''}${st.carry && st.carry.id === it.id ? ' carry' : ''}" data-zone="bank" data-slot="${i}" data-a="bank-take" data-id="${it.id}" data-drag="bank" draggable="true" title="${esc(itemTip(it, p.eq[it.slot], false).split('\n').slice(0, -1).join('\n') + '\nClique para pegar e mover · Shift+clique: retirar')}" style="--rc:${rcol(it)}"><span class="ei">${iconOf(it, ic)}</span>${plusB(it)}</div>`;
       }
-      h += `<div class="bankw"><div class="bpages">${Array.from({ length: np }, (_, i) => `<button class="${i === pg ? 'on' : ''}" data-a="bank-page" data-n="${i}">${i + 1}</button>`).join('')}<small>${B.items.length}/${mx} · clique para pegar e mover</small></div><div class="bag bankg" data-drop="bank">${g}</div>`;
+      h += `<div class="bankw"><div class="bpages">${Array.from({ length: np }, (_, i) => `<button class="${i === pg ? 'on' : ''}" data-a="bank-page" data-n="${i}">${i + 1}</button>`).join('')}<small>${B.items.length}/${mx} · ${TX('clique para pegar e mover', 'toque num item: retirar ou mover')}</small></div><div class="bag bankg" data-drop="bank">${g}</div>`;
       const Bt = (n, lab, dis) => `<button class="btn" data-a="bank-gold" data-n="${n}"${dis ? ' disabled' : ''}>${lab}</button>`;
       h += `<div class="bgold"><div class="igold"><span>💰</span><b>${fmt(B.gold)}</b><small>ouro no baú</small></div><div class="bg-r"><span>Guardar</span>${Bt(100, '100', p.gold < 100)}${Bt(1000, '1.000', p.gold < 1000)}${Bt(p.gold, 'Tudo', p.gold <= 0)}</div><div class="bg-r"><span>Retirar</span>${Bt(-100, '100', B.gold < 100)}${Bt(-1000, '1.000', B.gold < 1000)}${Bt(-B.gold, 'Tudo', B.gold <= 0)}</div></div></div>`;
     } else if (id === 'shop') {
