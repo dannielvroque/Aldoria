@@ -790,3 +790,6 @@ html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent
 #ui.touch .objpop .op-k { display: block; margin: 6px 0 1px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
 #ui.touch .objpop .op-k:first-child { margin-top: 0; }
 #ui.touch .objpop li.ok { color: #9fe08a; }
+/* ícones desenhados de armadura/acessório (ARMART em art.js): do tamanho do emoji que substituem */
+.ei > svg.aic, .it-ic > svg.aic { width: 1.35em; height: 1.35em; display: block; margin: auto; }
+.ei:has(> svg.aic) { line-height: 0; }
