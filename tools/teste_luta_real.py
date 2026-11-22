@@ -22,7 +22,7 @@ JS = """([levels, dlv, trials, TIER, GEAR, SK, HPF]) => { const TM = TMUL[TIER];
       for (let t = 0; t < trials; t++) {
         p.cls = cls; p.tier = TIER; p.lvl = lvForEff(L, TIER); p.eq = { w: null, h: null, a: null, l: null, g: null, b: null, c: null };
         for (const s of ['w', 'h', 'a', 'l', 'g', 'b', 'c']) { if (GEAR === 'carry' && TIER > 0) { const it = buildItem(s, cls, 50, 3, s === 'w' ? WTYPES[cls][0] : undefined, TIER - 1); it.plus = 9; p.eq[s] = it; } else p.eq[s] = buildItem(s, cls, L, 0, s === 'w' ? WTYPES[cls][0] : undefined, TIER); }
-        const ap = 5 * (L - 1), mn = CLASSES[cls].main, A = { str: 0, dex: 0, int: 0, vit: 0, spi: 0 }; A[mn] = Math.round(ap * .7); A.vit = ap - A[mn]; p.attr = A;
+        const ap = apAt(p.lvl), mn = CLASSES[cls].main, A = { str: 0, dex: 0, int: 0, vit: 0, spi: 0 }; A[mn] = Math.round(ap * .7); A.vit = ap - A[mn]; p.attr = A;
         p.sk = CLASSES[cls].skills.map((_, i) => SK_LEARN[i].lvl <= L && !(CLASSES[cls].skills[i].tier > 0) ? 1 : 0); p.cd = p.cd.map(() => 0);
         d.recalc(); p.hp = p.maxHp; p.mp = p.maxMp; G.dead = false; p.shield = { hp: 0, t: 0 }; for (const k in p.buffs) p.buffs[k].t = 0;
         const ml = Math.max(1, L + dlv + (kind === 'champ' ? 1 : 0)), s = mobStats(ml, kind === 'elite' ? ELITE_M : kind === 'champ' ? { hpm: 7, atkm: 1.9, xpm: 18, hpk: ELITE_HPK } : kind === 'boss' ? { hpm: 13, atkm: 1.7, xpm: 14, hpk: BOSS_HPK } : null);

@@ -37,7 +37,10 @@ const gradeTab = tier => GRADE_TABLE[Math.max(0, Math.min(GRADE_TABLE.length - 1
 const gradeOfLvl = (lvl, tier) => { const t = gradeTab(tier), d = dispLv(lvl, tier | 0); let g = t[0][1]; for (const [from, gr] of t) if (d >= from) g = gr; return g; };
 const gradeMin = tier => gradeTab(tier)[0][1];
 const lvlOfGrade = (g, tier) => { for (let l = 1; l <= MAXLV; l++) if (gradeOfLvl(l, tier) >= g) return l; return MAXLV; };
-const ptsAt = (k, lvl, tier) => Math.floor(k * (effLv(lvl, tier) - 1)); // pontos acumulados (k por nível efetivo): o total no teto é o mesmo de antes
+const ptsAt = (k, lvl, tier) => Math.floor(k * (effLv(lvl, tier) - 1)); // pontos acumulados (k por nível efetivo): o total no teto é o mesmo de antes (pontos de habilidade)
+/* atributos: 5 pontos por nível EXIBIDO (apAt); cada ponto pesa attrW(fase) no recalc, então o poder no teto da fase é o mesmo de quando eram 245 pontos */
+const apAt = lvl => AP_PER_LEVEL * (lvl - 1);
+const attrW = tier => (MAXLV - 1) / Math.max(1, lvCap(tier) - 1);
 
 /* kinds de habilidade: melee, proj, pierce, aoe_self, aoe_ground, dash, buff, shield, heal, mark, summon */
 /* main: atributo que escala o ataque (str ou int). dodge: chance base de esquiva. aspd: velocidade de ataque básico */
@@ -702,12 +705,14 @@ const DEFLOOK = {
 
 /* ===== atributos (pontos de status) ===== */
 const ATTRS = {
-  str: { n: 'Força', ic: '💪', d: '+0,8% de ataque por ponto (Vanguarda)' },
-  dex: { n: 'Destreza', ic: '🎯', d: '+0,3% de crítico, +0,15% de esquiva e +0,1% de velocidade por ponto; Caçadora: também +0,7% de ataque' },
-  int: { n: 'Inteligência', ic: '🔮', d: '+2% de mana e +0,8% de dano das habilidades por ponto; Arcanista e Invocador: também +0,8% de ataque' },
-  vit: { n: 'Vitalidade', ic: '❤️', d: '+1,2% de vida e +0,6% de defesa por ponto' },
-  spi: { n: 'Cura', ic: '✨', d: '+1,5% de cura das habilidades e +1% de efeito das poções por ponto' },
+  // {n} = efeito de 1 ponto com peso 1; a tela multiplica por attrW(fase) (attrDesc)
+  str: { n: 'Força', ic: '💪', d: '+{0.8}% de ataque por ponto (Vanguarda)' },
+  dex: { n: 'Destreza', ic: '🎯', d: '+{0.3}% de crítico, +{0.15}% de esquiva e +{0.1}% de velocidade por ponto; Caçadora: também +{0.7}% de ataque' },
+  int: { n: 'Inteligência', ic: '🔮', d: '+{2}% de mana e +{0.8}% de dano das habilidades por ponto; Arcanista e Invocador: também +{0.8}% de ataque' },
+  vit: { n: 'Vitalidade', ic: '❤️', d: '+{1.2}% de vida e +{0.6}% de defesa por ponto' },
+  spi: { n: 'Cura', ic: '✨', d: '+{1.5}% de cura das habilidades e +{1}% de efeito das poções por ponto' },
 };
+const attrDesc = (k, tier) => ATTRS[k].d.replace(/\{([\d.]+)\}/g, (_, v) => String(+(v * attrW(tier)).toFixed(3)).replace('.', ','));
 const ATTR_KEYS = Object.keys(ATTRS);
 /* aprender habilidades com o Mestre de Habilidades (índice = posição na barra). Níveis 1–10 com pontos de habilidade (1 por nível) */
 /* aprender: nível mínimo e custo em PONTOS DE HABILIDADE (3 por nível, gastos no Mestre de Habilidades); price é legado (não usado) */

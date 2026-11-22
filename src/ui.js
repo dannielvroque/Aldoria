@@ -422,7 +422,7 @@ const UI = (() => {
     h += `<h3>Atributos <small>${p.ap > 0 ? '<b class="gold">' + p.ap + ' pontos disponíveis</b>' : 'sem pontos · +' + AP_PER_LEVEL + ' por nível'}</small></h3><div class="attrs">`;
     for (const k of ATTR_KEYS) {
       const A = ATTRS[k];
-      h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${A.d}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
+      h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${attrDesc(k, p.tier)}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
     }
     h += `</div><button class="btn ghost mini" data-a="attr-reset" title="Devolve todos os pontos">↺ Redistribuir (💰 ${fmt(50 * Math.round(ELV()))})</button>`;
     h += `<div class="dim pad">${TX('Habilidades: tecla <kbd>V</kbd>', 'Habilidades: fale com o Mestre de Habilidades')}</div>`;

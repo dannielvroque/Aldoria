@@ -1667,7 +1667,10 @@ const gradeTab = tier => GRADE_TABLE[Math.max(0, Math.min(GRADE_TABLE.length - 1
 const gradeOfLvl = (lvl, tier) => { const t = gradeTab(tier), d = dispLv(lvl, tier | 0); let g = t[0][1]; for (const [from, gr] of t) if (d >= from) g = gr; return g; };
 const gradeMin = tier => gradeTab(tier)[0][1];
 const lvlOfGrade = (g, tier) => { for (let l = 1; l <= MAXLV; l++) if (gradeOfLvl(l, tier) >= g) return l; return MAXLV; };
-const ptsAt = (k, lvl, tier) => Math.floor(k * (effLv(lvl, tier) - 1)); // pontos acumulados (k por nível efetivo): o total no teto é o mesmo de antes
+const ptsAt = (k, lvl, tier) => Math.floor(k * (effLv(lvl, tier) - 1)); // pontos acumulados (k por nível efetivo): o total no teto é o mesmo de antes (pontos de habilidade)
+/* atributos: 5 pontos por nível EXIBIDO (apAt); cada ponto pesa attrW(fase) no recalc, então o poder no teto da fase é o mesmo de quando eram 245 pontos */
+const apAt = lvl => AP_PER_LEVEL * (lvl - 1);
+const attrW = tier => (MAXLV - 1) / Math.max(1, lvCap(tier) - 1);
 
 /* kinds de habilidade: melee, proj, pierce, aoe_self, aoe_ground, dash, buff, shield, heal, mark, summon */
 /* main: atributo que escala o ataque (str ou int). dodge: chance base de esquiva. aspd: velocidade de ataque básico */
@@ -2332,12 +2335,14 @@ const DEFLOOK = {
 
 /* ===== atributos (pontos de status) ===== */
 const ATTRS = {
-  str: { n: 'Força', ic: '💪', d: '+0,8% de ataque por ponto (Vanguarda)' },
-  dex: { n: 'Destreza', ic: '🎯', d: '+0,3% de crítico, +0,15% de esquiva e +0,1% de velocidade por ponto; Caçadora: também +0,7% de ataque' },
-  int: { n: 'Inteligência', ic: '🔮', d: '+2% de mana e +0,8% de dano das habilidades por ponto; Arcanista e Invocador: também +0,8% de ataque' },
-  vit: { n: 'Vitalidade', ic: '❤️', d: '+1,2% de vida e +0,6% de defesa por ponto' },
-  spi: { n: 'Cura', ic: '✨', d: '+1,5% de cura das habilidades e +1% de efeito das poções por ponto' },
+  // {n} = efeito de 1 ponto com peso 1; a tela multiplica por attrW(fase) (attrDesc)
+  str: { n: 'Força', ic: '💪', d: '+{0.8}% de ataque por ponto (Vanguarda)' },
+  dex: { n: 'Destreza', ic: '🎯', d: '+{0.3}% de crítico, +{0.15}% de esquiva e +{0.1}% de velocidade por ponto; Caçadora: também +{0.7}% de ataque' },
+  int: { n: 'Inteligência', ic: '🔮', d: '+{2}% de mana e +{0.8}% de dano das habilidades por ponto; Arcanista e Invocador: também +{0.8}% de ataque' },
+  vit: { n: 'Vitalidade', ic: '❤️', d: '+{1.2}% de vida e +{0.6}% de defesa por ponto' },
+  spi: { n: 'Cura', ic: '✨', d: '+{1.5}% de cura das habilidades e +{1}% de efeito das poções por ponto' },
 };
+const attrDesc = (k, tier) => ATTRS[k].d.replace(/\{([\d.]+)\}/g, (_, v) => String(+(v * attrW(tier)).toFixed(3)).replace('.', ','));
 const ATTR_KEYS = Object.keys(ATTRS);
 /* aprender habilidades com o Mestre de Habilidades (índice = posição na barra). Níveis 1–10 com pontos de habilidade (1 por nível) */
 /* aprender: nível mínimo e custo em PONTOS DE HABILIDADE (3 por nível, gastos no Mestre de Habilidades); price é legado (não usado) */
@@ -6595,7 +6600,7 @@ const UI = (() => {
     h += `<h3>Atributos <small>${p.ap > 0 ? '<b class="gold">' + p.ap + ' pontos disponíveis</b>' : 'sem pontos · +' + AP_PER_LEVEL + ' por nível'}</small></h3><div class="attrs">`;
     for (const k of ATTR_KEYS) {
       const A = ATTRS[k];
-      h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${A.d}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
+      h += `<div class="attr"><span class="ai">${A.ic}</span><div class="at"><b>${A.n}${hint.includes(k) ? ' <i title="Recomendado para sua classe">★</i>' : ''}</b><small>${attrDesc(k, p.tier)}</small></div><span class="av">${p.attr[k]}</span><button class="btn mini" data-a="attr" data-k="${k}" data-n="1"${p.ap > 0 ? '' : ' disabled'}>+1</button><button class="btn mini" data-a="attr" data-k="${k}" data-n="5"${p.ap > 0 ? '' : ' disabled'}>+5</button></div>`;
     }
     h += `</div><button class="btn ghost mini" data-a="attr-reset" title="Devolve todos os pontos">↺ Redistribuir (💰 ${fmt(50 * Math.round(ELV()))})</button>`;
     h += `<div class="dim pad">${TX('Habilidades: tecla <kbd>V</kbd>', 'Habilidades: fale com o Mestre de Habilidades')}</div>`;
@@ -8141,14 +8146,15 @@ const Game = (() => {
     const p = G.player, c = CLASSES[p.cls], b = c.base, g = c.grow, l = EL(p) - 1, E = p.eq, w = E.w, ac = E.c;
     const ad = { atk: 0, def: 0, hpp: 0, crit: 0, arc: 0 }; // adicionais das pedras
     for (const s of SLOT_ORDER) { const it = E[s]; if (it && Array.isArray(it.adds)) for (const a of it.adds) if (a && a.k in ad) ad[a.k] += +a.v || 0; }
-    const T = tmul(p.tier), A = p.attr, intCls = c.main === 'int'; // tier multiplica os stats base
+    const T = tmul(p.tier), intCls = c.main === 'int'; // tier multiplica os stats base
+    const A = {}, aw = attrW(p.tier); for (const k of ATTR_KEYS) A[k] = (p.attr[k] || 0) * aw; // pontos de atributo com o peso da fase (5 por nível exibido)
     let atk = (b.atk + g.atk * l) * T + (w ? itemVal(w, 'atk') : 0) + ad.atk, eDef = 0, eHp = 0, eSpd = 0, eMp = 0, eDodge = 0;
     for (const s of ['h', 'a', 'l', 'g', 'b']) { const it = E[s]; if (it) { atk += itemVal(it, 'atk'); eDef += itemVal(it, 'def'); eHp += itemVal(it, 'hp'); if (it.spd) eSpd += it.spd; eMp += itemVal(it, 'mp'); if (it.dodge) eDodge += it.dodge; } }
     let def0 = (b.def + g.def * l) * T + eDef + ad.def;
     let maxHp = ((b.hp + g.hp * l) * T + eHp) * (1 + ad.hpp);
     const maxMp = ((b.mp + g.mp * l) * T + (ac ? itemVal(ac, 'mp') : 0) + eMp) * (1 + .02 * A.int) * (1 + ad.arc);
     let crit = b.crit + (ac ? ac.crit : 0) + ad.crit;
-    atk *= 1 + (c.main === 'dex' ? .007 : .008) * (A[c.main] || A.str | 0); maxHp *= 1 + .012 * A.vit; def0 *= 1 + .006 * A.vit; crit += .003 * A.dex;
+    atk *= 1 + (c.main === 'dex' ? .007 : .008) * (A[c.main] || A.str || 0); maxHp *= 1 + .012 * A.vit; def0 *= 1 + .006 * A.vit; crit += .003 * A.dex;
     const set = SLOT_ORDER.every(s => E[s]) && SLOT_ORDER.every(s => E[s].grade === E.a.grade);
     if (set) { atk *= 1.15; maxHp *= 1.15; }
     const mb = p.lastMount && MOUNTS[p.lastMount] ? MOUNTS[p.lastMount].bon : null, mk = mountLvBon(mountLv(p.lastMount));
@@ -8159,7 +8165,7 @@ const Game = (() => {
     S.skillMul = (1 + (intCls ? .004 : .008) * A.int) * (1 + ad.arc);
     S.dodge = Math.min(.6, Math.min(.35, (b.dodge || 0) + eDodge + .0015 * A.dex) + (bf.dodge.t > 0 ? bf.dodge.v : 0)); // teto de 35% sem buff
     S.aspd = (b.aspd || 1) * (1 + (bf.aspd.t > 0 ? bf.aspd.v : 0)); S.leech = bf.leech.t > 0 ? bf.leech.v : 0; S.tierMul = T;
-    crit = Math.min(.6, crit) + (bf.crit.t > 0 ? bf.crit.v : 0); S.dr = b.dr ? b.dr + .03 * p.tier : 0; S.healMul = 1 + .015 * p.attr.spi; S.potMul = 1 + .01 * p.attr.spi;
+    crit = Math.min(.6, crit) + (bf.crit.t > 0 ? bf.crit.v : 0); S.dr = b.dr ? b.dr + .03 * p.tier : 0; S.healMul = 1 + .015 * A.spi; S.potMul = 1 + .01 * A.spi;
     S.crit = crit; S.spd = 5.4 * (1 + .001 * p.attr.dex) * (1 + (G.eqSpd || 0)) * (1 + (bf.spd.t > 0 ? bf.spd.v : 0)); S.maxHp = Math.round(maxHp); S.maxMp = Math.round(maxMp); S.setBonus = set; S.adds = ad;
     p.maxHp = S.maxHp; p.maxMp = S.maxMp; p.hp = Math.min(p.hp, p.maxHp); p.mp = Math.min(p.mp, p.maxMp);
   }
@@ -8194,7 +8200,7 @@ const Game = (() => {
     p.xp += n; UI.float(p.x, 2.8, p.z, '+' + n + ' XP', 'xp');
     let up = false;
     let apG = 0, spG = 0;
-    while (p.lvl < lvCap(p.tier) && p.xp >= xpPlayer(p.lvl, p.tier)) { p.xp -= xpPlayer(p.lvl, p.tier); const a0 = ptsAt(AP_PER_LEVEL, p.lvl, p.tier), s0 = ptsAt(SK_PTS_LEVEL, p.lvl, p.tier); p.lvl++; apG += ptsAt(AP_PER_LEVEL, p.lvl, p.tier) - a0; spG += ptsAt(SK_PTS_LEVEL, p.lvl, p.tier) - s0; up = true; }
+    while (p.lvl < lvCap(p.tier) && p.xp >= xpPlayer(p.lvl, p.tier)) { p.xp -= xpPlayer(p.lvl, p.tier); const a0 = apAt(p.lvl), s0 = ptsAt(SK_PTS_LEVEL, p.lvl, p.tier); p.lvl++; apG += apAt(p.lvl) - a0; spG += ptsAt(SK_PTS_LEVEL, p.lvl, p.tier) - s0; up = true; }
     p.ap += apG; p.sp = (p.sp || 0) + spG;
     if (p.lvl >= lvCap(p.tier)) p.xp = 0;
     if (up) {
@@ -9507,7 +9513,7 @@ const Game = (() => {
   const hasSave = () => { const a = account(); return !!(a && a.chars.length); };
   function snapshot() {
     const p = G.player;
-    return { v: 3, w: 2, lv2: 1, cls: p.cls, name: p.name, tier: p.tier, lvl: p.lvl, xp: p.xp, gold: p.gold, inv: p.inv, eq: p.eq, pots: p.pots, quests: G.quests, x: p.x, z: p.z, look: p.look, mounts: p.mounts, lastMount: p.lastMount, attr: p.attr, ap: p.ap, sk: p.sk, sp: p.sp, main: G.main, rec: G.rec, daily: G.daily, feed: p.feed, mst: p.mst, mlv: p.mlv || {}, mbox: p.mbox || [], mats: p.mats || {}, gifts: p.gifts || {} };
+    return { v: 3, w: 2, lv2: 1, apv: 1, cls: p.cls, name: p.name, tier: p.tier, lvl: p.lvl, xp: p.xp, gold: p.gold, inv: p.inv, eq: p.eq, pots: p.pots, quests: G.quests, x: p.x, z: p.z, look: p.look, mounts: p.mounts, lastMount: p.lastMount, attr: p.attr, ap: p.ap, sk: p.sk, sp: p.sp, main: G.main, rec: G.rec, daily: G.daily, feed: p.feed, mst: p.mst, mlv: p.mlv || {}, mbox: p.mbox || [], mats: p.mats || {}, gifts: p.gifts || {} };
   }
   function save() {
     if (G.state !== 'play' || !G.player || !ACC) return;
@@ -9557,7 +9563,11 @@ const Game = (() => {
       p.eq = Object.assign({ w: null, h: null, a: null, l: null, b: null, c: null }, s.eq || {}); p.pots = Object.assign({ hp: 0, mp: 0 }, s.pots || {});
       for (const q of QUESTS) if (s.quests && s.quests[q.id]) G.quests[q.id] = s.quests[q.id];
       let mx = ITEM_UID; for (const it of p.inv.concat(SLOT_ORDER.map(s => p.eq[s]))) if (it && it.id >= mx) mx = it.id + 1; ITEM_UID = mx;
-      p.attr = Object.assign({ str: 0, dex: 0, int: 0, vit: 0, spi: 0 }, s.attr || {}); { const sp = ATTR_KEYS.reduce((a, k) => a + (p.attr[k] | 0), 0); p.ap = s.ap != null ? s.ap | 0 : Math.max(0, ptsAt(AP_PER_LEVEL, p.lvl, p.tier) - sp); }
+      p.attr = Object.assign({ str: 0, dex: 0, int: 0, vit: 0, spi: 0 }, s.attr || {});
+      if (!s.apv) { // save de antes dos 5 pontos por nível exibido: cada ponto antigo vale 1/attrW pontos novos (mesmo poder), e o que sobra vira ponto livre
+        const k = 1 / attrW(p.tier); for (const a of ATTR_KEYS) p.attr[a] = Math.round((p.attr[a] | 0) * k);
+        const sp = ATTR_KEYS.reduce((a, q) => a + p.attr[q], 0); p.ap = Math.max(0, apAt(p.lvl) - sp);
+      } else { const sp = ATTR_KEYS.reduce((a, k) => a + (p.attr[k] | 0), 0); p.ap = s.ap != null ? s.ap | 0 : Math.max(0, apAt(p.lvl) - sp); }
       p.look = Object.assign({}, DEFLOOK[s.cls], s.look || {}); p.mounts = Array.isArray(s.mounts) ? s.mounts.filter(x => MOUNTS[x]) : []; p.lastMount = MOUNTS[s.lastMount] ? s.lastMount : null;
       if (isFinite(s.x) && isFinite(s.z)) { p.x = s.x; p.z = s.z; }
       if (!s.w) { // save de antes do continente: cada região era um disco separado; leva para o lugar equivalente no continente
