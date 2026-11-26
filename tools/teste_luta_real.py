@@ -49,4 +49,4 @@ for kind in ('normal', 'elite', 'champ', 'boss'):
     print('classe     ' + ''.join(f'{L:>14}' for L in LEVELS))
     for cls, v in r.items():
         print(f'{cls:10} ' + ''.join(f"{(str(v[f'{L}:{kind}']['ttk']) + 's/' + str(v[f'{L}:{kind}']['lost']) + '%/' + str(v[f'{L}:{kind}']['deaths'])):>14}" for L in LEVELS))
-json.dump(r, open(os.path.join(os.environ.get('TEMP', '.'), 'luta_real.json'), 'w'), indent=1)
+json.dump(r, open(os.environ.get('OUT') or os.path.join(os.environ.get('TEMP', '.'), 'luta_real.json'), 'w'), indent=1)
